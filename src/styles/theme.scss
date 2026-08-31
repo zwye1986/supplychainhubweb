@@ -4,3 +4,14 @@
 // .dark .dark\:text-color {
 //   color: rgba(255, 255, 255, var(--dark-text-color));
 // }
+
+/* 搜索栏：统一 Element 常用表单控件宽度为 220px */
+.search-form {
+  .el-input,
+  .el-select,
+  .el-date-editor,
+  .el-cascader,
+  .el-input-number {
+    width: 220px;
+  }
+}

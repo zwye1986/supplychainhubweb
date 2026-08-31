@@ -1,0 +1,142 @@
+[
+  {
+    "spuId": 100,
+    "spuName": "爱奇艺黄金会员",
+    "skuId": 1001,
+    "skuName": "月卡",
+    "skuCode": "IQY-GOLD-M",
+    "categoryCode": "equity",
+    "categoryName": "权益商品",
+    "marketPrice": 30
+  },
+  {
+    "spuId": 100,
+    "spuName": "爱奇艺黄金会员",
+    "skuId": 1002,
+    "skuName": "季卡",
+    "skuCode": "IQY-GOLD-Q",
+    "categoryCode": "equity",
+    "categoryName": "权益商品",
+    "marketPrice": 78
+  },
+  {
+    "spuId": 100,
+    "spuName": "爱奇艺黄金会员",
+    "skuId": 1003,
+    "skuName": "年卡",
+    "skuCode": "IQY-GOLD-Y",
+    "categoryCode": "equity",
+    "categoryName": "权益商品",
+    "marketPrice": 258
+  },
+  {
+    "spuId": 101,
+    "spuName": "腾讯视频VIP",
+    "skuId": 1011,
+    "skuName": "月卡",
+    "skuCode": "TX-VIP-M",
+    "categoryCode": "equity",
+    "categoryName": "权益商品",
+    "marketPrice": 30
+  },
+  {
+    "spuId": 101,
+    "spuName": "腾讯视频VIP",
+    "skuId": 1012,
+    "skuName": "年卡",
+    "skuCode": "TX-VIP-Y",
+    "categoryCode": "equity",
+    "categoryName": "权益商品",
+    "marketPrice": 258
+  },
+  {
+    "spuId": 110,
+    "spuName": "全国电影通兑券",
+    "skuId": 1101,
+    "skuName": "2D通兑",
+    "skuCode": "MOVIE-2D",
+    "categoryCode": "movie",
+    "categoryName": "电影快充",
+    "marketPrice": 45
+  },
+  {
+    "spuId": 110,
+    "spuName": "全国电影通兑券",
+    "skuId": 1102,
+    "skuName": "3D通兑",
+    "skuCode": "MOVIE-3D",
+    "categoryCode": "movie",
+    "categoryName": "电影快充",
+    "marketPrice": 55
+  },
+  {
+    "spuId": 200,
+    "spuName": "京东E卡",
+    "skuId": 2001,
+    "skuName": "100元面值",
+    "skuCode": "JD-E100",
+    "categoryCode": "jd",
+    "categoryName": "京东",
+    "marketPrice": 100
+  },
+  {
+    "spuId": 200,
+    "spuName": "京东E卡",
+    "skuId": 2002,
+    "skuName": "500元面值",
+    "skuCode": "JD-E500",
+    "categoryCode": "jd",
+    "categoryName": "京东",
+    "marketPrice": 500
+  },
+  {
+    "spuId": 210,
+    "spuName": "盒马鲜生礼品卡",
+    "skuId": 2101,
+    "skuName": "200元面值",
+    "skuCode": "HM-200",
+    "categoryCode": "supermarket",
+    "categoryName": "商超",
+    "marketPrice": 200
+  },
+  {
+    "spuId": 211,
+    "spuName": "大润发购物卡",
+    "skuId": 2111,
+    "skuName": "100元面值",
+    "skuCode": "DRF-100",
+    "categoryCode": "supermarket",
+    "categoryName": "商超",
+    "marketPrice": 100
+  },
+  {
+    "spuId": 300,
+    "spuName": "企业团餐套餐A",
+    "skuId": 3001,
+    "skuName": "标准套餐",
+    "skuCode": "CATER-A",
+    "categoryCode": "catering",
+    "categoryName": "点餐",
+    "marketPrice": 35
+  },
+  {
+    "spuId": 301,
+    "spuName": "外卖满减券包",
+    "skuId": 3011,
+    "skuName": "10元×10张",
+    "skuCode": "TAKEOUT-10",
+    "categoryCode": "takeout",
+    "categoryName": "外卖",
+    "marketPrice": 80
+  },
+  {
+    "spuId": 400,
+    "spuName": "家政上门保洁",
+    "skuId": 4001,
+    "skuName": "2小时套餐",
+    "skuCode": "LIFE-CLEAN-2H",
+    "categoryCode": "life",
+    "categoryName": "生活服务",
+    "marketPrice": 128
+  }
+]

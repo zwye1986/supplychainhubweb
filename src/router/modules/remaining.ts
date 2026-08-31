@@ -1,4 +1,4 @@
-import { Layout } from '@/utils/routerHelper'
+import { Layout, getParentLayout } from '@/utils/routerHelper'
 
 const { t } = useI18n()
 /**
@@ -1008,6 +1008,74 @@ const remainingRouter: AppRouteRecordRaw[] = [
             component: () => import('@/views/im/home/pages/contact/index.vue'),
             name: 'ImHomeContact',
             meta: { hidden: true, title: '通讯录' }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    path: '/supplier',
+    component: Layout,
+    name: 'SupplierCenter',
+    meta: {
+      title: '供应商中台',
+      icon: 'ep:goods'
+    },
+    redirect: '/supplier/manage',
+    children: [
+      {
+        path: 'manage',
+        component: () => import('@/views/supplier/manage/index.vue'),
+        name: 'SupplierManage',
+        meta: {
+          title: '供应商管理',
+          icon: 'ep:user',
+          noCache: false
+        }
+      },
+      {
+        path: 'manage/form/:id(\\d+)',
+        component: () => import('@/views/supplier/manage/form/index.vue'),
+        name: 'SupplierManageForm',
+        meta: {
+          title: '编辑供应商',
+          noCache: true,
+          hidden: true,
+          canTo: true,
+          activeMenu: '/supplier/manage'
+        }
+      },
+      {
+        path: 'manage/detail/:id(\\d+)',
+        component: () => import('@/views/supplier/manage/detail/index.vue'),
+        name: 'SupplierManageDetail',
+        meta: {
+          title: '供应商详情',
+          noCache: true,
+          hidden: true,
+          canTo: true,
+          activeMenu: '/supplier/manage'
+        }
+      },
+      {
+        path: 'distribution',
+        component: getParentLayout(),
+        name: 'SupplierDistribution',
+        meta: {
+          title: '分销管理',
+          icon: 'ep:share',
+          alwaysShow: true
+        },
+        children: [
+          {
+            path: 'distributor',
+            component: () => import('@/views/supplier/distribution/distributor/index.vue'),
+            name: 'SupplierDistributor',
+            meta: {
+              title: '分销商管理',
+              icon: 'ep:avatar',
+              noCache: false
+            }
           }
         ]
       }
