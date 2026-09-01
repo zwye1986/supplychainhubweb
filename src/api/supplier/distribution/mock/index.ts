@@ -4,11 +4,14 @@ import type {
   DistPlatformSkuVO,
   DistributorInvoiceVO,
   DistributorProductVO,
-  DistributorVO
+  DistributorVO,
+  ProjectProductVO,
+  ProjectVO
 } from '../types'
 import { DISTRIBUTOR_MOCK_LIST } from './distributors'
 import { DIST_INVOICE_MOCK_LIST } from './invoices'
 import { DIST_PRODUCT_MOCK_LIST } from './products'
+import { PROJECT_PRODUCT_MOCK_LIST } from './projectProducts'
 import { PROJECT_MOCK_LIST } from './projects'
 
 const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -18,6 +21,7 @@ const distributors = clone(DISTRIBUTOR_MOCK_LIST)
 const invoices = clone(DIST_INVOICE_MOCK_LIST)
 const products = clone(DIST_PRODUCT_MOCK_LIST)
 const projects = clone(PROJECT_MOCK_LIST)
+const projectProducts = clone(PROJECT_PRODUCT_MOCK_LIST)
 const platformSkus = clone(PLATFORM_SKU_MOCK_LIST) as DistPlatformSkuVO[]
 
 let distributorSeq = Math.max(0, ...distributors.map((item) => item.id || 0))
@@ -27,6 +31,8 @@ let contactSeq = Math.max(
 )
 let invoiceSeq = Math.max(0, ...invoices.map((item) => item.id || 0))
 let productSeq = Math.max(0, ...products.map((item) => item.id || 0))
+let projectSeq = Math.max(0, ...projects.map((item) => item.id || 0))
+let projectProductSeq = Math.max(0, ...projectProducts.map((item) => item.id || 0))
 
 const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
@@ -54,6 +60,69 @@ const syncListFields = (item: DistributorVO) => {
     item.cooperationTime = `${item.cooperationStartDate} 00:00:00`
   }
   return item
+}
+
+const resolveSettlementParty = (item: ProjectVO) => {
+  if (item.settlementPartyType === 'platform') return '平台结算'
+  return item.distributorName || item.settlementParty || ''
+}
+
+const syncProjectFields = (item: ProjectVO) => {
+  const dist = distributors.find((d) => d.id === item.distributorId)
+  item.distributorName = dist?.name || item.distributorName || ''
+  const rows = projectProducts.filter((p) => p.projectId === item.id)
+  item.skuCount = rows.length
+  item.projectPriceSkuCount = rows.filter(
+    (p) => p.projectPriceCovered && p.projectPrice != null
+  ).length
+  item.settlementParty = resolveSettlementParty(item)
+  return item
+}
+
+const getDistributorSkuPrice = (distributorId?: number, skuId?: number, fallback = 0) => {
+  if (!distributorId || !skuId) return fallback
+  const found = products.find((item) => item.distributorId === distributorId && item.skuId === skuId)
+  return found?.distPrice ?? fallback
+}
+
+const refreshDistributorSkuCoverage = (distributorId?: number, skuId?: number) => {
+  if (!distributorId || !skuId) return
+  const distProduct = products.find(
+    (item) => item.distributorId === distributorId && item.skuId === skuId
+  )
+  if (!distProduct) return
+  const covering = projectProducts.filter(
+    (item) =>
+      item.distributorId === distributorId &&
+      item.skuId === skuId &&
+      item.projectPriceCovered &&
+      item.projectPrice != null
+  )
+  if (covering.length) {
+    const names = covering
+      .map((row) => projects.find((p) => p.id === row.projectId)?.name)
+      .filter(Boolean) as string[]
+    distProduct.projectPriceCovered = true
+    distProduct.projectPrice = covering[0].projectPrice
+    distProduct.finalPrice = covering[0].projectPrice
+    distProduct.priceSource = '项目专属价'
+    distProduct.projectNames = [...new Set(names)]
+  } else {
+    distProduct.projectPriceCovered = false
+    distProduct.projectPrice = undefined
+    distProduct.finalPrice = distProduct.distPrice
+    distProduct.priceSource = '分销商基础价'
+    distProduct.projectNames = []
+  }
+}
+
+const refreshDistributorProjectCount = (distributorId?: number) => {
+  if (!distributorId) return
+  const dist = distributors.find((item) => item.id === distributorId)
+  if (dist) {
+    dist.projectCount = projects.filter((item) => item.distributorId === distributorId).length
+    dist.updateTime = now()
+  }
 }
 
 const paginate = <T>(list: T[], pageNo = 1, pageSize = 20) => {
@@ -261,7 +330,7 @@ export const DistributorMockApi = {
     await delay()
     return projects
       .filter((item) => item.distributorId === distributorId)
-      .map((item) => clone(item))
+      .map((item) => syncProjectFields(clone(item)))
       .sort((a, b) => String(b.createTime || '').localeCompare(String(a.createTime || '')))
   },
 
@@ -350,5 +419,180 @@ export const DistributorMockApi = {
       )
     }
     return paginate(list, params?.pageNo || 1, params?.pageSize || 10)
+  }
+}
+
+export const ProjectMockApi = {
+  async getProjectPage(params: any) {
+    await delay()
+    let list = projects.map((item) => syncProjectFields(clone(item)))
+    if (params?.name) {
+      const keyword = String(params.name).trim().toLowerCase()
+      list = list.filter(
+        (item) =>
+          item.name?.toLowerCase().includes(keyword) ||
+          item.code?.toLowerCase().includes(keyword)
+      )
+    }
+    if (params?.code) {
+      const code = String(params.code).trim().toLowerCase()
+      list = list.filter((item) => item.code?.toLowerCase().includes(code))
+    }
+    if (Array.isArray(params?.status) && params.status.length) {
+      list = list.filter((item) => params.status.includes(item.status))
+    }
+    if (params?.distributorId) {
+      list = list.filter((item) => item.distributorId === Number(params.distributorId))
+    }
+    if (Array.isArray(params?.projectType) && params.projectType.length) {
+      list = list.filter((item) => params.projectType.includes(item.projectType))
+    }
+    if (Array.isArray(params?.period) && params.period.length === 2) {
+      const [start, end] = params.period
+      list = list.filter((item) => {
+        if (!item.startDate || !item.endDate) return false
+        return item.startDate <= end && item.endDate >= start
+      })
+    }
+    list.sort((a, b) => String(b.updateTime || '').localeCompare(String(a.updateTime || '')))
+    return paginate(list, params?.pageNo || 1, params?.pageSize || 12)
+  },
+
+  async getProjectNameList() {
+    await delay(100)
+    return projects
+      .map((item) => syncProjectFields(clone(item)))
+      .map((item) => ({ value: item.name, label: item.name, id: item.id }))
+  },
+
+  async getProjectCodeList() {
+    await delay(100)
+    return projects
+      .map((item) => syncProjectFields(clone(item)))
+      .map((item) => ({ value: item.code || '', label: item.code || '', id: item.id }))
+      .filter((item) => item.value)
+  },
+
+  async getProject(id: number) {
+    await delay()
+    const found = projects.find((item) => item.id === id)
+    if (!found) throw new Error('项目不存在')
+    return syncProjectFields(clone(found))
+  },
+
+  async createProject(data: ProjectVO) {
+    await delay()
+    if (!data.distributorId) throw new Error('请选择关联分销商')
+    const dist = distributors.find((item) => item.id === data.distributorId)
+    if (!dist) throw new Error('关联分销商不存在')
+    const id = ++projectSeq
+    const created: ProjectVO = {
+      ...clone(data),
+      id,
+      code: data.code || `PRJ${dayjs().format('YYYYMMDD')}${String(id).padStart(3, '0')}`,
+      distributorName: dist.name,
+      skuCount: 0,
+      projectPriceSkuCount: 0,
+      createTime: now(),
+      updateTime: now()
+    }
+    created.settlementParty = resolveSettlementParty(created)
+    projects.unshift(created)
+    refreshDistributorProjectCount(created.distributorId)
+    return syncProjectFields(clone(created))
+  },
+
+  async updateProject(data: ProjectVO) {
+    await delay()
+    const index = projects.findIndex((item) => item.id === data.id)
+    if (index < 0) throw new Error('项目不存在')
+    const prevDistributorId = projects[index].distributorId
+    if (data.distributorId) {
+      const dist = distributors.find((item) => item.id === data.distributorId)
+      if (!dist) throw new Error('关联分销商不存在')
+      data.distributorName = dist.name
+    }
+    projects[index] = {
+      ...projects[index],
+      ...clone(data),
+      updateTime: now()
+    }
+    projects[index].settlementParty = resolveSettlementParty(projects[index])
+    if (prevDistributorId !== projects[index].distributorId) {
+      refreshDistributorProjectCount(prevDistributorId)
+      refreshDistributorProjectCount(projects[index].distributorId)
+    }
+    return syncProjectFields(clone(projects[index]))
+  },
+
+  async updateProjectStatus(id: number, status: number) {
+    await delay()
+    const found = projects.find((item) => item.id === id)
+    if (!found) throw new Error('项目不存在')
+    found.status = status
+    found.updateTime = now()
+    return true
+  },
+
+  async getProductPage(params: any) {
+    await delay()
+    let list = projectProducts.filter((item) => item.projectId === Number(params?.projectId))
+    if (params?.categoryCode) {
+      const key = String(params.categoryCode)
+      list = list.filter((item) => item.categoryCode === key || item.productType === key)
+    }
+    if (params?.keyword) {
+      const keyword = String(params.keyword).trim().toLowerCase()
+      list = list.filter(
+        (item) =>
+          item.spuName?.toLowerCase().includes(keyword) ||
+          item.skuName?.toLowerCase().includes(keyword) ||
+          item.skuCode?.toLowerCase().includes(keyword)
+      )
+    }
+    list.sort((a, b) => String(b.createTime || '').localeCompare(String(a.createTime || '')))
+    return paginate(list.map(clone), params?.pageNo || 1, params?.pageSize || 20)
+  },
+
+  async deleteProduct(id: number) {
+    await delay()
+    const index = projectProducts.findIndex((item) => item.id === id)
+    if (index < 0) return true
+    const removed = projectProducts[index]
+    projectProducts.splice(index, 1)
+    refreshDistributorSkuCoverage(removed.distributorId, removed.skuId)
+    return true
+  },
+
+  async createProducts(projectId: number, rows: ProjectProductVO[]) {
+    await delay()
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) throw new Error('项目不存在')
+    const created = rows.map((row) => {
+      const distPrice = getDistributorSkuPrice(
+        project.distributorId,
+        row.skuId,
+        row.suggestPrice || 0
+      )
+      const covered = row.adjustMode !== 0 && row.projectPrice != null
+      const item: ProjectProductVO = {
+        ...clone(row),
+        id: ++projectProductSeq,
+        projectId,
+        distributorId: project.distributorId,
+        distPrice,
+        projectPriceCovered: covered,
+        projectPrice: covered ? row.projectPrice : undefined,
+        finalPrice: covered ? row.projectPrice : distPrice,
+        priceSource: covered ? '项目专属价' : '分销商基础价',
+        createTime: now(),
+        status: row.status ?? 1
+      }
+      projectProducts.unshift(item)
+      refreshDistributorSkuCoverage(item.distributorId, item.skuId)
+      return item
+    })
+    project.updateTime = now()
+    return created.map(clone)
   }
 }

@@ -19,19 +19,42 @@ export interface DistributorInvoiceVO {
   invoiceAddress?: string
 }
 
-/** 关联项目 */
-export interface DistributorProjectVO {
+/** 项目（项目管理 / 分销商关联项目共用） */
+export interface ProjectVO {
   id?: number
   distributorId?: number
+  distributorName?: string
   name: string
   code?: string
   status?: number
+  /** 项目类型：welfare / benefit / campaign / subsidy / group */
+  projectType?: string
   startDate?: string
   endDate?: string
   skuCount?: number
   projectPriceSkuCount?: number
+  /** 结算方展示文案 */
   settlementParty?: string
+  /** 结算方类型：distributor 关联分销商 / platform 平台结算 */
+  settlementPartyType?: string
+  description?: string
   createTime?: string
+  updateTime?: string
+}
+
+/** 分销商详情-关联项目卡片，与项目主体同一结构 */
+export type DistributorProjectVO = ProjectVO
+
+/** 项目分页查询参数 */
+export interface ProjectPageParam {
+  pageNo: number
+  pageSize: number
+  name?: string
+  code?: string
+  status?: number[]
+  distributorId?: number
+  projectType?: string[]
+  period?: string[]
 }
 
 /** 分销商品（SKU 级，三级定价） */
@@ -76,6 +99,11 @@ export interface DistributorProductVO {
   projectNames?: string[]
   status?: number
   createTime?: string
+}
+
+/** 项目分销商品（SKU 级，项目专属价） */
+export interface ProjectProductVO extends DistributorProductVO {
+  projectId?: number
 }
 
 /** 分销商 */

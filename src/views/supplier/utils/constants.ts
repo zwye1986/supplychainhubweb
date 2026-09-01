@@ -400,6 +400,39 @@ export const PROJECT_STATUS_OPTIONS = [
   { value: ProjectStatusEnum.CLOSED, label: '已结束', type: 'info' as const }
 ]
 
+/** 项目类型 */
+export const PROJECT_TYPE_OPTIONS = [
+  { value: 'welfare', label: '企业福利' },
+  { value: 'benefit', label: '员工权益' },
+  { value: 'campaign', label: '专项活动' },
+  { value: 'subsidy', label: '补贴项目' },
+  { value: 'group', label: '团购项目' }
+]
+
+/** 结算方类型 */
+export const SettlementPartyTypeEnum = {
+  DISTRIBUTOR: 'distributor',
+  PLATFORM: 'platform'
+} as const
+
+export const SETTLEMENT_PARTY_TYPE_OPTIONS = [
+  { value: SettlementPartyTypeEnum.DISTRIBUTOR, label: '关联分销商' },
+  { value: SettlementPartyTypeEnum.PLATFORM, label: '平台结算' }
+]
+
+/** 项目专属价调价方式：0 沿用分销商基础价 / 1 按销售建议价 / 2 自定义 */
+export const ProjectPriceAdjustModeEnum = {
+  FOLLOW: 0,
+  SUGGEST: 1,
+  CUSTOM: 2
+} as const
+
+export const PROJECT_PRICE_ADJUST_MODE_OPTIONS = [
+  { value: ProjectPriceAdjustModeEnum.FOLLOW, label: '沿用分销商基础价' },
+  { value: ProjectPriceAdjustModeEnum.SUGGEST, label: '按项目价=销售建议价' },
+  { value: ProjectPriceAdjustModeEnum.CUSTOM, label: '自定义设置' }
+]
+
 export const getDistributionLevelLabel = (value?: number): string => {
   return DISTRIBUTION_LEVEL_OPTIONS.find((item) => item.value === value)?.label || '-'
 }
@@ -438,4 +471,17 @@ export const getProjectStatusType = (
   status?: number
 ): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
   return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
+}
+
+export const getProjectTypeLabel = (value?: string): string => {
+  if (!value) return '-'
+  return PROJECT_TYPE_OPTIONS.find((item) => item.value === value)?.label || value
+}
+
+export const getSettlementPartyTypeLabel = (value?: string): string => {
+  return SETTLEMENT_PARTY_TYPE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getProjectPriceAdjustModeLabel = (value?: number): string => {
+  return PROJECT_PRICE_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
 }

@@ -1037,10 +1037,12 @@ const remainingRouter: AppRouteRecordRaw[] = [
         path: 'distribution',
         component: getParentLayout(),
         name: 'SupplierDistribution',
+        redirect: '/supplier/distribution/distributor',
         meta: {
           title: '分销管理',
           icon: 'ep:share',
-          noCache: false
+          noCache: false,
+          alwaysShow: true
         },
         children: [
           {
@@ -1050,6 +1052,16 @@ const remainingRouter: AppRouteRecordRaw[] = [
             meta: {
               title: '分销商管理',
               icon: 'ep:avatar',
+              noCache: false
+            }
+          },
+          {
+            path: 'project',
+            component: () => import('@/views/supplier/distribution/project/index.vue'),
+            name: 'SupplierDistributionProject',
+            meta: {
+              title: '项目管理',
+              icon: 'ep:folder-opened',
               noCache: false
             }
           }

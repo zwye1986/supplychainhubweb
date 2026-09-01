@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-import { DistributorMockApi } from './mock'
+import { DistributorMockApi, ProjectMockApi } from './mock'
 
 export type {
   DistributorContactVO,
@@ -8,18 +8,25 @@ export type {
   DistributorProductVO,
   DistributorVO,
   DistributorPageParam,
-  DistPlatformSkuVO
+  DistPlatformSkuVO,
+  ProjectVO,
+  ProjectPageParam,
+  ProjectProductVO
 } from './types'
 
 import type {
   DistributorInvoiceVO,
   DistributorPageParam,
   DistributorProductVO,
-  DistributorVO
+  DistributorVO,
+  ProjectPageParam,
+  ProjectProductVO,
+  ProjectVO
 } from './types'
 
 /** 本地 JSON 模拟开关：后端就绪后改为 false */
 export const USE_DISTRIBUTOR_MOCK = true
+export const USE_PROJECT_MOCK = USE_DISTRIBUTOR_MOCK
 
 export const DistributorApi = {
   getDistributorPage: async (params: DistributorPageParam | any) => {
@@ -112,5 +119,60 @@ export const DistributorApi = {
   getPlatformSkuPage: async (params: any) => {
     if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getPlatformSkuPage(params)
     return await request.get({ url: '/scm/distributor/platform-sku/page', params })
+  }
+}
+
+export const ProjectApi = {
+  getProjectPage: async (params: ProjectPageParam | any) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.getProjectPage(params)
+    return await request.get({ url: '/scm/project/page', params })
+  },
+
+  getProjectNameList: async () => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.getProjectNameList()
+    return await request.get({ url: '/scm/project/simple-list' })
+  },
+
+  getProjectCodeList: async () => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.getProjectCodeList()
+    return await request.get({ url: '/scm/project/code-list' })
+  },
+
+  getProject: async (id: number) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.getProject(id)
+    return await request.get({ url: '/scm/project/get?id=' + id })
+  },
+
+  createProject: async (data: ProjectVO) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.createProject(data)
+    return await request.post({ url: '/scm/project/create', data })
+  },
+
+  updateProject: async (data: ProjectVO) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.updateProject(data)
+    return await request.put({ url: '/scm/project/update', data })
+  },
+
+  updateProjectStatus: async (id: number, status: number) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.updateProjectStatus(id, status)
+    return await request.put({ url: '/scm/project/update-status', data: { id, status } })
+  },
+
+  getProductPage: async (params: any) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.getProductPage(params)
+    return await request.get({ url: '/scm/project/product/page', params })
+  },
+
+  deleteProduct: async (id: number) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.deleteProduct(id)
+    return await request.delete({ url: '/scm/project/product/delete?id=' + id })
+  },
+
+  createProducts: async (projectId: number, products: ProjectProductVO[]) => {
+    if (USE_PROJECT_MOCK) return ProjectMockApi.createProducts(projectId, products)
+    return await request.post({
+      url: '/scm/project/product/create-batch',
+      data: { projectId, products }
+    })
   }
 }

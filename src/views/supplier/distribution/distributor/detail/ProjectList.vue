@@ -53,7 +53,7 @@ const props = defineProps<{
   distributorId: number
 }>()
 
-const message = useMessage()
+const router = useRouter()
 const loading = ref(false)
 const list = ref<DistributorProjectVO[]>([])
 
@@ -70,7 +70,11 @@ const loadData = async () => {
 }
 
 const handleViewDetail = (item: DistributorProjectVO) => {
-  message.info(`项目管理模块尚未接入，项目「${item.name}」详情暂不可跳转`)
+  if (!item.id) return
+  router.push({
+    name: 'SupplierDistributionProject',
+    query: { id: String(item.id) }
+  })
 }
 
 watch(
