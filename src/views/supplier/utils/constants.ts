@@ -293,3 +293,149 @@ export const getSupplierStatusType = (
   }
   return map[status] || 'info'
 }
+
+/** 分销商合作状态（PRD：正常 / 暂停分销 / 黑名单） */
+export const DistributorStatusEnum = {
+  NORMAL: 1,
+  PAUSED: 2,
+  BLACKLIST: 3
+} as const
+
+export const DISTRIBUTOR_STATUS_OPTIONS = [
+  { value: DistributorStatusEnum.NORMAL, label: '正常' },
+  { value: DistributorStatusEnum.PAUSED, label: '暂停分销' },
+  { value: DistributorStatusEnum.BLACKLIST, label: '黑名单' }
+]
+
+/** 分销等级：1 一级 / 2 二级 / 3 三级 */
+export const DistributionLevelEnum = {
+  L1: 1,
+  L2: 2,
+  L3: 3
+} as const
+
+export const DISTRIBUTION_LEVEL_OPTIONS = [
+  { value: DistributionLevelEnum.L1, label: '一级分销商' },
+  { value: DistributionLevelEnum.L2, label: '二级分销商' },
+  { value: DistributionLevelEnum.L3, label: '三级分销商' }
+]
+
+/** 合作模式（可多选）：直营分销 / 代理分销 / 渠道分销 */
+export const COOPERATION_MODE_OPTIONS = [
+  { value: 'direct', label: '直营分销' },
+  { value: 'agent', label: '代理分销' },
+  { value: 'channel', label: '渠道分销' }
+]
+
+/** 分销商类型 */
+export const DISTRIBUTOR_TYPE_OPTIONS = [
+  { value: 'enterprise', label: '企业' },
+  { value: 'personal', label: '个人' },
+  { value: 'platform', label: '平台入驻' }
+]
+
+/** 分销品类 */
+export const DIST_CATEGORY_OPTIONS = [
+  { value: 'equity', label: '权益' },
+  { value: 'physical', label: '实物商品' },
+  { value: 'movie', label: '电影票' },
+  { value: 'dining', label: '点餐服务' },
+  { value: 'supermarket', label: '商超外卖' }
+]
+
+/** 可分销商品类型 */
+export const DIST_PRODUCT_TYPE_OPTIONS = [
+  { value: 'equity_product', label: '权益商品' },
+  { value: 'movie', label: '电影' },
+  { value: 'dining', label: '点餐' },
+  { value: 'jd', label: '京东' },
+  { value: 'vip', label: '唯品会' }
+]
+
+/** 供货择优倾向 */
+export const SUPPLY_PREFERENCE_OPTIONS = [
+  { value: 'stable', label: '稳定优先' },
+  { value: 'price', label: '价格优先' },
+  { value: 'comprehensive', label: '综合优先' }
+]
+
+/** 分销商品调价方式 */
+export const DistPriceAdjustModeEnum = {
+  SUGGEST: 1, // 按分销价=销售建议价
+  CUSTOM: 2 // 自定义设置
+} as const
+
+export const DIST_PRICE_ADJUST_MODE_OPTIONS = [
+  { value: DistPriceAdjustModeEnum.SUGGEST, label: '按分销价=销售建议价' },
+  { value: DistPriceAdjustModeEnum.CUSTOM, label: '自定义设置' }
+]
+
+export const getDistributorStatusLabel = (status?: number): string => {
+  return DISTRIBUTOR_STATUS_OPTIONS.find((item) => item.value === status)?.label || '未知'
+}
+
+export const getDistributorStatusType = (
+  status?: number
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
+  const map: Record<number, 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
+    [DistributorStatusEnum.NORMAL]: 'success',
+    [DistributorStatusEnum.PAUSED]: 'warning',
+    [DistributorStatusEnum.BLACKLIST]: 'danger'
+  }
+  return (status != null && map[status]) || 'info'
+}
+
+/** 项目状态 */
+export const ProjectStatusEnum = {
+  DRAFT: 0,
+  ACTIVE: 1,
+  PAUSED: 2,
+  CLOSED: 3
+} as const
+
+export const PROJECT_STATUS_OPTIONS = [
+  { value: ProjectStatusEnum.DRAFT, label: '草稿', type: 'info' as const },
+  { value: ProjectStatusEnum.ACTIVE, label: '进行中', type: 'success' as const },
+  { value: ProjectStatusEnum.PAUSED, label: '已暂停', type: 'warning' as const },
+  { value: ProjectStatusEnum.CLOSED, label: '已结束', type: 'info' as const }
+]
+
+export const getDistributionLevelLabel = (value?: number): string => {
+  return DISTRIBUTION_LEVEL_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getCooperationModeLabel = (value?: string): string => {
+  return COOPERATION_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getDistributorTypeLabel = (value?: string): string => {
+  return DISTRIBUTOR_TYPE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getDistCategoryLabel = (value?: string): string => {
+  if (!value) return '-'
+  return DIST_CATEGORY_OPTIONS.find((item) => item.value === value)?.label || value
+}
+
+export const getDistProductTypeLabel = (value?: string): string => {
+  if (!value) return '-'
+  return DIST_PRODUCT_TYPE_OPTIONS.find((item) => item.value === value)?.label || value
+}
+
+export const getSupplyPreferenceLabel = (value?: string): string => {
+  return SUPPLY_PREFERENCE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getDistPriceAdjustModeLabel = (value?: number): string => {
+  return DIST_PRICE_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+export const getProjectStatusLabel = (status?: number): string => {
+  return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.label || '-'
+}
+
+export const getProjectStatusType = (
+  status?: number
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
+  return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
+}
