@@ -283,6 +283,12 @@ export const SupplierMockApi = {
     if (params?.categoryCode) {
       list = list.filter((item) => item.categoryCode === params.categoryCode)
     }
+    if (params?.productType) {
+      list = list.filter((item) => item.productType === params.productType)
+    }
+    if (params?.productCategory) {
+      list = list.filter((item) => item.productCategory === params.productCategory)
+    }
     list = clone(list).sort((a, b) =>
       String(b.createTime || '').localeCompare(String(a.createTime || ''))
     )
@@ -317,11 +323,17 @@ export const SupplierMockApi = {
       )
       if (exists) return
       productSeq += 1
+      const supplyMode = Array.isArray(row.supplyMode)
+        ? row.supplyMode.map(String)
+        : row.supplyMode
+          ? [String(row.supplyMode)]
+          : []
       products.unshift({
         ...clone(row),
         id: productSeq,
         supplierId,
-        status: 1,
+        supplyMode,
+        status: row.status ?? 1,
         createTime: now()
       })
     })
@@ -330,11 +342,41 @@ export const SupplierMockApi = {
     return true
   },
 
+  async updateProduct(data: SupplierProductVO) {
+    await delay()
+    const index = products.findIndex((item) => item.id === data.id)
+    if (index < 0) {
+      return Promise.reject(new Error('合作商品不存在'))
+    }
+    const supplyMode = Array.isArray(data.supplyMode)
+      ? data.supplyMode.map(String)
+      : data.supplyMode
+        ? [String(data.supplyMode)]
+        : products[index].supplyMode || []
+    products[index] = {
+      ...products[index],
+      ...clone(data),
+      supplyMode
+    }
+    const supplier = suppliers.find((item) => item.id === products[index].supplierId)
+    if (supplier) {
+      syncListFields(supplier)
+      supplier.updateTime = now()
+    }
+    return true
+  },
+
   async getPlatformSkuPage(params: any) {
     await delay()
     let list = [...platformSkus]
     if (params?.categoryCode) {
       list = list.filter((item) => item.categoryCode === params.categoryCode)
+    }
+    if (params?.productType) {
+      list = list.filter((item) => item.productType === params.productType)
+    }
+    if (params?.productCategory) {
+      list = list.filter((item) => item.productCategory === params.productCategory)
     }
     if (params?.keyword) {
       const keyword = String(params.keyword).trim().toLowerCase()

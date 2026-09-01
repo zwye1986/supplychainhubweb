@@ -304,7 +304,7 @@
           <ProductList
             v-if="supplierId"
             :supplier-id="supplierId"
-            :capability-tags="productCategoryCodes"
+            :supply-configs="supplier.supplyConfigs || []"
           />
         </el-tab-pane>
       </el-tabs>
@@ -425,15 +425,6 @@ const supplyConfigSummary = computed(() => {
         .filter((label) => label && label !== '-')
       return modes.length ? `${category}（${modes.join('、')}）` : category
     })
-})
-
-/** 合作商品筛选标签：优先用供货配置中的品类 */
-const productCategoryCodes = computed(() => {
-  const fromConfig = (supplier.value.supplyConfigs || [])
-    .map((item) => item.categoryCode)
-    .filter(Boolean)
-  if (fromConfig.length) return [...new Set(fromConfig)]
-  return supplier.value.category || []
 })
 
 const getDetail = async () => {

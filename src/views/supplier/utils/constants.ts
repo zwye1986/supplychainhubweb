@@ -25,6 +25,14 @@ export const SUPPLIER_CATEGORY_OPTIONS = [
   { value: 'life', label: '生活服务' }
 ]
 
+/** 合作商品页 / 新增弹窗：固定筛选分类 */
+export const SUPPLIER_PRODUCT_FILTER_TAGS = [
+  { value: 'equity', label: '权益商品' },
+  { value: 'jd', label: '京东' },
+  { value: 'movie', label: '电影快充' },
+  { value: 'dining', label: '点餐' }
+]
+
 /** 商品类型选项 */
 export const SUPPLIER_PRODUCT_TYPE_OPTIONS = [
   { value: 'equity_product', label: '权益商品' },
@@ -64,12 +72,25 @@ export const SUPPLY_MODE_OPTIONS = [
 /** 供应价模式 */
 export const SupplyPriceModeEnum = {
   FIXED: 1, // 固定值
-  DISCOUNT: 2 // 供货折扣
+  REALTIME: 2, // 实时更新
+  DISCOUNT: 3 // 按供货折扣
 } as const
 
 export const SUPPLY_PRICE_MODE_OPTIONS = [
   { value: SupplyPriceModeEnum.FIXED, label: '固定值' },
-  { value: SupplyPriceModeEnum.DISCOUNT, label: '供货折扣' }
+  { value: SupplyPriceModeEnum.REALTIME, label: '实时更新' },
+  { value: SupplyPriceModeEnum.DISCOUNT, label: '按供货折扣' }
+]
+
+/** 合作商品上架状态 */
+export const ProductShelfStatusEnum = {
+  OFF: 0, // 下架
+  ON: 1 // 上架
+} as const
+
+export const PRODUCT_SHELF_STATUS_OPTIONS = [
+  { value: ProductShelfStatusEnum.ON, label: '上架', type: 'success' as const },
+  { value: ProductShelfStatusEnum.OFF, label: '下架', type: 'info' as const }
 ]
 
 /** 能力标签选项 */
@@ -165,18 +186,63 @@ export const getIntegrationLabel = (value: string): string => {
 }
 
 /** 获取可售品类文案 */
-export const getCategoryLabel = (tag: string): string => {
+export const getCategoryLabel = (tag?: string): string => {
+  if (!tag) return '-'
   return SUPPLIER_CATEGORY_OPTIONS.find((item) => item.value === tag)?.label || tag
 }
 
 /** 获取商品类型文案 */
-export const getProductTypeLabel = (tag: string): string => {
+export const getProductTypeLabel = (tag?: string): string => {
+  if (!tag) return '-'
   return SUPPLIER_PRODUCT_TYPE_OPTIONS.find((item) => item.value === tag)?.label || tag
 }
 
 /** 获取商品分类文案 */
-export const getProductCategoryLabel = (tag: string): string => {
+export const getProductCategoryLabel = (tag?: string): string => {
+  if (!tag) return '-'
   return SUPPLIER_PRODUCT_CATEGORY_OPTIONS.find((item) => item.value === tag)?.label || tag
+}
+
+/** 合作商品 / 新增商品：类型、分类筛选标签 */
+export type SupplyFilterTag = {
+  key: string
+  group: 'type' | 'category'
+  value: string
+  label: string
+}
+
+export const buildSupplyFilterTags = (
+  configs: Array<{
+    categoryCode?: string
+    categoryName?: string
+    productType?: string
+    productTypeName?: string
+  }> = []
+) => {
+  const typeMap = new Map<string, SupplyFilterTag>()
+  const categoryMap = new Map<string, SupplyFilterTag>()
+  configs.forEach((item) => {
+    if (item.productType) {
+      typeMap.set(item.productType, {
+        key: `type:${item.productType}`,
+        group: 'type',
+        value: item.productType,
+        label: item.productTypeName || getProductTypeLabel(item.productType)
+      })
+    }
+    if (item.categoryCode) {
+      categoryMap.set(item.categoryCode, {
+        key: `category:${item.categoryCode}`,
+        group: 'category',
+        value: item.categoryCode,
+        label: item.categoryName || getCategoryLabel(item.categoryCode)
+      })
+    }
+  })
+  return {
+    typeTags: [...typeMap.values()],
+    categoryTags: [...categoryMap.values()]
+  }
 }
 
 /** 获取供货模式文案 */
@@ -190,6 +256,25 @@ export const getSupplyModeLabel = (tag?: string | number): string => {
 /** 获取供应价模式文案 */
 export const getSupplyPriceModeLabel = (value?: number): string => {
   return SUPPLY_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+/** 获取合作商品上架状态文案 */
+export const getProductShelfStatusLabel = (status?: number): string => {
+  return PRODUCT_SHELF_STATUS_OPTIONS.find((item) => item.value === status)?.label || '-'
+}
+
+/** 获取合作商品上架状态标签类型 */
+export const getProductShelfStatusType = (
+  status?: number
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
+  return PRODUCT_SHELF_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
+}
+
+/** 规范化供货模式为数组 */
+export const normalizeSupplyModes = (mode?: string | number | Array<string | number>): string[] => {
+  if (mode === undefined || mode === null || mode === '') return []
+  if (Array.isArray(mode)) return mode.map(String).filter(Boolean)
+  return [String(mode)]
 }
 
 /** 获取合作状态文案 */

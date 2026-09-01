@@ -104,6 +104,11 @@ export const SupplierApi = {
     })
   },
 
+  updateProduct: async (data: SupplierProductVO) => {
+    if (USE_SUPPLIER_MOCK) return SupplierMockApi.updateProduct(data)
+    return await request.put({ url: '/scm/supplier/product/update', data })
+  },
+
   getPlatformSkuPage: async (params: any) => {
     if (USE_SUPPLIER_MOCK) return SupplierMockApi.getPlatformSkuPage(params)
     return await request.get({ url: '/scm/supplier/platform-sku/page', params })

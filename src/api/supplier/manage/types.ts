@@ -42,18 +42,32 @@ export interface SupplierProductVO {
   id?: number
   supplierId?: number
   spuId?: number
+  /** 商品名称 */
   spuName?: string
   skuId?: number
+  /** SKU规格 */
   skuName?: string
+  /** SKU编号 */
   skuCode?: string
   categoryCode?: string
   categoryName?: string
+  productType?: string
+  productTypeName?: string
+  productCategory?: string
+  productCategoryName?: string
+  /** 销售建议价（元） */
+  suggestPrice?: number
+  /** 供应价模式：1固定值 / 2实时更新 / 3按供货折扣 */
   supplyPriceMode?: number
+  /** 供应价（元） */
   supplyPrice?: number
+  /** 供货折扣（%） */
   supplyDiscount?: number
-  supplyMode?: number
+  /** 供货模式（可多选） */
+  supplyMode?: string[]
   supplyLimit?: number
   minOrderQty?: number
+  /** 上架状态：0下架 / 1上架 */
   status?: number
   createTime?: string
 }
