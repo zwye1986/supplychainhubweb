@@ -12,13 +12,17 @@ export const SUPPLIER_STATUS_OPTIONS = [
   { value: SupplierStatusEnum.BLACKLIST, label: '黑名单' }
 ]
 
-/** 可售品类选项 */
+/** 可售品类 / 商品分类选项（供货配置、合作商品筛选） */
 export const SUPPLIER_CATEGORY_OPTIONS = [
-  { value: 'equity', label: '权益' },
-  { value: 'movie', label: '电影' },
+  { value: 'equity', label: '权益商品' },
+  { value: 'movie', label: '电影快充' },
+  { value: 'jd', label: '京东' },
   { value: 'dining', label: '点餐' },
+  { value: 'takeout', label: '外卖' },
+  { value: 'supermarket', label: '商超' },
   { value: 'hema', label: '盒马购' },
-  { value: 'rtmart', label: '大润发' }
+  { value: 'rtmart', label: '大润发' },
+  { value: 'life', label: '生活服务' }
 ]
 
 /** 商品类型选项 */
@@ -35,13 +39,37 @@ export const SUPPLIER_PRODUCT_CATEGORY_OPTIONS = [
   { value: 'movie_ticket', label: '电影快票' }
 ]
 
-/** 供货模式选项 */
+/** 供货模式选项（列表筛选：字符串编码） */
 export const SUPPLIER_SUPPLY_MODE_OPTIONS = [
   { value: 'dropshipping', label: '一件代发' },
   { value: 'batch', label: '批量发货' },
   { value: 'pickup', label: '门店自提' },
   { value: 'api', label: 'API直发' },
   { value: 'h5', label: 'H5直发' }
+]
+
+/** 供货模式（详情供货配置 / 合作商品：数值） */
+export const SupplyModeEnum = {
+  SPOT: 1, // 现货
+  DROPSHIP: 2, // 代发
+  PRESALE: 3 // 预售
+} as const
+
+export const SUPPLY_MODE_OPTIONS = [
+  { value: SupplyModeEnum.SPOT, label: '现货' },
+  { value: SupplyModeEnum.DROPSHIP, label: '代发' },
+  { value: SupplyModeEnum.PRESALE, label: '预售' }
+]
+
+/** 供应价模式 */
+export const SupplyPriceModeEnum = {
+  FIXED: 1, // 固定值
+  DISCOUNT: 2 // 供货折扣
+} as const
+
+export const SUPPLY_PRICE_MODE_OPTIONS = [
+  { value: SupplyPriceModeEnum.FIXED, label: '固定值' },
+  { value: SupplyPriceModeEnum.DISCOUNT, label: '供货折扣' }
 ]
 
 /** 能力标签选项 */
@@ -82,11 +110,30 @@ export const SHIPPING_TIMELINESS_OPTIONS = [
 
 /** 结算方式选项 */
 export const SUPPLIER_SETTLEMENT_OPTIONS = [
-  { value: 'prepaid', label: '预付款' },
+  { value: 'daily', label: '日结' },
+  { value: 'weekly', label: '周结' },
   { value: 'monthly', label: '月结' },
   { value: 'quarterly', label: '季结' },
-  { value: 'cash_on_delivery', label: '货到付款' },
-  { value: 'settled', label: '票到付款' }
+  { value: 'prepaid', label: '预付' }
+]
+
+/** 开票抬头类型 */
+export const InvoiceTitleTypeEnum = {
+  ENTERPRISE: 1, // 企业
+  PERSONAL: 2 // 个人
+} as const
+
+/** 开票抬头类型选项 */
+export const INVOICE_TITLE_TYPE_OPTIONS = [
+  { value: InvoiceTitleTypeEnum.ENTERPRISE, label: '企业' },
+  { value: InvoiceTitleTypeEnum.PERSONAL, label: '个人' }
+]
+
+/** 对接方式选项 */
+export const SUPPLIER_INTEGRATION_OPTIONS = [
+  { value: 'api', label: 'API直连' },
+  { value: 'h5', label: 'H5直连' },
+  { value: 'manual', label: '人工对接' }
 ]
 
 /** 获取能力标签文案 */
@@ -107,6 +154,16 @@ export const getShippingTimelinessLabel = (value?: string, customValue?: string)
   return SHIPPING_TIMELINESS_OPTIONS.find((item) => item.value === value)?.label || '-'
 }
 
+/** 获取结算方式文案 */
+export const getSettlementLabel = (value?: string | number): string => {
+  return SUPPLIER_SETTLEMENT_OPTIONS.find((item) => item.value === value)?.label || '-'
+}
+
+/** 获取对接方式文案 */
+export const getIntegrationLabel = (value: string): string => {
+  return SUPPLIER_INTEGRATION_OPTIONS.find((item) => item.value === value)?.label || value
+}
+
 /** 获取可售品类文案 */
 export const getCategoryLabel = (tag: string): string => {
   return SUPPLIER_CATEGORY_OPTIONS.find((item) => item.value === tag)?.label || tag
@@ -123,8 +180,16 @@ export const getProductCategoryLabel = (tag: string): string => {
 }
 
 /** 获取供货模式文案 */
-export const getSupplyModeLabel = (tag: string): string => {
-  return SUPPLIER_SUPPLY_MODE_OPTIONS.find((item) => item.value === tag)?.label || tag
+export const getSupplyModeLabel = (tag?: string | number): string => {
+  if (tag === undefined || tag === null || tag === '') return '-'
+  const numericLabel = SUPPLY_MODE_OPTIONS.find((item) => item.value === tag)?.label
+  if (numericLabel) return numericLabel
+  return SUPPLIER_SUPPLY_MODE_OPTIONS.find((item) => item.value === tag)?.label || String(tag)
+}
+
+/** 获取供应价模式文案 */
+export const getSupplyPriceModeLabel = (value?: number): string => {
+  return SUPPLY_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
 }
 
 /** 获取合作状态文案 */

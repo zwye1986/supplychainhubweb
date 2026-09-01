@@ -1,4 +1,6 @@
-[
+import type { SupplierInvoiceVO } from '../types'
+
+export const INVOICE_MOCK_LIST: SupplierInvoiceVO[] = [
   {
     "id": 1,
     "supplierId": 1,

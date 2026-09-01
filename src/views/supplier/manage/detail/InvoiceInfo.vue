@@ -14,7 +14,11 @@
       class="max-w-800px"
     >
       <el-form-item label="抬头类型" prop="titleType">
-        <el-radio-group v-model="formData.titleType" @change="handleTitleTypeChange">
+        <el-radio-group
+          v-if="isEditing"
+          v-model="formData.titleType"
+          @change="handleTitleTypeChange"
+        >
           <el-radio
             v-for="item in INVOICE_TITLE_TYPE_OPTIONS"
             :key="item.value"
@@ -23,46 +27,57 @@
             {{ item.label }}
           </el-radio>
         </el-radio-group>
+        <span v-else>{{ titleTypeText }}</span>
       </el-form-item>
       <el-form-item label="开票抬头" prop="invoiceTitle">
-        <el-input v-model="formData.invoiceTitle" placeholder="请输入开票抬头" />
+        <el-input v-if="isEditing" v-model="formData.invoiceTitle" placeholder="请输入开票抬头" />
+        <span v-else>{{ displayText(formData.invoiceTitle) }}</span>
       </el-form-item>
       <el-form-item label="统一社会信用代码" prop="socialCreditCode">
         <el-input
+          v-if="isEditing"
           v-model="formData.socialCreditCode"
           placeholder="请输入统一社会信用代码"
           :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
         />
+        <span v-else>{{ displayText(formData.socialCreditCode) }}</span>
       </el-form-item>
       <el-form-item label="电话" prop="phone">
-        <el-input v-model="formData.phone" placeholder="请输入电话" />
+        <el-input v-if="isEditing" v-model="formData.phone" placeholder="请输入电话" />
+        <span v-else>{{ displayText(formData.phone) }}</span>
       </el-form-item>
       <el-form-item label="开户行" prop="bankName">
         <el-input
+          v-if="isEditing"
           v-model="formData.bankName"
           placeholder="请输入开户行"
           :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
         />
+        <span v-else>{{ displayText(formData.bankName) }}</span>
       </el-form-item>
       <el-form-item label="开户账号" prop="bankAccount">
         <el-input
+          v-if="isEditing"
           v-model="formData.bankAccount"
           placeholder="请输入开户账号"
           :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
         />
+        <span v-else>{{ displayText(formData.bankAccount) }}</span>
       </el-form-item>
       <el-form-item label="开票地址" prop="invoiceAddress">
-        <el-input v-model="formData.invoiceAddress" placeholder="请输入开票地址" />
+        <el-input
+          v-if="isEditing"
+          v-model="formData.invoiceAddress"
+          placeholder="请输入开票地址"
+        />
+        <span v-else>{{ displayText(formData.invoiceAddress) }}</span>
       </el-form-item>
       <el-form-item>
-        <el-button
-          v-hasPermi="['scm:supplier:update']"
-          type="primary"
-          :loading="saving"
-          @click="handleSave"
-        >
-          保 存
-        </el-button>
+        <el-button v-if="!isEditing" type="primary" @click="handleEdit">编 辑</el-button>
+        <template v-else>
+          <el-button type="primary" :loading="saving" @click="handleSave">保 存</el-button>
+          <el-button :disabled="saving" @click="handleCancel">取 消</el-button>
+        </template>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -86,6 +101,7 @@ const props = defineProps<{
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
+const isEditing = ref(false)
 const formRef = ref<FormInstance>()
 
 const formData = reactive<SupplierInvoiceVO>({
@@ -98,8 +114,19 @@ const formData = reactive<SupplierInvoiceVO>({
   bankAccount: '',
   invoiceAddress: ''
 })
+const originFormData = ref<SupplierInvoiceVO>()
+
+const snapshotFormData = () => {
+  originFormData.value = { ...formData }
+}
+
+const restoreFormData = () => {
+  if (!originFormData.value) return
+  Object.assign(formData, originFormData.value)
+}
 
 const formRules = computed<FormRules>(() => {
+  if (!isEditing.value) return {}
   const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
   return {
     titleType: [{ required: true, message: '请选择抬头类型', trigger: 'change' }],
@@ -114,6 +141,17 @@ const formRules = computed<FormRules>(() => {
   }
 })
 
+const displayText = (value?: string | number | null) => {
+  if (value === undefined || value === null || value === '') return '-'
+  return String(value)
+}
+
+const titleTypeText = computed(() => {
+  return (
+    INVOICE_TITLE_TYPE_OPTIONS.find((item) => item.value === formData.titleType)?.label || '-'
+  )
+})
+
 const prefillFromSupplier = () => {
   formData.supplierId = props.supplierId
   formData.invoiceTitle = props.supplier.companyName || props.supplier.name || ''
@@ -121,11 +159,12 @@ const prefillFromSupplier = () => {
   formData.phone = props.supplier.contactMobile || props.supplier.contacts?.[0]?.mobile || ''
   formData.bankName = props.supplier.bankName || ''
   formData.bankAccount = props.supplier.bankAccount || ''
-  formData.invoiceAddress = props.supplier.registerAddress || props.supplier.businessAddress || ''
+  formData.invoiceAddress = props.supplier.contactAddress || ''
 }
 
 const loadData = async () => {
   if (!props.supplierId) return
+  isEditing.value = false
   loading.value = true
   try {
     const data = await SupplierApi.getInvoice(props.supplierId)
@@ -150,12 +189,27 @@ const handleTitleTypeChange = () => {
   }
 }
 
+const handleEdit = () => {
+  snapshotFormData()
+  isEditing.value = true
+  nextTick(() => formRef.value?.clearValidate())
+}
+
+const handleCancel = () => {
+  restoreFormData()
+  isEditing.value = false
+  nextTick(() => formRef.value?.clearValidate())
+}
+
 const handleSave = async () => {
   await formRef.value?.validate()
   saving.value = true
   try {
     await SupplierApi.saveInvoice({ ...formData, supplierId: props.supplierId })
     message.success('开票信息保存成功')
+    snapshotFormData()
+    isEditing.value = false
+    formRef.value?.clearValidate()
   } finally {
     saving.value = false
   }

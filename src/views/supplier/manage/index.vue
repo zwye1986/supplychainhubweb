@@ -273,13 +273,26 @@
     />
   </ContentWrap>
 
-  <SupplierFormDialog v-model="formVisible" :id="formId" @success="getList" />
+  <SupplierFormDialog
+    v-model="formVisible"
+    :id="formId"
+    :mode="formMode"
+    @success="handleFormSuccess"
+  />
+  <SupplierDetailDrawer
+    ref="detailRef"
+    v-model="detailVisible"
+    :id="detailId"
+    @success="getList"
+    @edit="openForm"
+  />
 </template>
 
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
+import SupplierDetailDrawer from './detail/index.vue'
 import {
   SUPPLIER_STATUS_OPTIONS,
   SUPPLIER_CATEGORY_OPTIONS,
@@ -296,7 +309,6 @@ import {
 defineOptions({ name: 'SupplierManage' })
 
 const message = useMessage()
-const router = useRouter()
 
 const loading = ref(true)
 const list = ref<SupplierVO[]>([])
@@ -306,6 +318,10 @@ const selectedList = ref<SupplierVO[]>([])
 const nameOptions = ref<{ value: string; label: string }[]>([])
 const formVisible = ref(false)
 const formId = ref<number | undefined>(undefined)
+const formMode = ref<'create' | 'edit' | 'view'>('create')
+const detailVisible = ref(false)
+const detailId = ref<number | undefined>(undefined)
+const detailRef = ref()
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
@@ -321,9 +337,13 @@ const queryParams = reactive({
 const getList = async () => {
   loading.value = true
   try {
-    const data = await SupplierApi.getSupplierPage(queryParams)
-    list.value = data.list
-    total.value = data.total
+    const data = await SupplierApi.getSupplierPage({ ...queryParams })
+    list.value = Array.isArray(data?.list) ? data.list : []
+    total.value = Number(data?.total) || 0
+  } catch (error: any) {
+    list.value = []
+    total.value = 0
+    message.error(error?.message || '加载供应商列表失败')
   } finally {
     loading.value = false
   }
@@ -341,12 +361,22 @@ const resetQuery = () => {
 
 const openForm = (id?: number) => {
   formId.value = id
+  formMode.value = id ? 'edit' : 'create'
   formVisible.value = true
 }
 
 const openDetail = (id?: number) => {
   if (!id) return
-  router.push({ name: 'SupplierManageDetail', params: { id } })
+  detailId.value = id
+  detailVisible.value = true
+}
+
+/** 表单保存后刷新列表；详情抽屉仍打开时同步刷新 */
+const handleFormSuccess = () => {
+  getList()
+  if (detailVisible.value) {
+    detailRef.value?.reload?.()
+  }
 }
 
 /** 按当前状态展示对应操作文案并二次确认 */
@@ -390,13 +420,21 @@ const handleBatchStatusChange = async (status: number) => {
   } catch {}
 }
 
-onMounted(() => {
-  getList()
-  getNameOptions()
-})
-
 /** 加载供应商名称下拉选项 */
 const getNameOptions = async () => {
-  nameOptions.value = await SupplierApi.getSupplierNameList()
+  try {
+    nameOptions.value = (await SupplierApi.getSupplierNameList()) || []
+  } catch {
+    nameOptions.value = []
+  }
 }
+
+const loadPage = () => {
+  getList()
+  getNameOptions()
+}
+
+onMounted(loadPage)
+/** keep-alive 场景下再次进入时重新拉取，避免缓存空列表 */
+onActivated(loadPage)
 </script>

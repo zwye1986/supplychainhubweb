@@ -1,4 +1,6 @@
-[
+import type { SupplierProductVO } from '../types'
+
+export const PRODUCT_MOCK_LIST: SupplierProductVO[] = [
   {
     "id": 1001,
     "supplierId": 1,

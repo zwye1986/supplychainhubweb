@@ -1,4 +1,6 @@
-[
+import type { PlatformSkuVO } from '../types'
+
+export const PLATFORM_SKU_MOCK_LIST: PlatformSkuVO[] = [
   {
     "spuId": 100,
     "spuName": "爱奇艺黄金会员",
@@ -7,6 +9,8 @@
     "skuCode": "IQY-GOLD-M",
     "categoryCode": "equity",
     "categoryName": "权益商品",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 30
   },
   {
@@ -17,6 +21,8 @@
     "skuCode": "IQY-GOLD-Q",
     "categoryCode": "equity",
     "categoryName": "权益商品",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 78
   },
   {
@@ -27,6 +33,8 @@
     "skuCode": "IQY-GOLD-Y",
     "categoryCode": "equity",
     "categoryName": "权益商品",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 258
   },
   {
@@ -37,6 +45,8 @@
     "skuCode": "TX-VIP-M",
     "categoryCode": "equity",
     "categoryName": "权益商品",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 30
   },
   {
@@ -47,6 +57,8 @@
     "skuCode": "TX-VIP-Y",
     "categoryCode": "equity",
     "categoryName": "权益商品",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 258
   },
   {
@@ -57,6 +69,8 @@
     "skuCode": "MOVIE-2D",
     "categoryCode": "movie",
     "categoryName": "电影快充",
+    "productType": "movie",
+    "productCategory": "movie_ticket",
     "marketPrice": 45
   },
   {
@@ -67,6 +81,8 @@
     "skuCode": "MOVIE-3D",
     "categoryCode": "movie",
     "categoryName": "电影快充",
+    "productType": "movie",
+    "productCategory": "movie_ticket",
     "marketPrice": 55
   },
   {
@@ -77,6 +93,8 @@
     "skuCode": "JD-E100",
     "categoryCode": "jd",
     "categoryName": "京东",
+    "productType": "jd",
+    "productCategory": "electronics",
     "marketPrice": 100
   },
   {
@@ -87,6 +105,8 @@
     "skuCode": "JD-E500",
     "categoryCode": "jd",
     "categoryName": "京东",
+    "productType": "jd",
+    "productCategory": "electronics",
     "marketPrice": 500
   },
   {
@@ -95,8 +115,10 @@
     "skuId": 2101,
     "skuName": "200元面值",
     "skuCode": "HM-200",
-    "categoryCode": "supermarket",
-    "categoryName": "商超",
+    "categoryCode": "hema",
+    "categoryName": "盒马购",
+    "productType": "jd",
+    "productCategory": "electronics",
     "marketPrice": 200
   },
   {
@@ -107,6 +129,8 @@
     "skuCode": "DRF-100",
     "categoryCode": "supermarket",
     "categoryName": "商超",
+    "productType": "jd",
+    "productCategory": "electronics",
     "marketPrice": 100
   },
   {
@@ -115,8 +139,10 @@
     "skuId": 3001,
     "skuName": "标准套餐",
     "skuCode": "CATER-A",
-    "categoryCode": "catering",
+    "categoryCode": "dining",
     "categoryName": "点餐",
+    "productType": "equity_product",
+    "productCategory": "electronics",
     "marketPrice": 35
   },
   {
@@ -127,6 +153,8 @@
     "skuCode": "TAKEOUT-10",
     "categoryCode": "takeout",
     "categoryName": "外卖",
+    "productType": "jd",
+    "productCategory": "electronics",
     "marketPrice": 80
   },
   {
@@ -137,6 +165,8 @@
     "skuCode": "LIFE-CLEAN-2H",
     "categoryCode": "life",
     "categoryName": "生活服务",
+    "productType": "equity_product",
+    "productCategory": "virtual_card",
     "marketPrice": 128
   }
 ]

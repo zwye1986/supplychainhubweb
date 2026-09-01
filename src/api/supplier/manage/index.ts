@@ -7,11 +7,13 @@ export type {
   SupplierInvoiceVO,
   SupplierProductVO,
   SupplierVO,
+  SupplierPageParam,
   PlatformSkuVO
 } from './types'
 
 import type {
   SupplierInvoiceVO,
+  SupplierPageParam,
   SupplierProductVO,
   SupplierSupplyConfigVO,
   SupplierVO
@@ -21,9 +23,15 @@ import type {
 export const USE_SUPPLIER_MOCK = true
 
 export const SupplierApi = {
-  getSupplierPage: async (params: any) => {
+  getSupplierPage: async (params: SupplierPageParam | any) => {
     if (USE_SUPPLIER_MOCK) return SupplierMockApi.getSupplierPage(params)
     return await request.get({ url: '/scm/supplier/page', params })
+  },
+
+  /** 获取供应商名称列表（供下拉选择） */
+  getSupplierNameList: async () => {
+    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getSupplierNameList()
+    return await request.get({ url: '/scm/supplier/simple-list' })
   },
 
   getSupplier: async (id: number) => {
@@ -49,6 +57,10 @@ export const SupplierApi = {
   updateSupplierStatus: async (id: number, status: number) => {
     if (USE_SUPPLIER_MOCK) return SupplierMockApi.updateSupplierStatus(id, status)
     return await request.put({ url: '/scm/supplier/update-status', data: { id, status } })
+  },
+
+  exportSupplier: async (params: any) => {
+    return await request.download({ url: '/scm/supplier/export-excel', params })
   },
 
   getInvoice: async (supplierId: number) => {

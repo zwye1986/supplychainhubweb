@@ -3,15 +3,15 @@
     v-model="dialogVisible"
     :title="pageTitle"
     width="1100px"
-    :close-on-click-modal="false"
     append-to-body
-    @closed="handleClosed"
+    :before-close="handleClosed"
   >
     <el-form
       ref="formRef"
       v-loading="formLoading"
       :model="formData"
       :rules="formRules"
+      :disabled="isView"
       label-width="140px"
     >
       <!-- 基础信息 -->
@@ -114,6 +114,7 @@
               <AreaSelect
                 v-if="formData.deliveryAreaType === DeliveryAreaTypeEnum.SPECIFIED"
                 v-model="formData.deliveryAreaId"
+                :disabled="isView"
                 check-strictly
                 class="!w-full"
                 placeholder="请选择省市区"
@@ -179,30 +180,69 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="账期(天)" prop="settlementCycle">
+          <el-form-item label="结算周期（天）" prop="settlementCycle">
             <el-input-number
               v-model="formData.settlementCycle"
               :min="0"
               :precision="0"
               class="!w-full"
-              placeholder="账期天数"
+              placeholder="请输入结算账期天数"
             />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="合同编号" prop="contractNo">
-            <el-input v-model="formData.contractNo" placeholder="请输入合同编号" />
+          <el-form-item label="对接方式" prop="integrationMethods">
+            <el-select
+              v-model="formData.integrationMethods"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              placeholder="请选择对接方式"
+              clearable
+              class="!w-full"
+            >
+              <el-option
+                v-for="item in SUPPLIER_INTEGRATION_OPTIONS"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="合同起止日期" prop="contractDateRange">
+          <el-form-item label="接入时间" prop="accessDate">
             <el-date-picker
-              v-model="contractDateRange"
-              type="daterange"
+              v-model="formData.accessDate"
+              type="date"
               value-format="YYYY-MM-DD"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              placeholder="请选择接入日期"
               class="!w-full"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="合作状态" prop="status">
+            <el-radio-group v-model="formData.status">
+              <el-radio
+                v-for="item in SUPPLIER_STATUS_OPTIONS"
+                :key="item.value"
+                :value="item.value"
+              >
+                {{ item.label }}
+              </el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="合作说明" prop="cooperationRemark">
+            <el-input
+              v-model="formData.cooperationRemark"
+              type="textarea"
+              :rows="3"
+              maxlength="200"
+              show-word-limit
+              placeholder="请输入合作备注说明"
             />
           </el-form-item>
         </el-col>
@@ -213,40 +253,75 @@
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="公司名称" prop="companyName">
-            <el-input v-model="formData.companyName" placeholder="请输入公司名称" />
+            <el-input
+              v-model="formData.companyName"
+              placeholder="请输入营业执照上的公司全称"
+              maxlength="100"
+              show-word-limit
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="统一社会信用代码" prop="socialCreditCode">
+          <el-form-item label="社会统一信用代码" prop="socialCreditCode">
             <el-input
               v-model="formData.socialCreditCode"
               placeholder="请输入统一社会信用代码"
               maxlength="18"
+              show-word-limit
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="营业执照" prop="businessLicenseUrls">
+            <UploadFile
+              v-model="formData.businessLicenseUrls"
+              :file-type="UNLIMITED_FILE_TYPES"
+              :file-size="10"
+              :limit="5"
+              :drag="true"
+              :disabled="isView"
             />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="法人姓名" prop="legalPersonName">
-            <el-input v-model="formData.legalPersonName" placeholder="请输入法人姓名" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="法人身份证号" prop="legalPersonIdNo">
             <el-input
-              v-model="formData.legalPersonIdNo"
-              placeholder="请输入法人身份证号"
-              maxlength="18"
+              v-model="formData.legalPersonName"
+              placeholder="请输入法定代表人姓名"
+              maxlength="50"
+              show-word-limit
             />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="注册地址" prop="registerAddress">
-            <el-input v-model="formData.registerAddress" placeholder="请输入注册地址" />
+          <el-form-item label="法人手机号" prop="legalPersonMobile">
+            <el-input
+              v-model="formData.legalPersonMobile"
+              placeholder="请输入法人手机号"
+              maxlength="11"
+            />
           </el-form-item>
         </el-col>
-        <el-col :span="12">
-          <el-form-item label="经营地址" prop="businessAddress">
-            <el-input v-model="formData.businessAddress" placeholder="请输入经营地址" />
+        <el-col :span="24">
+          <el-form-item label="法人身份证" prop="legalIdUrls">
+            <UploadFile
+              v-model="formData.legalIdUrls"
+              :file-type="UNLIMITED_FILE_TYPES"
+              :file-size="10"
+              :limit="2"
+              :drag="true"
+              :disabled="isView"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="联系地址" prop="contactAddress">
+            <el-input
+              v-model="formData.contactAddress"
+              placeholder="请输入公司联系地址"
+              maxlength="200"
+              show-word-limit
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -255,18 +330,34 @@
       <el-divider content-position="left">账户信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="开户名" prop="accountName">
-            <el-input v-model="formData.accountName" placeholder="请输入开户名" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
           <el-form-item label="开户行" prop="bankName">
-            <el-input v-model="formData.bankName" placeholder="请输入开户行" />
+            <el-input
+              v-model="formData.bankName"
+              placeholder="请输入开户银行名称"
+              maxlength="100"
+              show-word-limit
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="开户账号" prop="bankAccount">
-            <el-input v-model="formData.bankAccount" placeholder="请输入开户账号" />
+            <el-input
+              v-model="formData.bankAccount"
+              placeholder="请输入银行账户号码"
+              maxlength="50"
+              show-word-limit
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="当前账户余额" prop="accountBalance">
+            <el-input-number
+              v-model="formData.accountBalance"
+              :min="0"
+              :precision="2"
+              class="!w-full"
+              placeholder="请输入当前账户可用余额"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -274,39 +365,33 @@
       <!-- 资质信息 -->
       <el-divider content-position="left">资质信息</el-divider>
       <el-row :gutter="20">
-        <el-col :span="8">
-          <el-form-item label="营业执照" prop="businessLicenseUrl" label-width="100px">
-            <UploadImg v-model="formData.businessLicenseUrl" height="120px" width="120px" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="法人身份证正面" prop="legalIdFrontUrl" label-width="120px">
-            <UploadImg v-model="formData.legalIdFrontUrl" height="120px" width="120px" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="法人身份证反面" prop="legalIdBackUrl" label-width="120px">
-            <UploadImg v-model="formData.legalIdBackUrl" height="120px" width="120px" />
-          </el-form-item>
-        </el-col>
         <el-col :span="24">
-          <el-form-item label="其他资质" prop="otherCertUrls">
-            <UploadImgs v-model="formData.otherCertUrls" :limit="5" />
+          <el-form-item label="资质文件" prop="otherCertUrls">
+            <UploadFile
+              v-model="formData.otherCertUrls"
+              :file-type="UNLIMITED_FILE_TYPES"
+              :file-size="10"
+              :limit="5"
+              :drag="true"
+              :disabled="isView"
+            />
           </el-form-item>
         </el-col>
       </el-row>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">取 消</el-button>
-      <el-button type="primary" :loading="formLoading" @click="submitForm">保 存</el-button>
+      <el-button @click="dialogVisible = false">{{ isView ? '关 闭' : '取 消' }}</el-button>
+      <el-button v-if="!isView" type="primary" :loading="formLoading" @click="submitForm">
+        保 存
+      </el-button>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import { UploadImg, UploadImgs } from '@/components/UploadFile'
+import { UploadFile } from '@/components/UploadFile'
 import AreaSelect from '@/views/system/area/components/AreaSelect.vue'
 import { SupplierApi, SupplierContactVO, SupplierVO } from '@/api/supplier/manage'
 import {
@@ -314,9 +399,14 @@ import {
   DeliveryAreaTypeEnum,
   SHIPPING_TIMELINESS_OPTIONS,
   ShippingTimelinessEnum,
+  SUPPLIER_INTEGRATION_OPTIONS,
   SUPPLIER_SETTLEMENT_OPTIONS,
+  SUPPLIER_STATUS_OPTIONS,
   SupplierStatusEnum
 } from '@/views/supplier/utils/constants'
+
+/** UploadFile 用空串绕过扩展名校验，实现「格式不限」 */
+const UNLIMITED_FILE_TYPES = ['']
 
 defineOptions({ name: 'SupplierManageForm' })
 
@@ -324,10 +414,17 @@ const { t } = useI18n()
 const message = useMessage()
 const emit = defineEmits(['success', 'update:modelValue'])
 
-const props = defineProps<{
-  modelValue: boolean
-  id?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    id?: number
+    /** create 新增 / edit 编辑 / view 详情只读 */
+    mode?: 'create' | 'edit' | 'view'
+  }>(),
+  {
+    mode: 'create'
+  }
+)
 
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -336,7 +433,8 @@ const dialogVisible = computed({
 
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
-const contractDateRange = ref<string[]>([])
+const isView = computed(() => props.mode === 'view')
+const isEdit = computed(() => props.mode === 'edit' || (!!props.id && props.mode !== 'view'))
 
 const createEmptyContact = (): SupplierContactVO => ({
   name: '',
@@ -358,21 +456,19 @@ const createDefaultForm = (): SupplierVO =>
     supportAfterSale: undefined,
     companyName: '',
     socialCreditCode: '',
+    businessLicenseUrls: [],
     legalPersonName: '',
-    legalPersonIdNo: '',
-    registerAddress: '',
-    businessAddress: '',
+    legalIdUrls: [],
+    legalPersonMobile: '',
+    contactAddress: '',
     settlementType: undefined,
     settlementCycle: undefined,
-    contractNo: '',
-    contractStartDate: undefined,
-    contractEndDate: undefined,
-    accountName: '',
+    integrationMethods: [],
+    accessDate: undefined,
+    cooperationRemark: '',
     bankName: '',
     bankAccount: '',
-    businessLicenseUrl: '',
-    legalIdFrontUrl: '',
-    legalIdBackUrl: '',
+    accountBalance: undefined,
     otherCertUrls: [],
     remark: '',
     contacts: [createEmptyContact()]
@@ -384,36 +480,41 @@ const formRules = reactive<FormRules>({
   name: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
   companyName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
   socialCreditCode: [
-    { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
+    { required: true, message: '请输入社会统一信用代码', trigger: 'blur' },
     {
       pattern: /^[0-9A-Z]{18}$/,
-      message: '统一社会信用代码应为18位数字或大写字母',
+      message: '社会统一信用代码应为18位数字或大写字母',
+      trigger: 'blur'
+    }
+  ],
+  legalPersonMobile: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!value || /^1\d{10}$/.test(value)) {
+          callback()
+          return
+        }
+        callback(new Error('法人手机号格式不正确'))
+      },
       trigger: 'blur'
     }
   ]
 })
 
-const isEdit = computed(() => !!props.id)
-const pageTitle = computed(() => (isEdit.value ? '编辑供应商' : '新增供应商'))
+const pageTitle = computed(() => {
+  if (props.mode === 'view') return '供应商详情'
+  if (props.mode === 'edit' || props.id) return '编辑供应商'
+  return '新增供应商'
+})
 
+/** 弹窗打开或切换 id/mode 时加载并回显数据 */
 watch(
-  contractDateRange,
-  (val) => {
-    formData.value.contractStartDate = val?.[0]
-    formData.value.contractEndDate = val?.[1]
-  },
-  { deep: true }
-)
-
-/** 弹窗打开时加载数据 */
-watch(
-  () => props.modelValue,
-  (visible) => {
-    if (visible) {
-      resetForm()
-      if (props.id) {
-        loadDetail(props.id)
-      }
+  () => [props.modelValue, props.id, props.mode] as const,
+  ([visible]) => {
+    if (!visible) return
+    resetForm()
+    if (props.id) {
+      loadDetail(props.id)
     }
   }
 )
@@ -444,7 +545,6 @@ const handleShippingTimelinessChange = () => {
 
 const resetForm = () => {
   formData.value = createDefaultForm()
-  contractDateRange.value = []
   formRef.value?.resetFields()
 }
 
@@ -456,11 +556,11 @@ const loadDetail = async (id: number) => {
       ...createDefaultForm(),
       ...data,
       contacts: data.contacts?.length ? data.contacts : [createEmptyContact()],
+      integrationMethods: data.integrationMethods || [],
+      businessLicenseUrls: data.businessLicenseUrls || [],
+      legalIdUrls: data.legalIdUrls || [],
       otherCertUrls: data.otherCertUrls || []
-    } as any
-    if (data.contractStartDate && data.contractEndDate) {
-      contractDateRange.value = [data.contractStartDate, data.contractEndDate]
-    }
+    } as SupplierVO
   } finally {
     formLoading.value = false
   }
@@ -507,6 +607,7 @@ const submitForm = async () => {
 
 /** 弹窗完全关闭后重置表单 */
 const handleClosed = () => {
+  dialogVisible.value = false
   resetForm()
 }
 </script>

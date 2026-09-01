@@ -6,39 +6,54 @@ import type {
   SupplierSupplyConfigVO,
   SupplierVO
 } from '../types'
-import suppliersJson from './suppliers.json'
-import invoicesJson from './invoices.json'
-import productsJson from './products.json'
-import platformSkusJson from './platformSkus.json'
+import { INVOICE_MOCK_LIST } from './invoices'
+import { PLATFORM_SKU_MOCK_LIST } from './platformSkus'
+import { PRODUCT_MOCK_LIST } from './products'
+import { SUPPLIER_MOCK_LIST } from './suppliers'
 
 const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const clone = <T>(data: T): T => JSON.parse(JSON.stringify(data))
 
-const suppliers = clone(suppliersJson) as SupplierVO[]
-const invoices = clone(invoicesJson) as SupplierInvoiceVO[]
-const products = clone(productsJson) as SupplierProductVO[]
-const platformSkus = clone(platformSkusJson) as PlatformSkuVO[]
+const suppliers = clone(SUPPLIER_MOCK_LIST)
+const invoices = clone(INVOICE_MOCK_LIST)
+const products = clone(PRODUCT_MOCK_LIST)
+const platformSkus = clone(PLATFORM_SKU_MOCK_LIST)
 
-let supplierSeq = Math.max(...suppliers.map((item) => item.id || 0), 0)
+let supplierSeq = Math.max(0, ...suppliers.map((item) => item.id || 0))
 let contactSeq = Math.max(
-  ...suppliers.flatMap((item) => (item.contacts || []).map((c) => c.id || 0)),
-  0
+  0,
+  ...suppliers.flatMap((item) => (item.contacts || []).map((c) => c.id || 0))
 )
 let supplyConfigSeq = Math.max(
-  ...suppliers.flatMap((item) => (item.supplyConfigs || []).map((c) => c.id || 0)),
-  0
+  0,
+  ...suppliers.flatMap((item) => (item.supplyConfigs || []).map((c) => c.id || 0))
 )
-let invoiceSeq = Math.max(...invoices.map((item) => item.id || 0), 0)
-let productSeq = Math.max(...products.map((item) => item.id || 0), 0)
+let invoiceSeq = Math.max(0, ...invoices.map((item) => item.id || 0))
+let productSeq = Math.max(0, ...products.map((item) => item.id || 0))
 
 const now = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
 const syncListFields = (supplier: SupplierVO) => {
   const firstContact = supplier.contacts?.[0]
-  supplier.contactName = firstContact?.name || ''
-  supplier.contactMobile = firstContact?.mobile || ''
-  supplier.productCount = products.filter((item) => item.supplierId === supplier.id).length
+  supplier.contactName = firstContact?.name || supplier.contactName || ''
+  supplier.contactMobile = firstContact?.mobile || supplier.contactMobile || ''
+  const relatedCount = products.filter((item) => item.supplierId === supplier.id).length
+  // 列表 SKU 数优先保留 mock 配置；没有配置时再用实际关联商品数
+  supplier.productCount = relatedCount || supplier.productCount || 0
+  supplier.skuCount = supplier.skuCount ?? relatedCount
+  if (!supplier.category?.length && supplier.supplyConfigs?.length) {
+    supplier.category = [
+      ...new Set(
+        supplier.supplyConfigs
+          .map((item) => item.categoryCode)
+          .filter((code): code is string => !!code)
+      )
+    ]
+  }
+  if (!supplier.accessTime && supplier.accessDate) {
+    supplier.accessTime = `${supplier.accessDate} 00:00:00`
+  }
   return supplier
 }
 
@@ -63,8 +78,23 @@ export const SupplierMockApi = {
           item.companyName?.toLowerCase().includes(keyword)
       )
     }
-    if (params?.status !== undefined && params?.status !== null && params?.status !== '') {
-      list = list.filter((item) => item.status === Number(params.status))
+    if (params?.code) {
+      const keyword = String(params.code).trim().toLowerCase()
+      list = list.filter((item) => item.code?.toLowerCase().includes(keyword))
+    }
+    
+    if (Array.isArray(params?.status) && params.status.length > 0) {
+      const statusSet = new Set(params.status.map((item: any) => Number(item)))
+      list = list.filter((item) => statusSet.has(Number(item.status)))
+    }
+    
+    if (Array.isArray(params?.category) && params.category.length > 0) {
+      list = list.filter((item) => item.category?.some((tag) => params.category.includes(tag)))
+    }
+    if (Array.isArray(params?.supplyMode) && params.supplyMode.length > 0) {
+      list = list.filter((item) =>
+        item.supplyMode?.some((tag) => params.supplyMode.includes(tag))
+      )
     }
     if (params?.capabilityTag) {
       list = list.filter((item) => item.capabilityTags?.includes(params.capabilityTag))
@@ -84,6 +114,11 @@ export const SupplierMockApi = {
     }
     list.sort((a, b) => String(b.updateTime || '').localeCompare(String(a.updateTime || '')))
     return paginate(list, params?.pageNo || 1, params?.pageSize || 20)
+  },
+
+  async getSupplierNameList() {
+    await delay()
+    return suppliers.map((item) => ({ value: item.name, label: item.name }))
   },
 
   async getSupplier(id: number) {
@@ -214,6 +249,30 @@ export const SupplierMockApi = {
       supplyConfigSeq += 1
       return { ...item, id: supplyConfigSeq }
     })
+    target.category = [
+      ...new Set(
+        target.supplyConfigs
+          .map((item) => item.categoryCode)
+          .filter((code): code is string => !!code)
+      )
+    ]
+    target.productType = [
+      ...new Set(
+        target.supplyConfigs
+          .map((item) => item.productType)
+          .filter((code): code is string => !!code)
+      )
+    ]
+    target.productCategory = [
+      ...new Set(
+        target.supplyConfigs
+          .map((item) => item.productCategory)
+          .filter((code): code is string => !!code)
+      )
+    ]
+    target.supplyMode = [
+      ...new Set(target.supplyConfigs.flatMap((item) => item.supplyMode || []))
+    ]
     target.updateTime = now()
     return true
   },
@@ -286,8 +345,27 @@ export const SupplierMockApi = {
           item.skuCode.toLowerCase().includes(keyword)
       )
     }
-    // 过滤当前供应商已关联 SKU
     if (params?.supplierId) {
+      const supplier = suppliers.find((item) => item.id === Number(params.supplierId))
+      const configs = supplier?.supplyConfigs || []
+      if (configs.length) {
+        list = list.filter((sku) =>
+          configs.some((config) => {
+            if (config.categoryCode && sku.categoryCode !== config.categoryCode) return false
+            if (config.productType && sku.productType && sku.productType !== config.productType) {
+              return false
+            }
+            if (
+              config.productCategory &&
+              sku.productCategory &&
+              sku.productCategory !== config.productCategory
+            ) {
+              return false
+            }
+            return true
+          })
+        )
+      }
       const relatedSkuIds = new Set(
         products
           .filter((item) => item.supplierId === Number(params.supplierId))

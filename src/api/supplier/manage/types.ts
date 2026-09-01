@@ -9,9 +9,17 @@ export interface SupplierContactVO {
 /** 供货配置 */
 export interface SupplierSupplyConfigVO {
   id?: number
+  /** 可售品类 */
   categoryCode: string
   categoryName?: string
-  supplyMode?: number
+  /** 商品类型 */
+  productType?: string
+  productTypeName?: string
+  /** 商品分类 */
+  productCategory?: string
+  productCategoryName?: string
+  /** 供货模式（可多选）：dropshipping / batch / pickup / api / h5 */
+  supplyMode?: string[]
   supplyLimit?: number
   minOrderQty?: number
 }
@@ -58,6 +66,14 @@ export interface SupplierVO {
   shortName?: string
   status?: number
   capabilityTags?: string[]
+  /** 可售品类（列表展示 / 筛选） */
+  category?: string[]
+  /** 商品类型（列表展示） */
+  productType?: string[]
+  /** 商品分类（列表展示） */
+  productCategory?: string[]
+  /** 供货模式（列表展示 / 筛选，字符串编码）：dropshipping / batch / api 等 */
+  supplyMode?: string[]
   /** 配送区域类型：nationwide / specified */
   deliveryAreaType?: string
   /** 指定区域时的地区 ID（省市区） */
@@ -70,30 +86,51 @@ export interface SupplierVO {
   supportAfterSale?: boolean
   companyName?: string
   socialCreditCode?: string
+  /** 营业执照文件 URL 列表，最多 5 个 */
+  businessLicenseUrls?: string[]
   legalPersonName?: string
-  legalPersonIdNo?: string
-  registerAddress?: string
-  businessAddress?: string
-  settlementType?: number | string
+  /** 法人身份证正反面 URL 列表，最多 2 个 */
+  legalIdUrls?: string[]
+  legalPersonMobile?: string
+  contactAddress?: string
+  settlementType?: string
   settlementCycle?: number
-  contractNo?: string
-  contractStartDate?: string
-  contractEndDate?: string
-  accountName?: string
+  /** 对接方式：api / h5 / manual，多选 */
+  integrationMethods?: string[]
+  /** 正式接入日期 YYYY-MM-DD */
+  accessDate?: string
+  /** 接入时间（列表展示，兼容旧字段） */
+  accessTime?: string
+  /** 合作说明 */
+  cooperationRemark?: string
   bankName?: string
   bankAccount?: string
-  businessLicenseUrl?: string
-  legalIdFrontUrl?: string
-  legalIdBackUrl?: string
+  /** 当前账户可用余额 */
+  accountBalance?: number
+  /** 其他资质文件 URL 列表，最多 5 个 */
   otherCertUrls?: string[]
   remark?: string
   contacts?: SupplierContactVO[]
   supplyConfigs?: SupplierSupplyConfigVO[]
   productCount?: number
+  /** 合作商品 SKU 数（列表展示） */
+  skuCount?: number
   contactName?: string
   contactMobile?: string
   updateTime?: string
   createTime?: string
+}
+
+/** 供应商分页查询参数 */
+export interface SupplierPageParam {
+  pageNo: number
+  pageSize: number
+  name?: string
+  code?: string
+  category?: string[]
+  supplyMode?: string[]
+  status?: number[]
+  updateTime?: string[]
 }
 
 /** 标品 SKU（新增商品弹窗） */
@@ -105,5 +142,7 @@ export interface PlatformSkuVO {
   skuCode: string
   categoryCode: string
   categoryName: string
+  productType?: string
+  productCategory?: string
   marketPrice?: number
 }

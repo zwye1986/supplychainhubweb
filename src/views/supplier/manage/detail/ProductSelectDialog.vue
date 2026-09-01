@@ -225,12 +225,13 @@
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, PlatformSkuVO, SupplierProductVO } from '@/api/supplier/manage'
+import { SupplierApi, PlatformSkuVO, SupplierProductVO, SupplierSupplyConfigVO } from '@/api/supplier/manage'
 import {
   SUPPLY_MODE_OPTIONS,
   SUPPLY_PRICE_MODE_OPTIONS,
+  SupplyModeEnum,
   SupplyPriceModeEnum,
-  getCapabilityLabel
+  getCategoryLabel
 } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierProductSelectDialog' })
@@ -252,6 +253,7 @@ const skuList = ref<PlatformSkuVO[]>([])
 const total = ref(0)
 const selectedList = ref<SupplierProductVO[]>([])
 const activeTag = ref<string>('')
+const supplyConfigs = ref<SupplierSupplyConfigVO[]>([])
 
 const queryParams = reactive({
   pageNo: 1,
@@ -264,21 +266,35 @@ const queryParams = reactive({
 const batchConfig = reactive({
   supplyPriceMode: SupplyPriceModeEnum.FIXED as number,
   priceOrDiscount: 0,
-  supplyMode: 1 as number,
+  supplyMode: SupplyModeEnum.SPOT as number,
   supplyLimit: 9999999,
   minOrderQty: 1
 })
 
-const filterTags = computed(() =>
-  (props.capabilityTags || []).map((value) => ({
+const filterTags = computed(() => {
+  const codes = [
+    ...new Set(
+      supplyConfigs.value.map((item) => item.categoryCode).filter((code): code is string => !!code)
+    )
+  ]
+  const source = codes.length ? codes : props.capabilityTags || []
+  return source.map((value) => ({
     value,
-    label: getCapabilityLabel(value)
+    label: getCategoryLabel(value)
   }))
-)
+})
 
 const open = async () => {
   dialogVisible.value = true
   selectedList.value = []
+  try {
+    supplyConfigs.value = (await SupplierApi.getSupplyConfigList(props.supplierId)) || []
+  } catch {
+    supplyConfigs.value = []
+  }
+  if (!supplyConfigs.value.length) {
+    message.warning('请先在供货配置中添加可供货范围')
+  }
   activeTag.value = filterTags.value[0]?.value || ''
   queryParams.categoryCode = activeTag.value || undefined
   queryParams.supplierId = props.supplierId
@@ -332,7 +348,7 @@ const handleSelectionChange = (rows: PlatformSkuVO[]) => {
         supplyPriceMode: SupplyPriceModeEnum.FIXED,
         supplyPrice: undefined,
         supplyDiscount: undefined,
-        supplyMode: 1,
+        supplyMode: SupplyModeEnum.SPOT,
         supplyLimit: 9999999,
         minOrderQty: 1
       })

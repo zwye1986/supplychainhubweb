@@ -1034,37 +1034,13 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       },
       {
-        path: 'manage/form/:id(\\d+)',
-        component: () => import('@/views/supplier/manage/form/index.vue'),
-        name: 'SupplierManageForm',
-        meta: {
-          title: '编辑供应商',
-          noCache: true,
-          hidden: true,
-          canTo: true,
-          activeMenu: '/supplier/manage'
-        }
-      },
-      {
-        path: 'manage/detail/:id(\\d+)',
-        component: () => import('@/views/supplier/manage/detail/index.vue'),
-        name: 'SupplierManageDetail',
-        meta: {
-          title: '供应商详情',
-          noCache: true,
-          hidden: true,
-          canTo: true,
-          activeMenu: '/supplier/manage'
-        }
-      },
-      {
         path: 'distribution',
         component: getParentLayout(),
         name: 'SupplierDistribution',
         meta: {
           title: '分销管理',
           icon: 'ep:share',
-          alwaysShow: true
+          noCache: false
         },
         children: [
           {

@@ -93,7 +93,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import { SupplierApi, SupplierProductVO } from '@/api/supplier/manage'
 import {
   SupplyPriceModeEnum,
-  getCapabilityLabel,
+  getCategoryLabel,
   getSupplyModeLabel,
   getSupplyPriceModeLabel
 } from '@/views/supplier/utils/constants'
@@ -123,7 +123,7 @@ const queryParams = reactive({
 const filterTags = computed(() =>
   (props.capabilityTags || []).map((value) => ({
     value,
-    label: getCapabilityLabel(value)
+    label: getCategoryLabel(value)
   }))
 )
 
