@@ -499,38 +499,6 @@ const createDefaultForm = (): SupplierFormModel => ({
   contacts: [createEmptyContact()]
 })
 
-/** 新增弹窗临时模拟数据，走与详情相同的回显映射；对接接口后删除 */
-const CREATE_MOCK_SUPPLIER: SupplierVO = {
-  supplierName: '深圳华南电子科技',
-  status: SupplierStatusEnum.NORMAL,
-  deliveryRegionType: DeliveryAreaTypeEnum.SPECIFIED,
-  deliveryRegionAdcodes: ['440300'],
-  shippingSlaCode: ShippingTimelinessEnum.CUSTOM,
-  shippingSlaCustom: '工作日 36 小时内发货',
-  aftersalesSupported: true,
-  legalEntityName: '深圳华南电子科技有限公司',
-  creditCode: '91440300MA5E1A2B3C',
-  licenseFileKeys: ['https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg'],
-  idFrontFileKey: 'https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg',
-  idBackFileKey: 'https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg',
-  legalPersonName: '张明',
-  legalPersonMobile: '13800138001',
-  contactAddress: '深圳市南山区科技园南路1号',
-  settlementMethod: 'MONTHLY',
-  settlementCycleDays: 30,
-  integrationModes: ['API', 'H5'],
-  onboardedAt: '2026-07-15T09:30:00',
-  cooperationNote: '主要供应电子元器件，支持一件代发与 API 直连',
-  bankName: '中国银行深圳南山支行',
-  bankAccount: '6217000000000000001',
-  qualificationFileKeys: ['https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg'],
-  openingBalanceCents: 8600000,
-  contacts: [
-    { name: '张明', mobile: '13800138001', email: 'zhangming@hndz.com' },
-    { name: '王丽', mobile: '13900139001', email: 'wangli@hndz.com' }
-  ]
-}
-
 const formData = ref<SupplierFormModel>(createDefaultForm())
 
 /** UploadImgs 要求 string[]，避免 undefined */
@@ -587,15 +555,6 @@ const pageTitle = computed(() => {
   return '新增供应商'
 })
 
-/** 新增时用模拟数据走详情回显链路（编号仍由保存后系统生成） */
-const applyCreateMock = () => {
-  formData.value = mapDetailToForm(CREATE_MOCK_SUPPLIER)
-  formData.value.supplierCode = undefined
-  const cents = CREATE_MOCK_SUPPLIER.openingBalanceCents
-  openingBalanceYuan.value =
-    cents == null ? undefined : Number((cents / 100).toFixed(2))
-}
-
 /** 弹窗打开或切换 supplierCode/mode 时加载并回显数据 */
 watch(
   () => [props.modelValue, props.supplierCode, props.mode] as const,
@@ -604,11 +563,6 @@ watch(
     resetForm()
     if (props.supplierCode) {
       await loadDetail(props.supplierCode)
-      return
-    }
-    if (props.mode === 'create') {
-      await nextTick()
-      applyCreateMock()
     }
   }
 )
