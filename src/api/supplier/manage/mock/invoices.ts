@@ -4,7 +4,7 @@ export const INVOICE_MOCK_LIST: SupplierInvoiceVO[] = [
   {
     "id": 1,
     "supplierId": 1,
-    "titleType": 1,
+    "titleType": "ENTERPRISE",
     "invoiceTitle": "上海星辉权益科技有限公司",
     "socialCreditCode": "91310000MA1K3ABC0X",
     "phone": "021-58881234",
@@ -15,7 +15,7 @@ export const INVOICE_MOCK_LIST: SupplierInvoiceVO[] = [
   {
     "id": 2,
     "supplierId": 2,
-    "titleType": 1,
+    "titleType": "ENTERPRISE",
     "invoiceTitle": "北京京选优选供应链有限公司",
     "socialCreditCode": "91110000MA01ABCD2Y",
     "phone": "010-64881234",
@@ -26,7 +26,7 @@ export const INVOICE_MOCK_LIST: SupplierInvoiceVO[] = [
   {
     "id": 3,
     "supplierId": 3,
-    "titleType": 1,
+    "titleType": "ENTERPRISE",
     "invoiceTitle": "杭州美味点餐网络科技有限公司",
     "socialCreditCode": "91330100MA2H9XYZ3Z",
     "phone": "0571-88881234",

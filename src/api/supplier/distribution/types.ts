@@ -10,7 +10,7 @@ export interface DistributorContactVO {
 export interface DistributorInvoiceVO {
   id?: number
   distributorId?: number
-  titleType: number
+  titleType?: string | number
   invoiceTitle?: string
   socialCreditCode?: string
   phone?: string

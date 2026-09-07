@@ -5,6 +5,8 @@ export type {
   SupplierContactVO,
   SupplierSupplyConfigVO,
   SupplierInvoiceVO,
+  InvoiceSaveReqVO,
+  SupplierInvoiceView,
   SupplierProductVO,
   SupplierVO,
   SupplierSaveReqVO,
@@ -32,7 +34,8 @@ import type {
   OfferPageParam,
   PatchOfferReqVO,
   SaveScopesReqVO,
-  SupplierInvoiceVO,
+  InvoiceSaveReqVO,
+  SupplierInvoiceView,
   SupplierPageParam,
   SupplierProductVO,
   SupplierSaveReqVO,
@@ -112,14 +115,21 @@ export const SupplierApi = {
     return await request.download({ url: '/scm/supplier/export-excel', params })
   },
 
-  getInvoice: async (supplierId: number) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getInvoice(supplierId)
-    return await request.get({ url: '/scm/supplier/invoice/get?supplierId=' + supplierId })
+  /** 查询开票信息：GET /suppliers/{supplierCode}/invoice
+   *  无开票行时后端用档案预填返回且不落库；已保存行明文回传。不回写档案。
+   */
+  getInvoice: async (supplierCode: string) => {
+    return await request.get<SupplierInvoiceView>({
+      url: `/supply-chain/suppliers/${supplierCode}/invoice`
+    })
   },
 
-  saveInvoice: async (data: SupplierInvoiceVO) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.saveInvoice(data)
-    return await request.post({ url: '/scm/supplier/invoice/save', data })
+  /** 保存开票信息：PUT /suppliers/{supplierCode}/invoice（upsert，开户账号明文存储） */
+  saveInvoice: async (supplierCode: string, data: InvoiceSaveReqVO) => {
+    return await request.put<SupplierInvoiceView>({
+      url: `/supply-chain/suppliers/${supplierCode}/invoice`,
+      data
+    })
   },
 
   /** 查询供货配置：GET /suppliers/{supplierCode}/supply-scopes */

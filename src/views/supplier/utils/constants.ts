@@ -170,10 +170,10 @@ export const SUPPLIER_SETTLEMENT_OPTIONS = [
   { value: 'PREPAID', label: '预付' }
 ]
 
-/** 开票抬头类型 */
+/** 开票抬头类型（接口 titleType：ENTERPRISE / PERSONAL） */
 export const InvoiceTitleTypeEnum = {
-  ENTERPRISE: 1, // 企业
-  PERSONAL: 2 // 个人
+  ENTERPRISE: 'ENTERPRISE',
+  PERSONAL: 'PERSONAL'
 } as const
 
 /** 开票抬头类型选项 */

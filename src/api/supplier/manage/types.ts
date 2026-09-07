@@ -118,17 +118,39 @@ export interface SupplierSupplyConfigVO {
   minOrderQty?: number
 }
 
-/** 开票信息 */
-export interface SupplierInvoiceVO {
+/** 开票信息视图（接口 SupplierInvoiceView） */
+export interface SupplierInvoiceView {
+  /** 供应商开票信息内部主键 */
   id?: number
-  supplierId?: number
-  titleType: number
+  /** 是否已有开票行；false 时为档案预填且未落库 */
+  persisted?: boolean
+  supplierCode?: string
+  /** 抬头类型：ENTERPRISE 企业，PERSONAL 个人 */
+  titleType?: string
   invoiceTitle?: string
   socialCreditCode?: string
   phone?: string
   bankName?: string
   bankAccount?: string
   invoiceAddress?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 开票信息保存（接口 InvoiceSaveReqVO） */
+export interface InvoiceSaveReqVO {
+  titleType?: string
+  invoiceTitle?: string
+  socialCreditCode?: string
+  phone?: string
+  bankName?: string
+  bankAccount?: string
+  invoiceAddress?: string
+}
+
+/** 开票信息（兼容旧 mock） */
+export interface SupplierInvoiceVO extends SupplierInvoiceView {
+  supplierId?: number
 }
 
 /** 合作商品列表项（接口 OfferListItem） */

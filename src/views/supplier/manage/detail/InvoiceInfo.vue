@@ -4,7 +4,7 @@
       class="mb-16px"
       type="info"
       :closable="false"
-      title="进入标签页时，系统自动从基础信息中读取开票相关字段进行预填；可二次编辑并独立保存。"
+      :title="invoiceTip"
     />
     <el-form
       ref="formRef"
@@ -85,7 +85,7 @@
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import { SupplierApi, SupplierInvoiceVO, SupplierVO } from '@/api/supplier/manage'
+import { InvoiceSaveReqVO, SupplierApi, SupplierInvoiceView } from '@/api/supplier/manage'
 import {
   INVOICE_TITLE_TYPE_OPTIONS,
   InvoiceTitleTypeEnum
@@ -94,8 +94,7 @@ import {
 defineOptions({ name: 'SupplierInvoiceInfo' })
 
 const props = defineProps<{
-  supplierId: number
-  supplier: SupplierVO
+  supplierCode: string
 }>()
 
 const message = useMessage()
@@ -104,17 +103,23 @@ const saving = ref(false)
 const isEditing = ref(false)
 const formRef = ref<FormInstance>()
 
-const formData = reactive<SupplierInvoiceVO>({
-  supplierId: undefined,
+const createDefaultForm = (): SupplierInvoiceView => ({
+  id: undefined,
+  persisted: false,
+  supplierCode: props.supplierCode,
   titleType: InvoiceTitleTypeEnum.ENTERPRISE,
   invoiceTitle: '',
   socialCreditCode: '',
   phone: '',
   bankName: '',
   bankAccount: '',
-  invoiceAddress: ''
+  invoiceAddress: '',
+  createdAt: undefined,
+  updatedAt: undefined
 })
-const originFormData = ref<SupplierInvoiceVO>()
+
+const formData = reactive<SupplierInvoiceView>(createDefaultForm())
+const originFormData = ref<SupplierInvoiceView>()
 
 const snapshotFormData = () => {
   originFormData.value = { ...formData }
@@ -123,6 +128,13 @@ const snapshotFormData = () => {
 const restoreFormData = () => {
   if (!originFormData.value) return
   Object.assign(formData, originFormData.value)
+}
+
+const applyInvoice = (data?: SupplierInvoiceView | null) => {
+  Object.assign(formData, createDefaultForm(), data || {})
+  if (!formData.titleType) {
+    formData.titleType = InvoiceTitleTypeEnum.ENTERPRISE
+  }
 }
 
 const formRules = computed<FormRules>(() => {
@@ -152,29 +164,24 @@ const titleTypeText = computed(() => {
   )
 })
 
-const prefillFromSupplier = () => {
-  formData.supplierId = props.supplierId
-  formData.invoiceTitle = props.supplier.companyName || props.supplier.name || ''
-  formData.socialCreditCode = props.supplier.socialCreditCode || ''
-  formData.phone = props.supplier.contactMobile || props.supplier.contacts?.[0]?.mobile || ''
-  formData.bankName = props.supplier.bankName || ''
-  formData.bankAccount = props.supplier.bankAccount || ''
-  formData.invoiceAddress = props.supplier.contactAddress || ''
-}
+const invoiceTip = computed(() => {
+  if (formData.persisted) {
+    return '开票信息已独立保存，不会回写供应商档案。'
+  }
+  return '暂无开票记录时，系统按供应商档案预填（不落库）；保存后独立存储，不会回写档案。'
+})
 
 const loadData = async () => {
-  if (!props.supplierId) return
+  if (!props.supplierCode) return
   isEditing.value = false
   loading.value = true
   try {
-    const data = await SupplierApi.getInvoice(props.supplierId)
-    if (data?.id || data?.invoiceTitle) {
-      Object.assign(formData, data, { supplierId: props.supplierId })
-    } else {
-      prefillFromSupplier()
-    }
+    const data = await SupplierApi.getInvoice(props.supplierCode)
+    applyInvoice(data)
+    snapshotFormData()
   } catch {
-    prefillFromSupplier()
+    applyInvoice()
+    snapshotFormData()
   } finally {
     loading.value = false
   }
@@ -201,13 +208,31 @@ const handleCancel = () => {
   nextTick(() => formRef.value?.clearValidate())
 }
 
+const buildSavePayload = (): InvoiceSaveReqVO => {
+  const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
+  return {
+    titleType: formData.titleType,
+    invoiceTitle: formData.invoiceTitle,
+    socialCreditCode: isEnterprise ? formData.socialCreditCode : undefined,
+    phone: formData.phone,
+    bankName: isEnterprise ? formData.bankName : undefined,
+    bankAccount: isEnterprise ? formData.bankAccount : undefined,
+    invoiceAddress: formData.invoiceAddress
+  }
+}
+
 const handleSave = async () => {
+  if (!props.supplierCode) {
+    message.error('缺少供应商编号，无法保存')
+    return
+  }
   await formRef.value?.validate()
   saving.value = true
   try {
-    await SupplierApi.saveInvoice({ ...formData, supplierId: props.supplierId })
-    message.success('开票信息保存成功')
+    const data = await SupplierApi.saveInvoice(props.supplierCode, buildSavePayload())
+    applyInvoice(data)
     snapshotFormData()
+    message.success('开票信息保存成功')
     isEditing.value = false
     formRef.value?.clearValidate()
   } finally {
@@ -216,7 +241,7 @@ const handleSave = async () => {
 }
 
 watch(
-  () => props.supplierId,
+  () => props.supplierCode,
   () => loadData(),
   { immediate: true }
 )

@@ -295,7 +295,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="开票信息" name="invoice" lazy>
-          <InvoiceInfo v-if="supplierId" :supplier-id="supplierId" :supplier="supplier" />
+          <InvoiceInfo v-if="supplierCode" :supplier-code="supplierCode" />
         </el-tab-pane>
 
         <el-tab-pane label="供货配置" name="supply" lazy>
@@ -351,7 +351,6 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const supplier = ref<SupplierVO>({} as SupplierVO)
-const supplierId = computed(() => supplier.value.id)
 const deliveryAreaName = ref('')
 
 const displayText = (value?: string | number | null) => {
