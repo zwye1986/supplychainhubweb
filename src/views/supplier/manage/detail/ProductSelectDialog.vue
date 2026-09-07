@@ -18,7 +18,6 @@
     />
 
     <el-row :gutter="16">
-      <!-- 左侧：平台标品池（仅新增） -->
       <el-col v-if="!isEdit" :span="16">
         <ContentWrap class="!mb-0">
           <el-form :inline="true" :model="queryParams" class="-mb-10px">
@@ -84,7 +83,6 @@
         </ContentWrap>
       </el-col>
 
-      <!-- 右侧：已选 / 编辑商品（整块滚动） -->
       <el-col :span="isEdit ? 24 : 8">
         <ContentWrap class="right-panel !mb-0">
           <div class="right-panel__scroll" :class="{ 'is-edit': isEdit }">
@@ -113,9 +111,9 @@
               <div class="mb-10px text-14px font-600">批量配置</div>
               <el-form label-width="90px" size="small" class="mb-10px">
                 <el-form-item label="供应价模式">
-                  <el-select v-model="batchConfig.supplyPriceMode" class="!w-full">
+                  <el-select v-model="batchConfig.priceMode" class="!w-full">
                     <el-option
-                      v-for="item in SUPPLY_PRICE_MODE_OPTIONS"
+                      v-for="item in OFFER_PRICE_MODE_OPTIONS"
                       :key="item.value"
                       :label="item.label"
                       :value="item.value"
@@ -123,7 +121,7 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item
-                  v-if="batchConfig.supplyPriceMode === SupplyPriceModeEnum.FIXED"
+                  v-if="batchConfig.priceMode === OfferPriceModeEnum.FIXED"
                   label="供应价"
                 >
                   <el-input-number
@@ -134,7 +132,7 @@
                   />
                 </el-form-item>
                 <el-form-item
-                  v-else-if="batchConfig.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT"
+                  v-else-if="batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT"
                   label="折扣(%)"
                 >
                   <el-input-number
@@ -146,15 +144,9 @@
                   />
                 </el-form-item>
                 <el-form-item label="供货模式">
-                  <el-select
-                    v-model="batchConfig.supplyMode"
-                    multiple
-                    collapse-tags
-                    collapse-tags-tooltip
-                    class="!w-full"
-                  >
+                  <el-select v-model="batchConfig.supplyMode" class="!w-full">
                     <el-option
-                      v-for="item in SUPPLIER_SUPPLY_MODE_OPTIONS"
+                      v-for="item in offerSupplyModeOptions"
                       :key="item.value"
                       :label="item.label"
                       :value="item.value"
@@ -163,7 +155,7 @@
                 </el-form-item>
                 <el-form-item label="供货上限">
                   <el-input-number
-                    v-model="batchConfig.supplyLimit"
+                    v-model="batchConfig.maxQuantity"
                     :min="1"
                     :precision="0"
                     class="!w-full"
@@ -171,7 +163,7 @@
                 </el-form-item>
                 <el-form-item label="最低起购量">
                   <el-input-number
-                    v-model="batchConfig.minOrderQty"
+                    v-model="batchConfig.minQuantity"
                     :min="1"
                     :precision="0"
                     class="!w-full"
@@ -189,25 +181,27 @@
             </div>
             <div
               v-for="item in selectedList"
-              :key="item.skuId"
+              :key="item.platformSkuCode"
               class="mb-10px border border-solid border-[var(--el-border-color)] rounded-6px p-10px"
             >
               <div class="mb-6px flex items-center justify-between">
-                <span class="text-13px font-600">{{ item.spuName }} / {{ item.skuName }}</span>
+                <span class="text-13px font-600">
+                  {{ item.platformSpuName }} / {{ item.platformSkuName }}
+                </span>
                 <el-button
                   v-if="!isEdit"
                   link
                   type="danger"
-                  @click="removeSelected(item.skuId!)"
+                  @click="removeSelected(item.platformSkuCode!)"
                 >
                   移除
                 </el-button>
               </div>
               <el-form :label-width="isEdit ? '100px' : '80px'" size="small">
                 <el-form-item label="供应价模式">
-                  <el-select v-model="item.supplyPriceMode" class="!w-full">
+                  <el-select v-model="item.priceMode" class="!w-full">
                     <el-option
-                      v-for="opt in SUPPLY_PRICE_MODE_OPTIONS"
+                      v-for="opt in OFFER_PRICE_MODE_OPTIONS"
                       :key="opt.value"
                       :label="opt.label"
                       :value="opt.value"
@@ -215,38 +209,34 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item
-                  v-if="item.supplyPriceMode === SupplyPriceModeEnum.FIXED"
+                  v-if="item.priceMode === OfferPriceModeEnum.FIXED"
                   label="供应价"
                 >
                   <el-input-number
-                    v-model="item.supplyPrice"
+                    :model-value="centsToYuan(item.unitPriceCents)"
                     :min="0"
                     :precision="2"
                     class="!w-full"
+                    @update:model-value="(val: number | undefined) => (item.unitPriceCents = yuanToCents(val))"
                   />
                 </el-form-item>
                 <el-form-item
-                  v-else-if="item.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT"
+                  v-else-if="item.priceMode === OfferPriceModeEnum.DISCOUNT"
                   label="折扣(%)"
                 >
                   <el-input-number
-                    v-model="item.supplyDiscount"
+                    :model-value="bpToPercent(item.discountBp)"
                     :min="0.01"
                     :max="100"
                     :precision="2"
                     class="!w-full"
+                    @update:model-value="(val: number | undefined) => (item.discountBp = percentToBp(val))"
                   />
                 </el-form-item>
                 <el-form-item label="供货模式">
-                  <el-select
-                    v-model="item.supplyMode"
-                    multiple
-                    collapse-tags
-                    collapse-tags-tooltip
-                    class="!w-full"
-                  >
+                  <el-select v-model="item.supplyMode" class="!w-full">
                     <el-option
-                      v-for="opt in SUPPLIER_SUPPLY_MODE_OPTIONS"
+                      v-for="opt in offerSupplyModeOptions"
                       :key="opt.value"
                       :label="opt.label"
                       :value="opt.value"
@@ -255,7 +245,7 @@
                 </el-form-item>
                 <el-form-item label="供货上限">
                   <el-input-number
-                    v-model="item.supplyLimit"
+                    v-model="item.maxQuantity"
                     :min="1"
                     :precision="0"
                     class="!w-full"
@@ -263,7 +253,7 @@
                 </el-form-item>
                 <el-form-item label="最低起购量">
                   <el-input-number
-                    v-model="item.minOrderQty"
+                    v-model="item.minQuantity"
                     :min="1"
                     :precision="0"
                     class="!w-full"
@@ -272,7 +262,7 @@
                 <el-form-item v-if="isEdit" label="状态">
                   <el-radio-group v-model="item.status">
                     <el-radio
-                      v-for="opt in PRODUCT_SHELF_STATUS_OPTIONS"
+                      v-for="opt in OFFER_STATUS_OPTIONS"
                       :key="opt.value"
                       :value="opt.value"
                     >
@@ -300,25 +290,32 @@
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, PlatformSkuVO, SupplierProductVO, SupplierSupplyConfigVO } from '@/api/supplier/manage'
 import {
-  PRODUCT_SHELF_STATUS_OPTIONS,
-  ProductShelfStatusEnum,
+  SupplierApi,
+  DraftReqVO,
+  OfferFormItem,
+  OfferListItem,
+  PlatformSkuVO
+} from '@/api/supplier/manage'
+import {
+  OFFER_PRICE_MODE_OPTIONS,
+  OFFER_STATUS_OPTIONS,
+  OfferPriceModeEnum,
+  OfferStatusEnum,
   SUPPLIER_PRODUCT_FILTER_TAGS,
   SUPPLIER_SUPPLY_MODE_OPTIONS,
-  SUPPLY_PRICE_MODE_OPTIONS,
-  SupplyPriceModeEnum,
+  bpToPercent,
+  centsToYuan,
   getProductCategoryLabel,
   getProductTypeLabel,
-  normalizeSupplyModes
+  percentToBp,
+  yuanToCents
 } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierProductSelectDialog' })
 
 const props = defineProps<{
-  supplierId: number
-  supplyConfigs?: SupplierSupplyConfigVO[]
-  capabilityTags?: string[]
+  supplierCode: string
 }>()
 
 const emit = defineEmits<{
@@ -332,11 +329,16 @@ const submitting = ref(false)
 const dialogType = ref<'create' | 'update'>('create')
 const skuList = ref<PlatformSkuVO[]>([])
 const total = ref(0)
-const selectedList = ref<SupplierProductVO[]>([])
-const supplyConfigs = ref<SupplierSupplyConfigVO[]>([])
+const selectedList = ref<OfferFormItem[]>([])
 const skuTableRef = ref()
+const originalStatus = ref<string | undefined>(undefined)
+const hasSupplyScope = ref(false)
 
 const isEdit = computed(() => dialogType.value === 'update')
+
+const offerSupplyModeOptions = SUPPLIER_SUPPLY_MODE_OPTIONS.filter((item) =>
+  ['API_DIRECT', 'H5_DIRECT', 'DROP_SHIPPING', 'BATCH', 'PICKUP'].includes(item.value)
+)
 
 const getSkuTypeCategoryPath = (row: PlatformSkuVO) => {
   const typeName = row.productType ? getProductTypeLabel(row.productType) : ''
@@ -344,54 +346,58 @@ const getSkuTypeCategoryPath = (row: PlatformSkuVO) => {
   if (typeName && typeName !== '-' && categoryName && categoryName !== '-') {
     return `${typeName} / ${categoryName}`
   }
-  return typeName && typeName !== '-' ? typeName : categoryName && categoryName !== '-' ? categoryName : '-'
+  return typeName && typeName !== '-'
+    ? typeName
+    : categoryName && categoryName !== '-'
+      ? categoryName
+      : '-'
 }
 
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   keyword: undefined as string | undefined,
-  categoryCode: undefined as string | undefined,
-  supplierId: undefined as number | undefined
+  categoryCode: undefined as string | undefined
 })
 
 const batchConfig = reactive({
-  supplyPriceMode: SupplyPriceModeEnum.FIXED as number,
+  priceMode: OfferPriceModeEnum.FIXED as string,
   priceOrDiscount: 0,
-  supplyMode: ['dropshipping'] as string[],
-  supplyLimit: 9999999,
-  minOrderQty: 1
+  supplyMode: 'DROP_SHIPPING',
+  maxQuantity: 9999999,
+  minQuantity: 1
 })
 
-/** 搜索区商品分类下拉：与列表页筛选标签一致 */
 const categoryTags = SUPPLIER_PRODUCT_FILTER_TAGS
 
-const loadSupplyConfigs = async () => {
+const loadSupplyScopes = async () => {
   try {
-    supplyConfigs.value = props.supplyConfigs?.length
-      ? props.supplyConfigs
-      : (await SupplierApi.getSupplyConfigList(props.supplierId)) || []
+    const data = await SupplierApi.getSupplyScopes(props.supplierCode)
+    hasSupplyScope.value = Array.isArray(data) && data.length > 0
   } catch {
-    supplyConfigs.value = props.supplyConfigs || []
+    hasSupplyScope.value = false
   }
 }
 
 /** 打开弹窗：create 新增 / update 编辑回填 */
-const open = async (type: 'create' | 'update' = 'create', row?: SupplierProductVO) => {
+const open = async (type: 'create' | 'update' = 'create', row?: OfferListItem) => {
   dialogType.value = type
   dialogVisible.value = true
   selectedList.value = []
-  await loadSupplyConfigs()
-  if (!supplyConfigs.value.length && type === 'create') {
+  originalStatus.value = undefined
+  await loadSupplyScopes()
+  if (!hasSupplyScope.value && type === 'create') {
     message.warning('请先在供货配置中添加可供货范围')
   }
 
   if (type === 'update' && row) {
+    originalStatus.value = row.status
     selectedList.value = [
       {
         ...row,
-        supplyMode: normalizeSupplyModes(row.supplyMode),
-        status: row.status ?? ProductShelfStatusEnum.ON
+        supplyMode: row.offerSupplyMode,
+        suggestedPriceCents: row.suggestPriceCents,
+        status: row.status || OfferStatusEnum.PUBLISHED
       }
     ]
     return
@@ -399,7 +405,6 @@ const open = async (type: 'create' | 'update' = 'create', row?: SupplierProductV
 
   queryParams.keyword = undefined
   queryParams.categoryCode = undefined
-  queryParams.supplierId = props.supplierId
   await getSkuList()
 }
 defineExpose({ open })
@@ -430,40 +435,29 @@ const resetQuery = () => {
 }
 
 const handleSelectionChange = (rows: PlatformSkuVO[]) => {
-  const map = new Map(selectedList.value.map((item) => [item.skuId, item]))
+  const map = new Map(selectedList.value.map((item) => [item.platformSkuCode, item]))
   rows.forEach((row) => {
-    if (!map.has(row.skuId)) {
-      map.set(row.skuId, {
-        spuId: row.spuId,
-        spuName: row.spuName,
-        skuId: row.skuId,
-        skuName: row.skuName,
-        skuCode: row.skuCode,
-        categoryCode: row.categoryCode,
-        categoryName: row.categoryName,
-        productType: row.productType,
-        productTypeName: row.productType ? getProductTypeLabel(row.productType) : undefined,
-        productCategory: row.productCategory,
-        productCategoryName: row.productCategory
-          ? getProductCategoryLabel(row.productCategory)
-          : undefined,
-        suggestPrice: row.marketPrice,
-        supplyPriceMode: SupplyPriceModeEnum.FIXED,
-        supplyPrice: undefined,
-        supplyDiscount: undefined,
-        supplyMode: ['dropshipping'],
-        supplyLimit: 9999999,
-        minOrderQty: 1,
-        status: ProductShelfStatusEnum.ON
-      })
-    }
+    const skuCode = row.skuCode
+    if (!skuCode || map.has(skuCode)) return
+    map.set(skuCode, {
+      platformSkuCode: skuCode,
+      platformSpuName: row.spuName,
+      platformSkuName: row.skuName,
+      suggestPriceCents: yuanToCents(row.marketPrice),
+      suggestedPriceCents: yuanToCents(row.marketPrice),
+      priceMode: OfferPriceModeEnum.FIXED,
+      supplyMode: 'DROP_SHIPPING',
+      maxQuantity: 9999999,
+      minQuantity: 1,
+      status: OfferStatusEnum.PUBLISHED
+    })
   })
-  const selectedIds = new Set(rows.map((item) => item.skuId))
-  selectedList.value = [...map.values()].filter((item) => selectedIds.has(item.skuId!))
+  const selectedCodes = new Set(rows.map((item) => item.skuCode).filter(Boolean))
+  selectedList.value = [...map.values()].filter((item) => selectedCodes.has(item.platformSkuCode!))
 }
 
-const removeSelected = (skuId: number) => {
-  selectedList.value = selectedList.value.filter((item) => item.skuId !== skuId)
+const removeSelected = (platformSkuCode: string) => {
+  selectedList.value = selectedList.value.filter((item) => item.platformSkuCode !== platformSkuCode)
 }
 
 const clearSelected = async () => {
@@ -472,10 +466,7 @@ const clearSelected = async () => {
     return
   }
   try {
-    await message.confirm(
-      `确认清空已选的 ${selectedList.value.length} 个商品吗？`,
-      '清空确认'
-    )
+    await message.confirm(`确认清空已选的 ${selectedList.value.length} 个商品吗？`, '清空确认')
     selectedList.value = []
     skuTableRef.value?.clearSelection()
     message.success('已清空')
@@ -488,23 +479,35 @@ const applyBatch = () => {
     return
   }
   selectedList.value.forEach((item) => {
-    item.supplyPriceMode = batchConfig.supplyPriceMode
-    if (batchConfig.supplyPriceMode === SupplyPriceModeEnum.FIXED) {
-      item.supplyPrice = batchConfig.priceOrDiscount
-      item.supplyDiscount = undefined
-    } else if (batchConfig.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT) {
-      item.supplyDiscount = batchConfig.priceOrDiscount
-      item.supplyPrice = undefined
+    item.priceMode = batchConfig.priceMode
+    if (batchConfig.priceMode === OfferPriceModeEnum.FIXED) {
+      item.unitPriceCents = yuanToCents(batchConfig.priceOrDiscount)
+      item.discountBp = undefined
+    } else if (batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT) {
+      item.discountBp = percentToBp(batchConfig.priceOrDiscount)
+      item.unitPriceCents = undefined
     } else {
-      item.supplyPrice = undefined
-      item.supplyDiscount = undefined
+      item.unitPriceCents = undefined
+      item.discountBp = undefined
     }
-    item.supplyMode = [...batchConfig.supplyMode]
-    item.supplyLimit = batchConfig.supplyLimit
-    item.minOrderQty = batchConfig.minOrderQty
+    item.supplyMode = batchConfig.supplyMode
+    item.maxQuantity = batchConfig.maxQuantity
+    item.minQuantity = batchConfig.minQuantity
   })
   message.success('批量配置已应用')
 }
+
+const toDraftReq = (item: OfferFormItem): DraftReqVO => ({
+  platformSkuCode: item.platformSkuCode || '',
+  priceMode: item.priceMode || '',
+  unitPriceCents:
+    item.priceMode === OfferPriceModeEnum.FIXED ? item.unitPriceCents : undefined,
+  discountBp: item.priceMode === OfferPriceModeEnum.DISCOUNT ? item.discountBp : undefined,
+  suggestedPriceCents: item.suggestedPriceCents ?? item.suggestPriceCents,
+  supplyMode: item.supplyMode || item.offerSupplyMode || '',
+  maxQuantity: item.maxQuantity,
+  minQuantity: item.minQuantity
+})
 
 const validateSelected = () => {
   if (!selectedList.value.length) {
@@ -512,24 +515,33 @@ const validateSelected = () => {
     return false
   }
   for (const item of selectedList.value) {
-    if (item.supplyPriceMode === SupplyPriceModeEnum.FIXED) {
-      if (!item.supplyPrice || item.supplyPrice <= 0) {
-        message.warning(`SKU「${item.skuName}」固定值模式下供应价必须大于 0`)
-        return false
-      }
-    } else if (item.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT) {
-      const discount = item.supplyDiscount || 0
-      if (discount < 0.01 || discount > 100) {
-        message.warning(`SKU「${item.skuName}」供货折扣需在 0.01%~100% 之间`)
-        return false
-      }
-    }
-    if (!item.supplyMode?.length || !item.supplyLimit || !item.minOrderQty) {
-      message.warning(`SKU「${item.skuName}」请完整配置供货参数`)
+    const skuName = item.platformSkuName || item.platformSkuCode || 'SKU'
+    if (!item.platformSkuCode) {
+      message.warning(`请完整填写平台 SKU 编码`)
       return false
     }
-    if ((item.supplyLimit || 0) < (item.minOrderQty || 0)) {
-      message.warning(`SKU「${item.skuName}」供货上限不能小于最低起购量`)
+    if (!item.priceMode) {
+      message.warning(`SKU「${skuName}」请选择供应价模式`)
+      return false
+    }
+    if (item.priceMode === OfferPriceModeEnum.FIXED) {
+      if (!item.unitPriceCents || item.unitPriceCents <= 0) {
+        message.warning(`SKU「${skuName}」固定值模式下供应价必须大于 0`)
+        return false
+      }
+    } else if (item.priceMode === OfferPriceModeEnum.DISCOUNT) {
+      const percent = bpToPercent(item.discountBp) || 0
+      if (percent < 0.01 || percent > 100) {
+        message.warning(`SKU「${skuName}」供货折扣需在 0.01%~100% 之间`)
+        return false
+      }
+    }
+    if (!item.supplyMode && !item.offerSupplyMode) {
+      message.warning(`SKU「${skuName}」请选择供货模式`)
+      return false
+    }
+    if (item.maxQuantity && item.minQuantity && item.maxQuantity < item.minQuantity) {
+      message.warning(`SKU「${skuName}」供货上限不能小于最低起购量`)
       return false
     }
   }
@@ -538,20 +550,27 @@ const validateSelected = () => {
 
 const handleSubmit = async () => {
   if (!validateSelected()) return
+  if (!props.supplierCode) {
+    message.error('缺少供应商编号，暂无法保存合作商品')
+    return
+  }
   submitting.value = true
   try {
     if (isEdit.value) {
       const row = selectedList.value[0]
-      await SupplierApi.updateProduct({
-        ...row,
-        supplyPrice:
-          row.supplyPriceMode === SupplyPriceModeEnum.FIXED ? row.supplyPrice : undefined,
-        supplyDiscount:
-          row.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT ? row.supplyDiscount : undefined
-      })
+      if (!row.offerNo) {
+        message.error('缺少合作商品编号，暂无法保存')
+        return
+      }
+      await SupplierApi.updateOffer(props.supplierCode, row.offerNo, toDraftReq(row))
+      if (row.status && row.status !== originalStatus.value) {
+        await SupplierApi.patchOffer(props.supplierCode, row.offerNo, { status: row.status })
+      }
       message.success('保存成功')
     } else {
-      await SupplierApi.createProducts(props.supplierId, selectedList.value)
+      await SupplierApi.createOffers(props.supplierCode, {
+        items: selectedList.value.map(toDraftReq)
+      })
       message.success('添加成功')
     }
     dialogVisible.value = false

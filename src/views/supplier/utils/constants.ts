@@ -1,9 +1,11 @@
-/** 供应商合作状态 */
+/** 供应商合作状态（接口枚举名） */
 export const SupplierStatusEnum = {
-  NORMAL: 1, // 正常合作
-  PAUSED: 2, // 暂停供货
-  BLACKLIST: 3 // 黑名单
-}
+  NORMAL: 'ACTIVE', // 正常合作
+  PAUSED: 'SUSPENDED', // 暂停供货
+  BLACKLIST: 'BLACKLIST' // 黑名单
+} as const
+
+export type SupplierStatus = (typeof SupplierStatusEnum)[keyof typeof SupplierStatusEnum]
 
 /** 合作状态选项 */
 export const SUPPLIER_STATUS_OPTIONS = [
@@ -47,8 +49,14 @@ export const SUPPLIER_PRODUCT_CATEGORY_OPTIONS = [
   { value: 'movie_ticket', label: '电影快票' }
 ]
 
-/** 供货模式选项（列表筛选：字符串编码） */
+/** 供货模式选项（列表筛选：接口枚举名） */
 export const SUPPLIER_SUPPLY_MODE_OPTIONS = [
+  { value: 'API_DIRECT', label: 'API直发' },
+  { value: 'H5_DIRECT', label: 'H5直发' },
+  { value: 'DROP_SHIPPING', label: '一件代发' },
+  { value: 'BATCH', label: '批量发货' },
+  { value: 'PICKUP', label: '门店自提' },
+  // 兼容旧 mock 编码
   { value: 'dropshipping', label: '一件代发' },
   { value: 'batch', label: '批量发货' },
   { value: 'pickup', label: '门店自提' },
@@ -82,6 +90,19 @@ export const SUPPLY_PRICE_MODE_OPTIONS = [
   { value: SupplyPriceModeEnum.DISCOUNT, label: '按供货折扣' }
 ]
 
+/** 合作商品供应价模式（接口 priceMode） */
+export const OfferPriceModeEnum = {
+  FIXED: 'FIXED',
+  REALTIME: 'REALTIME',
+  DISCOUNT: 'DISCOUNT'
+} as const
+
+export const OFFER_PRICE_MODE_OPTIONS = [
+  { value: OfferPriceModeEnum.FIXED, label: '固定值' },
+  { value: OfferPriceModeEnum.REALTIME, label: '实时更新' },
+  { value: OfferPriceModeEnum.DISCOUNT, label: '按供货折扣' }
+]
+
 /** 合作商品上架状态 */
 export const ProductShelfStatusEnum = {
   OFF: 0, // 下架
@@ -93,6 +114,17 @@ export const PRODUCT_SHELF_STATUS_OPTIONS = [
   { value: ProductShelfStatusEnum.OFF, label: '下架', type: 'info' as const }
 ]
 
+/** 合作商品状态（接口 status） */
+export const OfferStatusEnum = {
+  PUBLISHED: 'PUBLISHED',
+  SUSPENDED: 'SUSPENDED'
+} as const
+
+export const OFFER_STATUS_OPTIONS = [
+  { value: OfferStatusEnum.PUBLISHED, label: '上架', type: 'success' as const },
+  { value: OfferStatusEnum.SUSPENDED, label: '下架', type: 'info' as const }
+]
+
 /** 能力标签选项 */
 export const SUPPLIER_CAPABILITY_OPTIONS = [
   { value: 'manufacturer', label: '生产型' },
@@ -101,10 +133,10 @@ export const SUPPLIER_CAPABILITY_OPTIONS = [
   { value: 'distributor', label: '分销型' }
 ]
 
-/** 配送区域类型 */
+/** 配送区域类型（接口 deliveryRegionType） */
 export const DeliveryAreaTypeEnum = {
-  NATIONWIDE: 'nationwide',
-  SPECIFIED: 'specified'
+  NATIONWIDE: 'NATIONWIDE',
+  SPECIFIED: 'SPECIFIED'
 } as const
 
 export const DELIVERY_AREA_TYPE_OPTIONS = [
@@ -112,13 +144,13 @@ export const DELIVERY_AREA_TYPE_OPTIONS = [
   { value: DeliveryAreaTypeEnum.SPECIFIED, label: '指定区域' }
 ]
 
-/** 发货时效 */
+/** 发货时效（接口 shippingSlaCode） */
 export const ShippingTimelinessEnum = {
-  SAME_DAY: 'same_day',
-  NEXT_DAY: 'next_day',
-  HOURS_48: '48h',
-  HOURS_72: '72h',
-  CUSTOM: 'custom'
+  SAME_DAY: 'SAME_DAY',
+  NEXT_DAY: 'NEXT_DAY',
+  HOURS_48: 'HOURS_48',
+  HOURS_72: 'HOURS_72',
+  CUSTOM: 'CUSTOM'
 } as const
 
 export const SHIPPING_TIMELINESS_OPTIONS = [
@@ -129,13 +161,13 @@ export const SHIPPING_TIMELINESS_OPTIONS = [
   { value: ShippingTimelinessEnum.CUSTOM, label: '自定义' }
 ]
 
-/** 结算方式选项 */
+/** 结算方式选项（接口 settlementMethod） */
 export const SUPPLIER_SETTLEMENT_OPTIONS = [
-  { value: 'daily', label: '日结' },
-  { value: 'weekly', label: '周结' },
-  { value: 'monthly', label: '月结' },
-  { value: 'quarterly', label: '季结' },
-  { value: 'prepaid', label: '预付' }
+  { value: 'DAILY', label: '日结' },
+  { value: 'WEEKLY', label: '周结' },
+  { value: 'MONTHLY', label: '月结' },
+  { value: 'QUARTERLY', label: '季结' },
+  { value: 'PREPAID', label: '预付' }
 ]
 
 /** 开票抬头类型 */
@@ -150,11 +182,11 @@ export const INVOICE_TITLE_TYPE_OPTIONS = [
   { value: InvoiceTitleTypeEnum.PERSONAL, label: '个人' }
 ]
 
-/** 对接方式选项 */
+/** 对接方式选项（接口 integrationModes） */
 export const SUPPLIER_INTEGRATION_OPTIONS = [
-  { value: 'api', label: 'API直连' },
-  { value: 'h5', label: 'H5直连' },
-  { value: 'manual', label: '人工对接' }
+  { value: 'API', label: 'API直连' },
+  { value: 'H5', label: 'H5直连' },
+  { value: 'MANUAL', label: '人工对接' }
 ]
 
 /** 获取能力标签文案 */
@@ -258,6 +290,11 @@ export const getSupplyPriceModeLabel = (value?: number): string => {
   return SUPPLY_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
 }
 
+/** 获取合作商品供应价模式文案（接口 priceMode） */
+export const getOfferPriceModeLabel = (value?: string): string => {
+  return OFFER_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label || value || '-'
+}
+
 /** 获取合作商品上架状态文案 */
 export const getProductShelfStatusLabel = (status?: number): string => {
   return PRODUCT_SHELF_STATUS_OPTIONS.find((item) => item.value === status)?.label || '-'
@@ -270,6 +307,48 @@ export const getProductShelfStatusType = (
   return PRODUCT_SHELF_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
 }
 
+/** 获取合作商品状态文案（接口 status） */
+export const getOfferStatusLabel = (status?: string): string => {
+  return OFFER_STATUS_OPTIONS.find((item) => item.value === status)?.label || status || '-'
+}
+
+/** 获取合作商品状态标签类型（接口 status） */
+export const getOfferStatusType = (
+  status?: string
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
+  return OFFER_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
+}
+
+/** 分转元 */
+export const centsToYuan = (cents?: number | null) => {
+  if (cents === undefined || cents === null) return undefined
+  return Number((Number(cents) / 100).toFixed(2))
+}
+
+/** 元转分 */
+export const yuanToCents = (yuan?: number | null) => {
+  if (yuan === undefined || yuan === null) return undefined
+  return Math.round(Number(yuan) * 100)
+}
+
+/** 金额分格式化为元文案 */
+export const formatCentsYuan = (cents?: number | null) => {
+  const yuan = centsToYuan(cents)
+  return yuan === undefined ? '-' : yuan.toFixed(2)
+}
+
+/** 折扣基点转百分比，10000=100% */
+export const bpToPercent = (bp?: number | null) => {
+  if (bp === undefined || bp === null) return undefined
+  return Number((Number(bp) / 100).toFixed(2))
+}
+
+/** 百分比转折扣基点 */
+export const percentToBp = (percent?: number | null) => {
+  if (percent === undefined || percent === null) return undefined
+  return Math.round(Number(percent) * 100)
+}
+
 /** 规范化供货模式为数组 */
 export const normalizeSupplyModes = (mode?: string | number | Array<string | number>): string[] => {
   if (mode === undefined || mode === null || mode === '') return []
@@ -278,20 +357,20 @@ export const normalizeSupplyModes = (mode?: string | number | Array<string | num
 }
 
 /** 获取合作状态文案 */
-export const getSupplierStatusLabel = (status: number): string => {
+export const getSupplierStatusLabel = (status?: string): string => {
   return SUPPLIER_STATUS_OPTIONS.find((item) => item.value === status)?.label || '未知'
 }
 
 /** 获取合作状态对应的 el-tag 类型 */
 export const getSupplierStatusType = (
-  status: number
+  status?: string
 ): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
-  const map: Record<number, 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
+  const map: Record<string, 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
     [SupplierStatusEnum.NORMAL]: 'success',
     [SupplierStatusEnum.PAUSED]: 'warning',
     [SupplierStatusEnum.BLACKLIST]: 'danger'
   }
-  return map[status] || 'info'
+  return (status && map[status]) || 'info'
 }
 
 /** 分销商合作状态（PRD：正常 / 暂停分销 / 黑名单） */

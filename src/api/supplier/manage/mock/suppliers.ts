@@ -6,7 +6,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260801001",
     "name": "深圳华南电子科技",
     "shortName": "华南电子",
-    "status": 1,
+    "status": "ACTIVE",
     "capabilityTags": [
       "manufacturer",
       "trader"
@@ -97,7 +97,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260622002",
     "name": "广州新达包装材料",
     "shortName": "新达包装",
-    "status": 1,
+    "status": "ACTIVE",
     "capabilityTags": [
       "trader"
     ],
@@ -174,7 +174,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260510003",
     "name": "浙江沪丰五金制品",
     "shortName": "沪丰五金",
-    "status": 2,
+    "status": "SUSPENDED",
     "capabilityTags": [
       "manufacturer"
     ],
@@ -250,7 +250,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260701004",
     "name": "上海瑞通贸易",
     "shortName": "瑞通贸易",
-    "status": 1,
+    "status": "ACTIVE",
     "capabilityTags": [
       "trader",
       "distributor"
@@ -341,7 +341,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260418005",
     "name": "东莞恒昌塑胶模具",
     "shortName": "恒昌塑胶",
-    "status": 3,
+    "status": "BLACKLIST",
     "capabilityTags": [
       "manufacturer"
     ],
@@ -417,7 +417,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260801006",
     "name": "苏州科信自动化设备",
     "shortName": "科信自动化",
-    "status": 1,
+    "status": "ACTIVE",
     "capabilityTags": [
       "service"
     ],
@@ -492,7 +492,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260605007",
     "name": "福建闽辉纺织",
     "shortName": "闽辉纺织",
-    "status": 2,
+    "status": "SUSPENDED",
     "capabilityTags": [
       "manufacturer",
       "trader"
@@ -585,7 +585,7 @@ export const SUPPLIER_MOCK_LIST: SupplierVO[] = [
     "code": "SUP20260810008",
     "name": "北京中科智控科技",
     "shortName": "中科智控",
-    "status": 1,
+    "status": "ACTIVE",
     "capabilityTags": [
       "service",
       "distributor"

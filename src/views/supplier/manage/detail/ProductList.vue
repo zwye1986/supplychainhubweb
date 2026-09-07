@@ -25,9 +25,9 @@
     </el-alert>
 
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="商品名称" prop="spuName" min-width="140" />
-      <el-table-column label="SKU规格" prop="skuName" min-width="110" />
-      <el-table-column label="SKU编号" prop="skuCode" min-width="120" />
+      <el-table-column label="商品名称" prop="platformSpuName" min-width="140" />
+      <el-table-column label="SKU规格" prop="platformSkuName" min-width="110" />
+      <el-table-column label="SKU编号" prop="platformSkuCode" min-width="120" />
       <el-table-column label="类型/分类" min-width="160">
         <template #default="{ row }">
           <div class="flex flex-wrap gap-4px">
@@ -40,12 +40,12 @@
       </el-table-column>
       <el-table-column label="销售建议价（元）" min-width="150" align="right">
         <template #default="{ row }">
-          {{ formatPrice(row.suggestPrice) }}
+          {{ formatCentsYuan(row.suggestPriceCents) }}
         </template>
       </el-table-column>
       <el-table-column label="供应价模式" min-width="110">
         <template #default="{ row }">
-          <el-tag size="small">{{ getSupplyPriceModeLabel(row.supplyPriceMode) }}</el-tag>
+          <el-tag size="small">{{ getOfferPriceModeLabel(row.priceMode) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="供应价（元）" min-width="110" align="right">
@@ -55,32 +55,41 @@
       </el-table-column>
       <el-table-column label="供货模式" min-width="180">
         <template #default="{ row }">
-          <div class="flex flex-wrap gap-4px">
-            <el-tag
-              v-for="mode in normalizeSupplyModes(row.supplyMode)"
-              :key="mode"
-              size="small"
-              type="success"
-            >
-              {{ getSupplyModeLabel(mode) }}
-            </el-tag>
-            <span v-if="!normalizeSupplyModes(row.supplyMode).length">-</span>
-          </div>
+          <el-tag v-if="row.offerSupplyMode" size="small" type="success">
+            {{ getSupplyModeLabel(row.offerSupplyMode) }}
+          </el-tag>
+          <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="供货上限" prop="supplyLimit" min-width="100" align="right" />
-      <el-table-column label="最低起购量" prop="minOrderQty" min-width="100" align="right" />
+      <el-table-column label="供货上限" prop="maxQuantity" min-width="100" align="right" />
+      <el-table-column label="最低起购量" prop="minQuantity" min-width="100" align="right" />
       <el-table-column label="状态" min-width="90" align="center">
         <template #default="{ row }">
-          <el-tag :type="getProductShelfStatusType(row.status)" size="small">
-            {{ getProductShelfStatusLabel(row.status) }}
+          <el-tag :type="getOfferStatusType(row.status)" size="small">
+            {{ getOfferStatusLabel(row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" align="center" fixed="right">
+      <el-table-column label="操作" width="160" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="handleDelete(row.id)">移除</el-button>
+          <el-button
+            v-if="row.status === OfferStatusEnum.PUBLISHED"
+            link
+            type="warning"
+            @click="handlePatchStatus(row, OfferStatusEnum.SUSPENDED)"
+          >
+            下架
+          </el-button>
+          <el-button
+            v-else-if="row.status === OfferStatusEnum.SUSPENDED"
+            link
+            type="success"
+            @click="handlePatchStatus(row, OfferStatusEnum.PUBLISHED)"
+          >
+            上架
+          </el-button>
+          <el-button link type="danger" @click="handleDelete(row.offerNo)">移除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -91,88 +100,60 @@
       @pagination="getList"
     />
 
-    <ProductSelectDialog
-      ref="selectDialogRef"
-      :supplier-id="supplierId"
-      :supply-configs="resolvedConfigs"
-      @success="getList"
-    />
+    <ProductSelectDialog ref="selectDialogRef" :supplier-code="supplierCode" @success="getList" />
   </ContentWrap>
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, SupplierProductVO, SupplierSupplyConfigVO } from '@/api/supplier/manage'
+import { SupplierApi, OfferListItem } from '@/api/supplier/manage'
 import {
+  OfferPriceModeEnum,
+  OfferStatusEnum,
   SUPPLIER_PRODUCT_FILTER_TAGS,
-  SupplyPriceModeEnum,
-  getCategoryLabel,
-  getProductCategoryLabel,
-  getProductShelfStatusLabel,
-  getProductShelfStatusType,
-  getProductTypeLabel,
-  getSupplyModeLabel,
-  getSupplyPriceModeLabel,
-  normalizeSupplyModes
+  formatCentsYuan,
+  getOfferPriceModeLabel,
+  getOfferStatusLabel,
+  getOfferStatusType,
+  getSupplyModeLabel
 } from '@/views/supplier/utils/constants'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 
 defineOptions({ name: 'SupplierProductList' })
 
 const props = defineProps<{
-  supplierId: number
-  supplyConfigs?: SupplierSupplyConfigVO[]
-  capabilityTags?: string[]
+  supplierCode: string
 }>()
 
 const message = useMessage()
 const loading = ref(false)
-const list = ref<SupplierProductVO[]>([])
+const list = ref<OfferListItem[]>([])
 const total = ref(0)
 const activeTag = ref('equity')
-const fetchedConfigs = ref<SupplierSupplyConfigVO[]>([])
 const selectDialogRef = ref<InstanceType<typeof ProductSelectDialog>>()
 
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 20,
-  supplierId: undefined as number | undefined,
-  categoryCode: undefined as string | undefined
-})
-
-const resolvedConfigs = computed<SupplierSupplyConfigVO[]>(() => {
-  if (props.supplyConfigs && props.supplyConfigs.length) return props.supplyConfigs
-  if (fetchedConfigs.value.length) return fetchedConfigs.value
-  return (props.capabilityTags || []).map((code) => ({
-    categoryCode: code,
-    categoryName: getCategoryLabel(code)
-  }))
+  pageSize: 20
 })
 
 /** 顶部筛选：固定展示可售品类胶囊标签 */
 const categoryTags = SUPPLIER_PRODUCT_FILTER_TAGS
 
-const getTypeCategoryPath = (row: SupplierProductVO) => {
-  const typeName = row.productTypeName || getProductTypeLabel(row.productType)
-  const categoryName = row.productCategoryName || getProductCategoryLabel(row.productCategory)
-  if (typeName !== '-' && categoryName !== '-') return `${typeName} / ${categoryName}`
-  if (typeName !== '-') return typeName
-  if (categoryName !== '-') return categoryName
-  return ''
+const getTypeCategoryPath = (row: OfferListItem) => {
+  const typeName = row.categoryL2Name
+  const categoryName = row.categoryL3Name
+  if (typeName && categoryName) return `${typeName} / ${categoryName}`
+  return typeName || categoryName || ''
 }
 
-const formatPrice = (value?: number) => {
-  if (value === undefined || value === null) return '-'
-  return Number(value).toFixed(2)
-}
-
-/** 供应价展示：固定值取供应价；折扣取建议价×折扣；实时更新为 - */
-const formatSupplyPrice = (row: SupplierProductVO) => {
-  if (row.supplyPriceMode === SupplyPriceModeEnum.FIXED) {
-    return formatPrice(row.supplyPrice)
+/** 供应价展示：固定值取供应价；折扣取建议价×折扣基点；实时更新为 - */
+const formatSupplyPrice = (row: OfferListItem) => {
+  if (row.priceMode === OfferPriceModeEnum.FIXED) {
+    return formatCentsYuan(row.unitPriceCents)
   }
-  if (row.supplyPriceMode === SupplyPriceModeEnum.DISCOUNT) {
-    if (row.suggestPrice != null && row.supplyDiscount != null) {
-      return ((Number(row.suggestPrice) * Number(row.supplyDiscount)) / 100).toFixed(2)
+  if (row.priceMode === OfferPriceModeEnum.DISCOUNT) {
+    if (row.suggestPriceCents != null && row.discountBp != null) {
+      return formatCentsYuan(Math.round((row.suggestPriceCents * row.discountBp) / 10000))
     }
     return '-'
   }
@@ -180,14 +161,15 @@ const formatSupplyPrice = (row: SupplierProductVO) => {
 }
 
 const getList = async () => {
-  if (!props.supplierId) return
+  if (!props.supplierCode) return
   loading.value = true
-  queryParams.supplierId = props.supplierId
-  queryParams.categoryCode = activeTag.value || undefined
   try {
-    const data = await SupplierApi.getProductPage(queryParams)
-    list.value = data.list || []
-    total.value = data.total || 0
+    const data = await SupplierApi.getOfferPage(props.supplierCode, {
+      pageNo: queryParams.pageNo,
+      pageSize: queryParams.pageSize
+    })
+    list.value = data?.list || []
+    total.value = data?.total || 0
   } catch {
     list.value = []
     total.value = 0
@@ -203,49 +185,42 @@ const handleTagChange = (value: string) => {
 }
 
 const openSelectDialog = () => {
-  if (!resolvedConfigs.value.length) {
-    message.warning('请先在供货配置中添加可供货范围')
-    return
-  }
   selectDialogRef.value?.open('create')
 }
 
-const openEdit = (row: SupplierProductVO) => {
+const openEdit = (row: OfferListItem) => {
   selectDialogRef.value?.open('update', row)
 }
 
-const handleDelete = async (id?: number) => {
-  if (!id) return
+const handleDelete = async (offerNo?: string) => {
+  if (!offerNo) return
   try {
     await message.delConfirm('确认移除该合作商品吗？')
-    await SupplierApi.deleteProduct(id)
+    await SupplierApi.deleteOffer(props.supplierCode, offerNo)
     message.success('移除成功')
     await getList()
   } catch {}
 }
 
-const loadConfigs = async () => {
-  if (!props.supplierId) return
-  if (props.supplyConfigs && props.supplyConfigs.length) {
-    fetchedConfigs.value = props.supplyConfigs
-    return
-  }
+const handlePatchStatus = async (row: OfferListItem, status: string) => {
+  if (!row.offerNo) return
+  const actionText = status === OfferStatusEnum.SUSPENDED ? '下架' : '上架'
   try {
-    fetchedConfigs.value = (await SupplierApi.getSupplyConfigList(props.supplierId)) || []
-  } catch {
-    fetchedConfigs.value = []
-  }
+    await message.confirm(`确认${actionText}该合作商品吗？`, `${actionText}确认`)
+    await SupplierApi.patchOffer(props.supplierCode, row.offerNo, { status })
+    message.success(`${actionText}成功`)
+    await getList()
+  } catch {}
 }
 
 watch(
-  () => [props.supplierId, props.supplyConfigs] as const,
+  () => props.supplierCode,
   async () => {
     queryParams.pageNo = 1
-    await loadConfigs()
     activeTag.value = categoryTags[0]?.value || 'equity'
     await getList()
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 )
 </script>
 

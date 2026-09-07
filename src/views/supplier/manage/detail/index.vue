@@ -11,13 +11,15 @@
       <div class="flex items-start justify-between">
         <div class="min-w-0">
           <div class="mb-8px flex items-center gap-10px">
-            <span class="truncate text-20px font-700">{{ supplier.name || '供应商详情' }}</span>
+            <span class="truncate text-20px font-700">
+              {{ supplier.supplierName || supplier.name || '供应商详情' }}
+            </span>
             <el-tag :type="getSupplierStatusType(supplier.status)" size="small">
               {{ getSupplierStatusLabel(supplier.status) }}
             </el-tag>
           </div>
           <div class="text-13px text-gray-500">
-            编号：{{ supplier.code || '-' }}
+            编号：{{ supplier.supplierCode || supplier.code || '-' }}
           </div>
         </div>
         <div>
@@ -96,7 +98,7 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="接入时间">
-          {{ supplier.accessDate || supplier.accessTime || '-' }}
+          {{ supplier.onboardedAt || supplier.accessDate || supplier.accessTime || '-' }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -107,12 +109,12 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="供应商名称">
-                  {{ displayText(supplier.name) }}
+                  {{ displayText(supplier.supplierName || supplier.name) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="供应商编号">
-                  {{ displayText(supplier.code) }}
+                  {{ displayText(supplier.supplierCode || supplier.code) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -140,8 +142,8 @@
                 <el-form-item label="发货时效">
                   {{
                     getShippingTimelinessLabel(
-                      supplier.shippingTimeliness,
-                      supplier.shippingTimelinessCustom
+                      supplier.shippingSlaCode || supplier.shippingTimeliness,
+                      supplier.shippingSlaCustom || supplier.shippingTimelinessCustom
                     )
                   }}
                 </el-form-item>
@@ -157,12 +159,12 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="结算方式">
-                  {{ getSettlementLabel(supplier.settlementType) }}
+                  {{ getSettlementLabel(supplier.settlementMethod || supplier.settlementType) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算周期（天）">
-                  {{ displayText(supplier.settlementCycle) }}
+                  {{ displayText(supplier.settlementCycleDays ?? supplier.settlementCycle) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -172,7 +174,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="接入时间">
-                  {{ displayText(supplier.accessDate) }}
+                  {{ displayText(supplier.onboardedAt || supplier.accessDate) }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -182,7 +184,7 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="合作说明">
-                  {{ displayText(supplier.cooperationRemark) }}
+                  {{ displayText(supplier.cooperationNote || supplier.cooperationRemark) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -191,19 +193,19 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="公司名称">
-                  {{ displayText(supplier.companyName) }}
+                  {{ displayText(supplier.legalEntityName || supplier.companyName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="社会统一信用代码">
-                  {{ displayText(supplier.socialCreditCode) }}
+                  {{ displayText(supplier.creditCode || supplier.socialCreditCode) }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
                 <el-form-item label="营业执照">
-                  <template v-if="supplier.businessLicenseUrls?.length">
+                  <template v-if="(supplier.licenseFileKeys || supplier.businessLicenseUrls)?.length">
                     <el-link
-                      v-for="(url, index) in supplier.businessLicenseUrls"
+                      v-for="(url, index) in supplier.licenseFileKeys || supplier.businessLicenseUrls"
                       :key="url"
                       :href="url"
                       type="primary"
@@ -223,7 +225,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="法人手机号">
-                  {{ displayText(supplier.legalPersonMobile) }}
+                  {{ displayText(supplier.legalPersonMobileMasked) }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -259,7 +261,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="开户账号">
-                  {{ displayText(supplier.bankAccount) }}
+                  {{ displayText(supplier.bankAccountMasked) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -297,15 +299,15 @@
         </el-tab-pane>
 
         <el-tab-pane label="供货配置" name="supply" lazy>
-          <SupplyConfig v-if="supplierId" :supplier-id="supplierId" @success="getDetail" />
+          <SupplyConfig
+            v-if="supplierCode"
+            :supplier-code="supplierCode"
+            @success="getDetail"
+          />
         </el-tab-pane>
 
         <el-tab-pane label="合作商品" name="product" lazy>
-          <ProductList
-            v-if="supplierId"
-            :supplier-id="supplierId"
-            :supply-configs="supplier.supplyConfigs || []"
-          />
+          <ProductList v-if="supplierCode" :supplier-code="supplierCode" />
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -335,7 +337,7 @@ defineOptions({ name: 'SupplierManageDetail' })
 
 const props = defineProps<{
   modelValue: boolean
-  id?: number
+  supplierCode?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'success', 'edit'])
@@ -349,7 +351,7 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const supplier = ref<SupplierVO>({} as SupplierVO)
-const supplierId = computed(() => props.id)
+const supplierId = computed(() => supplier.value.id)
 const deliveryAreaName = ref('')
 
 const displayText = (value?: string | number | null) => {
@@ -358,18 +360,22 @@ const displayText = (value?: string | number | null) => {
 }
 
 const afterSaleText = computed(() => {
-  if (supplier.value.supportAfterSale === true) return '是'
-  if (supplier.value.supportAfterSale === false) return '否'
+  const value = supplier.value.aftersalesSupported ?? supplier.value.supportAfterSale
+  if (value === true) return '是'
+  if (value === false) return '否'
   return '-'
 })
 
 const integrationText = computed(() => {
-  const methods = supplier.value.integrationMethods || []
+  const methods = supplier.value.integrationModes || supplier.value.integrationMethods || []
   if (!methods.length) return '-'
   return methods.map((method) => getIntegrationLabel(method)).join('、')
 })
 
 const accountBalanceText = computed(() => {
+  if (supplier.value.settlementBalanceCents != null) {
+    return (Number(supplier.value.settlementBalanceCents) / 100).toFixed(2)
+  }
   if (supplier.value.accountBalance === undefined || supplier.value.accountBalance === null) {
     return '-'
   }
@@ -377,10 +383,12 @@ const accountBalanceText = computed(() => {
 })
 
 const deliveryAreaText = computed(() => {
-  const typeLabel = getDeliveryAreaTypeLabel(supplier.value.deliveryAreaType)
-  if (supplier.value.deliveryAreaType !== DeliveryAreaTypeEnum.SPECIFIED) return typeLabel
+  const regionType = supplier.value.deliveryRegionType || supplier.value.deliveryAreaType
+  const typeLabel = getDeliveryAreaTypeLabel(regionType)
+  if (regionType !== DeliveryAreaTypeEnum.SPECIFIED) return typeLabel
   if (deliveryAreaName.value) return `${typeLabel} / ${deliveryAreaName.value}`
-  if (supplier.value.deliveryAreaId) return `${typeLabel}（${supplier.value.deliveryAreaId}）`
+  const adcode = supplier.value.deliveryRegionAdcodes?.[0] || supplier.value.deliveryAreaId
+  if (adcode) return `${typeLabel}（${adcode}）`
   return typeLabel
 })
 
@@ -428,19 +436,27 @@ const supplyConfigSummary = computed(() => {
 })
 
 const getDetail = async () => {
-  if (!supplierId.value) return
+  if (!props.supplierCode) return
   loading.value = true
   try {
-    const data = await SupplierApi.getSupplier(supplierId.value)
+    const data = await SupplierApi.getSupplier(props.supplierCode)
     supplier.value = {
       ...data,
       contacts: data.contacts || [],
-      integrationMethods: data.integrationMethods || [],
-      businessLicenseUrls: data.businessLicenseUrls || [],
-      legalIdUrls: data.legalIdUrls || [],
-      otherCertUrls: data.otherCertUrls || []
+      integrationModes: data.integrationModes || data.integrationMethods || [],
+      integrationMethods: data.integrationModes || data.integrationMethods || [],
+      licenseFileKeys: data.licenseFileKeys || data.businessLicenseUrls || [],
+      businessLicenseUrls: data.licenseFileKeys || data.businessLicenseUrls || [],
+      qualificationFileKeys: data.qualificationFileKeys || data.otherCertUrls || [],
+      otherCertUrls: data.qualificationFileKeys || data.otherCertUrls || [],
+      legalIdUrls: [
+        data.idFrontFileKey,
+        data.idBackFileKey,
+        ...(data.legalIdUrls || [])
+      ].filter(Boolean) as string[]
     }
-    await resolveDeliveryAreaName(data.deliveryAreaId)
+    const areaId = Number(data.deliveryRegionAdcodes?.[0] || data.deliveryAreaId)
+    await resolveDeliveryAreaName(Number.isNaN(areaId) ? undefined : areaId)
   } finally {
     loading.value = false
   }
@@ -448,35 +464,38 @@ const getDetail = async () => {
 
 /** 抽屉打开或切换供应商时加载详情 */
 watch(
-  () => [props.modelValue, props.id] as const,
+  () => [props.modelValue, props.supplierCode] as const,
   ([visible]) => {
-    if (!visible || !props.id) return
+    if (!visible || !props.supplierCode) return
     activeTab.value = 'basic'
     getDetail()
   }
 )
 
 const openEdit = () => {
-  if (!props.id) return
-  emit('edit', props.id)
+  const code = props.supplierCode || supplier.value.supplierCode || supplier.value.code
+  if (!code) return
+  emit('edit', code)
 }
 
-const getStatusActionText = (targetStatus: number) => {
+const getStatusActionText = (targetStatus: string) => {
   if (targetStatus === SupplierStatusEnum.PAUSED) return '暂停供货'
   if (targetStatus === SupplierStatusEnum.BLACKLIST) return '移入黑名单'
   if (supplier.value.status === SupplierStatusEnum.BLACKLIST) return '移出黑名单'
   return '恢复合作'
 }
 
-const handleStatusChange = async (status: number) => {
-  if (!supplierId.value) return
+const handleStatusChange = async (status: string) => {
+  const supplierCode = props.supplierCode || supplier.value.supplierCode || supplier.value.code
+  if (!supplierCode) {
+    message.error('缺少供应商编号，无法变更状态')
+    return
+  }
   const actionText = getStatusActionText(status)
+  const displayName = supplier.value.supplierName || supplier.value.name || ''
   try {
-    await message.confirm(
-      `确认将供应商「${supplier.value.name}」${actionText}吗？`,
-      `${actionText}确认`
-    )
-    await SupplierApi.updateSupplierStatus(supplierId.value, status)
+    await message.confirm(`确认将供应商「${displayName}」${actionText}吗？`, `${actionText}确认`)
+    await SupplierApi.updateSupplierStatus(supplierCode, status)
     message.success(`${actionText}成功`)
     await getDetail()
     emit('success')

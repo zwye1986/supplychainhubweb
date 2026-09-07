@@ -9,15 +9,15 @@
       <el-table-column label="可售品类" min-width="150">
         <template #default="{ row }">
           <el-select
-            v-model="row.categoryCode"
+            v-model="row.categoryL1Id"
             placeholder="请选择可售品类"
             filterable
             clearable
             class="!w-full"
-            @change="(val: string) => handleCategoryChange(row, val)"
+            @change="() => handleCategoryL1Change(row)"
           >
             <el-option
-              v-for="item in SUPPLIER_CATEGORY_OPTIONS"
+              v-for="item in getCategoryL1Options(row)"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -28,16 +28,16 @@
       <el-table-column label="商品类型" min-width="140">
         <template #default="{ row }">
           <el-select
-            v-model="row.productType"
+            v-model="row.categoryL2Id"
             placeholder="请选择商品类型"
             filterable
             clearable
             class="!w-full"
-            :disabled="!row.categoryCode"
-            @change="(val: string) => handleProductTypeChange(row, val)"
+            :disabled="!row.categoryL1Id"
+            @change="() => handleCategoryL2Change(row)"
           >
             <el-option
-              v-for="item in SUPPLIER_PRODUCT_TYPE_OPTIONS"
+              v-for="item in getCategoryL2Options(row)"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -48,16 +48,16 @@
       <el-table-column label="商品分类" min-width="150">
         <template #default="{ row }">
           <el-select
-            v-model="row.productCategory"
+            v-model="row.categoryL3Id"
             placeholder="请选择商品分类"
             filterable
             clearable
             class="!w-full"
-            :disabled="!row.productType"
-            @change="(val: string) => handleProductCategoryChange(row, val)"
+            :disabled="!row.categoryL2Id"
+            @change="() => handleCategoryL3Change(row)"
           >
             <el-option
-              v-for="item in SUPPLIER_PRODUCT_CATEGORY_OPTIONS"
+              v-for="item in getCategoryL3Options(row)"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -68,16 +68,16 @@
       <el-table-column label="供货模式" min-width="200">
         <template #default="{ row }">
           <el-select
-            v-model="row.supplyMode"
+            v-model="row.supplyModes"
             placeholder="请选择供货模式"
             multiple
             collapse-tags
             collapse-tags-tooltip
             class="!w-full"
-            :disabled="!row.productCategory"
+            :disabled="!row.categoryL3Id"
           >
             <el-option
-              v-for="item in SUPPLIER_SUPPLY_MODE_OPTIONS"
+              v-for="item in getSupplyModeOptions(row)"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -88,7 +88,7 @@
       <el-table-column label="供货上限" min-width="140">
         <template #default="{ row }">
           <el-input-number
-            v-model="row.supplyLimit"
+            v-model="row.maxQuantity"
             :min="1"
             :precision="0"
             class="!w-full"
@@ -100,12 +100,12 @@
       <el-table-column label="最低起订量" min-width="140">
         <template #default="{ row }">
           <el-input-number
-            v-model="row.minOrderQty"
+            v-model="row.minQuantity"
             :min="1"
             :precision="0"
             class="!w-full"
             controls-position="right"
-            :disabled="!row.supplyLimit"
+            :disabled="!row.maxQuantity"
           />
         </template>
       </el-table-column>
@@ -125,21 +125,24 @@
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, SupplierSupplyConfigVO } from '@/api/supplier/manage'
+import {
+  SupplierApi,
+  ScopeReqVO,
+  SupplierSupplyScopeDO,
+  SupplyScopeView
+} from '@/api/supplier/manage'
 import {
   SUPPLIER_CATEGORY_OPTIONS,
   SUPPLIER_PRODUCT_CATEGORY_OPTIONS,
   SUPPLIER_PRODUCT_TYPE_OPTIONS,
   SUPPLIER_SUPPLY_MODE_OPTIONS,
-  getCategoryLabel,
-  getProductCategoryLabel,
-  getProductTypeLabel
+  getSupplyModeLabel
 } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierSupplyConfig' })
 
 const props = defineProps<{
-  supplierId: number
+  supplierCode: string
 }>()
 
 const emit = defineEmits<{
@@ -149,34 +152,65 @@ const emit = defineEmits<{
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
-const list = ref<SupplierSupplyConfigVO[]>([])
 
-const DEFAULT_SUPPLY_LIMIT = 9999999
-const DEFAULT_MIN_ORDER_QTY = 1
+/** 表格行：保存字段 + 查询带回的名称 */
+type SupplyScopeRow = Partial<Pick<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' | 'categoryL3Id'>> &
+  Omit<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' | 'categoryL3Id'> &
+  Pick<SupplyScopeView, 'id' | 'categoryL1Name' | 'categoryL2Name' | 'categoryL3Name'>
 
-const createEmptyRow = (): SupplierSupplyConfigVO => ({
-  categoryCode: '',
-  categoryName: '',
-  productType: '',
-  productTypeName: '',
-  productCategory: '',
-  productCategoryName: '',
-  supplyMode: [],
-  supplyLimit: DEFAULT_SUPPLY_LIMIT,
-  minOrderQty: DEFAULT_MIN_ORDER_QTY
+const list = ref<SupplyScopeRow[]>([])
+
+const DEFAULT_MAX_QUANTITY = 9999999
+const DEFAULT_MIN_QUANTITY = 1
+
+const createEmptyRow = (): SupplyScopeRow => ({
+  categoryL1Id: undefined,
+  categoryL2Id: undefined,
+  categoryL3Id: undefined,
+  supplyModes: [],
+  maxQuantity: DEFAULT_MAX_QUANTITY,
+  minQuantity: DEFAULT_MIN_QUANTITY
 })
 
-const hasSupplyMode = (row: SupplierSupplyConfigVO) => {
-  return Array.isArray(row.supplyMode) && row.supplyMode.length > 0
+type OptionItem = { value: string | number; label: string }
+
+const mergeOption = (
+  options: OptionItem[],
+  value?: string | number | null,
+  label?: string
+): OptionItem[] => {
+  if (value === undefined || value === null || value === '') return options
+  if (options.some((item) => String(item.value) === String(value))) return options
+  return [...options, { value, label: label || String(value) }]
+}
+
+const getCategoryL1Options = (row: SupplyScopeRow) =>
+  mergeOption(SUPPLIER_CATEGORY_OPTIONS, row.categoryL1Id, row.categoryL1Name)
+
+const getCategoryL2Options = (row: SupplyScopeRow) =>
+  mergeOption(SUPPLIER_PRODUCT_TYPE_OPTIONS, row.categoryL2Id, row.categoryL2Name)
+
+const getCategoryL3Options = (row: SupplyScopeRow) =>
+  mergeOption(SUPPLIER_PRODUCT_CATEGORY_OPTIONS, row.categoryL3Id, row.categoryL3Name)
+
+const getSupplyModeOptions = (row: SupplyScopeRow) => {
+  return (row.supplyModes || []).reduce(
+    (options, mode) => mergeOption(options, mode, getSupplyModeLabel(mode)),
+    [...SUPPLIER_SUPPLY_MODE_OPTIONS]
+  )
+}
+
+const hasSupplyMode = (row: SupplyScopeRow) => {
+  return Array.isArray(row.supplyModes) && row.supplyModes.length > 0
 }
 
 /** 同一供应商下品类组合：可售品类 + 商品类型 + 商品分类 */
-const getComboKey = (row: SupplierSupplyConfigVO) => {
-  return [row.categoryCode || '', row.productType || '', row.productCategory || ''].join('|')
+const getComboKey = (row: SupplyScopeRow) => {
+  return [row.categoryL1Id ?? '', row.categoryL2Id ?? '', row.categoryL3Id ?? ''].join('|')
 }
 
-const isComboDuplicated = (current: SupplierSupplyConfigVO) => {
-  if (!current.categoryCode || !current.productType || !current.productCategory) return false
+const isComboDuplicated = (current: SupplyScopeRow) => {
+  if (!current.categoryL1Id || !current.categoryL2Id || !current.categoryL3Id) return false
   const key = getComboKey(current)
   return list.value.some((item) => item !== current && getComboKey(item) === key)
 }
@@ -185,29 +219,28 @@ const alertConflict = async () => {
   await message.alert('同一供应商下品类组合不可重复，请检查冲突配置')
 }
 
-const handleCategoryChange = (row: SupplierSupplyConfigVO, val: string) => {
-  row.categoryName = val ? getCategoryLabel(val) : ''
-  row.productType = ''
-  row.productTypeName = ''
-  row.productCategory = ''
-  row.productCategoryName = ''
-  row.supplyMode = []
+const handleCategoryL1Change = (row: SupplyScopeRow) => {
+  row.categoryL1Name = undefined
+  row.categoryL2Id = undefined
+  row.categoryL2Name = undefined
+  row.categoryL3Id = undefined
+  row.categoryL3Name = undefined
+  row.supplyModes = []
 }
 
-const handleProductTypeChange = (row: SupplierSupplyConfigVO, val: string) => {
-  row.productTypeName = val ? getProductTypeLabel(val) : ''
-  row.productCategory = ''
-  row.productCategoryName = ''
-  row.supplyMode = []
+const handleCategoryL2Change = (row: SupplyScopeRow) => {
+  row.categoryL2Name = undefined
+  row.categoryL3Id = undefined
+  row.categoryL3Name = undefined
+  row.supplyModes = []
 }
 
-const handleProductCategoryChange = async (row: SupplierSupplyConfigVO, val: string) => {
-  row.productCategoryName = val ? getProductCategoryLabel(val) : ''
-  row.supplyMode = []
+const handleCategoryL3Change = async (row: SupplyScopeRow) => {
+  row.categoryL3Name = undefined
+  row.supplyModes = []
   if (isComboDuplicated(row)) {
     await alertConflict()
-    row.productCategory = ''
-    row.productCategoryName = ''
+    row.categoryL3Id = undefined
   }
 }
 
@@ -219,42 +252,53 @@ const removeRow = (index: number) => {
   list.value.splice(index, 1)
 }
 
-const normalizeRow = (item: SupplierSupplyConfigVO): SupplierSupplyConfigVO => {
+const parseSupplyModes = (item: SupplierSupplyScopeDO & SupplyScopeView) => {
+  if (Array.isArray(item.supplyModes)) return item.supplyModes.map(String).filter(Boolean)
   const rawMode = item.supplyMode as unknown
-  let supplyMode: string[] = []
-  if (Array.isArray(rawMode)) {
-    supplyMode = rawMode.map(String)
-  } else if (typeof rawMode === 'string' && rawMode) {
-    supplyMode = [rawMode]
+  if (Array.isArray(rawMode)) return rawMode.map(String).filter(Boolean)
+  if (typeof rawMode !== 'string' || !rawMode.trim()) return []
+  const text = rawMode.trim()
+  if (text.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean)
+    } catch {
+      // 非 JSON 数组时按分隔符拆分
+    }
   }
-  return {
-    ...createEmptyRow(),
-    ...item,
-    categoryName: item.categoryName || (item.categoryCode ? getCategoryLabel(item.categoryCode) : ''),
-    productTypeName:
-      item.productTypeName || (item.productType ? getProductTypeLabel(item.productType) : ''),
-    productCategoryName:
-      item.productCategoryName ||
-      (item.productCategory ? getProductCategoryLabel(item.productCategory) : ''),
-    supplyMode,
-    supplyLimit: item.supplyLimit ?? DEFAULT_SUPPLY_LIMIT,
-    minOrderQty: item.minOrderQty ?? DEFAULT_MIN_ORDER_QTY
-  }
+  return text
+    .split(/[,，]/)
+    .map((mode) => mode.trim())
+    .filter(Boolean)
 }
+
+const normalizeRow = (item: SupplierSupplyScopeDO & SupplyScopeView): SupplyScopeRow => ({
+  ...createEmptyRow(),
+  id: item.id,
+  categoryL1Id: item.categoryL1Id,
+  categoryL1Name: item.categoryL1Name,
+  categoryL2Id: item.categoryL2Id,
+  categoryL2Name: item.categoryL2Name,
+  categoryL3Id: item.categoryL3Id,
+  categoryL3Name: item.categoryL3Name,
+  supplyModes: parseSupplyModes(item),
+  maxQuantity: item.maxQuantity ?? DEFAULT_MAX_QUANTITY,
+  minQuantity: item.minQuantity ?? DEFAULT_MIN_QUANTITY
+})
 
 const validateRows = async () => {
   for (let i = 0; i < list.value.length; i++) {
     const row = list.value[i]
     const rowNo = i + 1
-    if (!row.categoryCode) {
+    if (!row.categoryL1Id) {
       message.warning(`第 ${rowNo} 行请先选择可售品类`)
       return false
     }
-    if (!row.productType) {
+    if (!row.categoryL2Id) {
       message.warning(`第 ${rowNo} 行需依次选择商品类型`)
       return false
     }
-    if (!row.productCategory) {
+    if (!row.categoryL3Id) {
       message.warning(`第 ${rowNo} 行需依次选择商品分类`)
       return false
     }
@@ -262,15 +306,15 @@ const validateRows = async () => {
       message.warning(`第 ${rowNo} 行需依次选择供货模式`)
       return false
     }
-    if (!row.supplyLimit) {
+    if (!row.maxQuantity) {
       message.warning(`第 ${rowNo} 行需填写供货上限`)
       return false
     }
-    if (!row.minOrderQty) {
+    if (!row.minQuantity) {
       message.warning(`第 ${rowNo} 行需填写最低起订量`)
       return false
     }
-    if (row.supplyLimit < row.minOrderQty) {
+    if (row.maxQuantity < row.minQuantity) {
       message.warning(`第 ${rowNo} 行供货上限不能小于最低起订量`)
       return false
     }
@@ -284,11 +328,12 @@ const validateRows = async () => {
 }
 
 const loadData = async () => {
-  if (!props.supplierId) return
+  if (!props.supplierCode) return
   loading.value = true
   try {
-    const data = await SupplierApi.getSupplyConfigList(props.supplierId)
-    list.value = (data || []).map((item) => normalizeRow(item))
+    const data = await SupplierApi.getSupplyScopes(props.supplierCode)
+    const rows = Array.isArray(data) ? data : []
+    list.value = rows.map((item) => normalizeRow(item))
   } catch {
     list.value = []
   } finally {
@@ -296,11 +341,26 @@ const loadData = async () => {
   }
 }
 
+const toScopeLine = (row: SupplyScopeRow): ScopeReqVO => ({
+  categoryL1Id: row.categoryL1Id,
+  categoryL2Id: row.categoryL2Id,
+  categoryL3Id: row.categoryL3Id,
+  supplyModes: row.supplyModes || [],
+  maxQuantity: row.maxQuantity ?? 0,
+  minQuantity: row.minQuantity ?? 0
+})
+
 const handleSave = async () => {
   if (!(await validateRows())) return
+  if (!props.supplierCode) {
+    message.error('缺少供应商编号，暂无法保存供货配置')
+    return
+  }
   saving.value = true
   try {
-    await SupplierApi.saveSupplyConfigs(props.supplierId, list.value)
+    await SupplierApi.saveSupplyScopes(props.supplierCode, {
+      lines: list.value.map(toScopeLine)
+    })
     message.success('供货配置保存成功')
     await loadData()
     emit('success')
@@ -310,7 +370,7 @@ const handleSave = async () => {
 }
 
 watch(
-  () => props.supplierId,
+  () => props.supplierCode,
   () => loadData(),
   { immediate: true }
 )

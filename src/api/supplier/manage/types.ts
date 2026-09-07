@@ -6,7 +6,101 @@ export interface SupplierContactVO {
   email?: string
 }
 
-/** 供货配置 */
+/** 新增/编辑供应商请求体（SupplierSaveReqVO） */
+export interface SupplierSaveReqVO {
+  supplierName: string
+  contacts?: SupplierContactVO[]
+  deliveryRegionType: string
+  deliveryRegionAdcodes?: string[]
+  aftersalesSupported: boolean
+  shippingSlaCode?: string
+  shippingSlaCustom?: string
+  settlementMethod?: string
+  settlementCycleDays?: number
+  integrationModes?: string[]
+  /** date-time */
+  onboardedAt?: string
+  status?: string
+  cooperationNote?: string
+  legalEntityName: string
+  creditCode: string
+  legalPersonName?: string
+  legalPersonMobile?: string
+  contactAddress?: string
+  bankName?: string
+  bankAccount?: string
+  licenseFileKey?: string
+  idFrontFileKey?: string
+  idBackFileKey?: string
+  qualificationFileKey?: string
+  licenseFileKeys?: string[]
+  qualificationFileKeys?: string[]
+  capabilityTags?: string[]
+  /** 期初余额，单位 CNY 分，仅创建可写 */
+  openingBalanceCents?: number
+}
+
+/** 供货配置视图（接口 SupplyScopeView） */
+export interface SupplyScopeView {
+  id?: number
+  categoryL1Id?: number
+  categoryL1Name?: string
+  categoryL2Id?: number
+  categoryL2Name?: string
+  categoryL3Id?: number
+  categoryL3Name?: string
+  supplyModes?: string[]
+  maxQuantity?: number
+  minQuantity?: number
+}
+
+/** 保存供货配置行（接口 ScopeReqVO） */
+export interface ScopeReqVO {
+  /** 可售品类内部主键 */
+  categoryL1Id: number
+  /** 商品类型内部主键 */
+  categoryL2Id: number
+  /** 商品分类内部主键 */
+  categoryL3Id: number
+  /** 供货模式枚举名列表，不可为空 */
+  supplyModes: string[]
+  /** 单次最大数量 */
+  maxQuantity: number
+  /** 单次最小数量 */
+  minQuantity: number
+}
+
+/** 全量保存供货配置（接口 SaveScopesReqVO） */
+export interface SaveScopesReqVO {
+  /** 供货配置行，三元组唯一 */
+  lines: ScopeReqVO[]
+}
+
+/** 供货配置（接口 SupplierSupplyScopeDO） */
+export interface SupplierSupplyScopeDO {
+  id?: number
+  supplierId?: number
+  categoryL1Id?: number
+  categoryL2Id?: number
+  categoryL3Id?: number
+  /** 供货模式，接口为单个字符串 */
+  supplyMode?: string
+  maxQuantity?: number
+  minQuantity?: number
+  version?: number
+  createdBy?: number
+  createdAt?: string
+  updatedBy?: number
+  updatedAt?: string
+}
+
+/** 命名引用（类目等） */
+export interface NamedRef {
+  id?: number
+  name?: string
+}
+
+/** 供货配置（表单/详情旧结构，逐步迁移） */
 export interface SupplierSupplyConfigVO {
   id?: number
   /** 可售品类 */
@@ -37,7 +131,76 @@ export interface SupplierInvoiceVO {
   invoiceAddress?: string
 }
 
-/** 合作商品 */
+/** 合作商品列表项（接口 OfferListItem） */
+export interface OfferListItem {
+  /** 供应商报价稳定业务编号 */
+  offerNo?: string
+  platformSpuCode?: string
+  platformSpuName?: string
+  platformSkuCode?: string
+  platformSkuName?: string
+  categoryL1Id?: number
+  categoryL1Name?: string
+  categoryL2Id?: number
+  categoryL2Name?: string
+  categoryL3Id?: number
+  categoryL3Name?: string
+  /** L1 B端结算单价，CNY 分 */
+  suggestPriceCents?: number
+  /** 供应价模式：FIXED / REALTIME / DISCOUNT */
+  priceMode?: string
+  /** 草稿供应价，CNY 分；REALTIME 为空 */
+  unitPriceCents?: number
+  /** 折扣基点，10000=100% */
+  discountBp?: number
+  /** 该 Offer 供货模式 */
+  offerSupplyMode?: string
+  maxQuantity?: number
+  minQuantity?: number
+  /** 生命周期：PUBLISHED 已发布，SUSPENDED 暂停 */
+  status?: string
+}
+
+/** 合作商品行（接口 DraftReqVO） */
+export interface DraftReqVO {
+  platformSkuCode: string
+  priceMode: string
+  unitPriceCents?: number
+  discountBp?: number
+  suggestedPriceCents?: number
+  supplyMode: string
+  maxQuantity?: number
+  minQuantity?: number
+}
+
+/** 批量新增合作商品（接口 OfferItemsReqVO） */
+export interface OfferItemsReqVO {
+  items?: DraftReqVO[]
+  lines?: DraftReqVO[]
+}
+
+/** 合作商品上架或下架（接口 PatchOfferReqVO） */
+export interface PatchOfferReqVO {
+  /** 目标状态：仅 PUBLISHED / SUSPENDED */
+  status: string
+}
+
+/** 合作商品分页查询 */
+export interface OfferPageParam {
+  pageNo?: number
+  pageSize?: number
+  categoryL1Id?: number
+  categoryL2Id?: number
+  categoryL3Id?: number
+}
+
+/** 合作商品表单行（列表展示字段 + 草稿提交字段） */
+export interface OfferFormItem extends OfferListItem {
+  supplyMode?: string
+  suggestedPriceCents?: number
+}
+
+/** 合作商品（表单/详情旧结构，逐步迁移） */
 export interface SupplierProductVO {
   id?: number
   supplierId?: number
@@ -72,79 +235,119 @@ export interface SupplierProductVO {
   createTime?: string
 }
 
-/** 供应商 */
+/** 供应商（列表字段对齐 GET /supply-chain/suppliers） */
 export interface SupplierVO {
   id?: number
-  code?: string
-  name: string
-  shortName?: string
-  status?: number
+  /** 供应商永久业务编码 */
+  supplierCode?: string
+  /** 供应商标准名称 */
+  supplierName?: string
+  /** 合作状态：ACTIVE / SUSPENDED / BLACKLIST */
+  status?: string
+  /** 可售品类 */
+  categories?: NamedRef[]
+  /** 商品类型 */
+  productTypes?: NamedRef[]
+  /** 商品分类 */
+  productCategories?: NamedRef[]
+  /** 供货模式（name 为枚举名，如 API_DIRECT） */
+  supplyModes?: NamedRef[]
+  skuCount?: number
+  /** 正式接入时间（毫秒时间戳） */
+  onboardedAt?: number | string | null
+  /** 最后修改时间（毫秒时间戳） */
+  updatedAt?: number | string | null
+  primaryContactName?: string | null
+  primaryContactMobile?: string | null
+  /** 供货配置（详情） */
+  scopes?: SupplyScopeView[]
+  scopeCount?: number
+  settlementBalanceCents?: number
+  deliveryRegionType?: string
+  deliveryRegionAdcodes?: string[]
+  aftersalesSupported?: boolean
+  shippingSlaCode?: string
+  shippingSlaCustom?: string
+  settlementMethod?: string
+  settlementCycleDays?: number
+  cooperationNote?: string
+  legalEntityName?: string
+  creditCode?: string
+  legalPersonName?: string
+  legalPersonMobile?: string
+  legalPersonMobileMasked?: string
+  contactAddress?: string
+  bankName?: string
+  bankAccount?: string
+  bankAccountMasked?: string
+  licenseFileKey?: string
+  idFrontFileKey?: string
+  idBackFileKey?: string
+  qualificationFileKey?: string
+  licenseFileKeys?: string[]
+  qualificationFileKeys?: string[]
+  integrationModes?: string[]
+  contacts?: SupplierContactVO[]
   capabilityTags?: string[]
-  /** 可售品类（列表展示 / 筛选） */
+  openingBalanceCents?: number
+
+  // —— 以下为表单/详情 mock 兼容旧字段，待后续整体迁移 ——
+  /** @deprecated 使用 supplierCode */
+  code?: string
+  /** @deprecated 使用 supplierName */
+  name?: string
+  shortName?: string
   category?: string[]
-  /** 商品类型（列表展示） */
   productType?: string[]
-  /** 商品分类（列表展示） */
   productCategory?: string[]
-  /** 供货模式（列表展示 / 筛选，字符串编码）：dropshipping / batch / api 等 */
   supplyMode?: string[]
-  /** 配送区域类型：nationwide / specified */
   deliveryAreaType?: string
-  /** 指定区域时的地区 ID（省市区） */
   deliveryAreaId?: number
-  /** 发货时效：same_day / next_day / 48h / 72h / custom */
   shippingTimeliness?: string
-  /** 自定义发货时效文案 */
   shippingTimelinessCustom?: string
-  /** 是否支持售后 */
   supportAfterSale?: boolean
   companyName?: string
   socialCreditCode?: string
-  /** 营业执照文件 URL 列表，最多 5 个 */
   businessLicenseUrls?: string[]
-  legalPersonName?: string
-  /** 法人身份证正反面 URL 列表，最多 2 个 */
   legalIdUrls?: string[]
   legalPersonMobile?: string
-  contactAddress?: string
   settlementType?: string
   settlementCycle?: number
-  /** 对接方式：api / h5 / manual，多选 */
   integrationMethods?: string[]
-  /** 正式接入日期 YYYY-MM-DD */
   accessDate?: string
-  /** 接入时间（列表展示，兼容旧字段） */
   accessTime?: string
-  /** 合作说明 */
   cooperationRemark?: string
-  bankName?: string
   bankAccount?: string
-  /** 当前账户可用余额 */
   accountBalance?: number
-  /** 其他资质文件 URL 列表，最多 5 个 */
   otherCertUrls?: string[]
   remark?: string
-  contacts?: SupplierContactVO[]
   supplyConfigs?: SupplierSupplyConfigVO[]
   productCount?: number
-  /** 合作商品 SKU 数（列表展示） */
-  skuCount?: number
   contactName?: string
   contactMobile?: string
   updateTime?: string
   createTime?: string
 }
 
-/** 供应商分页查询参数 */
+/** 变更供应商合作状态（ChangeStatusReqVO） */
+export interface ChangeStatusReqVO {
+  /** 目标合作状态：ACTIVE 正常，SUSPENDED 暂停供货，BLACKLIST 黑名单 */
+  targetStatus: string
+}
+
+/** 供应商分页查询参数（对齐 GET /supply-chain/suppliers） */
 export interface SupplierPageParam {
   pageNo: number
   pageSize: number
-  name?: string
-  code?: string
-  category?: string[]
-  supplyMode?: string[]
-  status?: number[]
-  updateTime?: string[]
+  supplierName?: string
+  supplierCode?: string
+  status?: string[]
+  /** 可售品类（后续改为字典值；当前可先用本地选项） */
+  categoryL1Ids?: Array<string | number>
+  supplyModes?: string[]
+  updatedFrom?: string
+  updatedTo?: string
+  view?: string
 }
 
 /** 标品 SKU（新增商品弹窗） */

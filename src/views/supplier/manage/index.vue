@@ -7,35 +7,25 @@
       :inline="true"
       label-width="90px"
     >
-      <el-form-item label="供应商名称" prop="name">
-        <el-select
-          v-model="queryParams.name"
-          placeholder="请选择/输入供应商名称"
-          filterable
-          allow-create
-          default-first-option
-          clearable
-          :reserve-keyword="false"
-        >
-          <el-option
-            v-for="item in nameOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="供应商编号" prop="code">
+      <el-form-item label="供应商名称" prop="supplierName">
         <el-input
-          v-model="queryParams.code"
+          v-model="queryParams.supplierName"
+          placeholder="请输入供应商名称"
+          clearable
+          @keyup.enter="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="供应商编号" prop="supplierCode">
+        <el-input
+          v-model="queryParams.supplierCode"
           placeholder="供应商编号"
           clearable
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="可售品类" prop="category">
+      <el-form-item label="可售品类" prop="categoryL1Ids">
         <el-select
-          v-model="queryParams.category"
+          v-model="queryParams.categoryL1Ids"
           placeholder="请选择品类"
           multiple
           clearable
@@ -50,9 +40,9 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="供货模式" prop="supplyMode">
+      <el-form-item label="供货模式" prop="supplyModes">
         <el-select
-          v-model="queryParams.supplyMode"
+          v-model="queryParams.supplyModes"
           placeholder="请选择供货模式"
           multiple
           clearable
@@ -84,10 +74,10 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="更新时间" prop="updateTime">
+      <el-form-item label="更新时间">
         <el-date-picker
-          v-model="queryParams.updateTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
+          v-model="updatedRange"
+          value-format="YYYY-MM-DDTHH:mm:ss"
           type="datetimerange"
           start-placeholder="开始时间"
           end-placeholder="结束时间"
@@ -100,17 +90,13 @@
         <el-button @click="resetQuery">
           <Icon icon="ep:refresh" class="mr-5px" /> 重置
         </el-button>
-        <el-button
-          type="primary"
-          plain
-          @click="openForm()"
-        >
+        <el-button type="primary" plain @click="openForm()">
           <Icon icon="ep:plus" class="mr-5px" /> 新增
         </el-button>
         <el-button
           type="warning"
           plain
-          :disabled="selectedList.length === 0"
+          :disabled="pausableSelectedList.length === 0"
           @click="handleBatchStatusChange(SupplierStatusEnum.PAUSED)"
         >
           <Icon icon="ep:video-pause" class="mr-5px" /> 批量暂停
@@ -118,7 +104,7 @@
         <el-button
           type="success"
           plain
-          :disabled="selectedList.length === 0"
+          :disabled="resumableSelectedList.length === 0"
           @click="handleBatchStatusChange(SupplierStatusEnum.NORMAL)"
         >
           <Icon icon="ep:video-play" class="mr-5px" /> 批量恢复
@@ -136,60 +122,69 @@
       @selection-change="handleSelectionChange"
     >
       <el-table-column type="selection" width="48" />
-      <el-table-column label="供应商名称" align="center" prop="name" min-width="160">
+      <el-table-column label="供应商名称" align="center" prop="supplierName" min-width="160">
         <template #default="{ row }">
-          <el-link :underline="false" type="primary" @click="openDetail(row.id)">
-            {{ row.name }}
+          <el-link :underline="false" type="primary" @click="openDetail(row)">
+            {{ row.supplierName }}
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="供应商编号" align="center" prop="code" min-width="140" />
-      <el-table-column label="可售品类" align="center" prop="category" min-width="160">
+      <el-table-column
+        label="供应商编号"
+        align="center"
+        prop="supplierCode"
+        min-width="140"
+      >
+        <template #default="{ row }">
+          {{ row.supplierCode || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="可售品类" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.category || []"
+            v-for="tag in getNamedRefNames(row.categories)"
             :key="tag"
             class="m-2px"
             size="small"
             type="info"
           >
-            {{ getCategoryLabel(tag) }}
+            {{ tag }}
           </el-tag>
-          <span v-if="!row.category?.length">-</span>
+          <span v-if="!getNamedRefNames(row.categories).length">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="商品类型" align="center" prop="productType" min-width="160">
+      <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.productType || []"
+            v-for="tag in getNamedRefNames(row.productTypes)"
             :key="tag"
             class="m-2px"
             size="small"
             type="success"
           >
-            {{ getProductTypeLabel(tag) }}
+            {{ tag }}
           </el-tag>
-          <span v-if="!row.productType?.length">-</span>
+          <span v-if="!getNamedRefNames(row.productTypes).length">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="商品分类" align="center" prop="productCategory" min-width="200">
+      <el-table-column label="商品分类" align="center" min-width="200">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.productCategory || []"
+            v-for="tag in getNamedRefNames(row.productCategories)"
             :key="tag"
             class="m-2px"
             size="small"
             type="warning"
           >
-            {{ getProductCategoryLabel(tag) }}
+            {{ tag }}
           </el-tag>
-          <span v-if="!row.productCategory?.length">-</span>
+          <span v-if="!getNamedRefNames(row.productCategories).length">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="供货模式" align="center" prop="supplyMode" min-width="180">
+      <el-table-column label="供货模式" align="center" prop="supplyModes" min-width="180">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.supplyMode || []"
+            v-for="tag in getNamedRefNames(row.supplyModes)"
             :key="tag"
             class="m-2px"
             size="small"
@@ -197,7 +192,7 @@
           >
             {{ getSupplyModeLabel(tag) }}
           </el-tag>
-          <span v-if="!row.supplyMode?.length">-</span>
+          <span v-if="!getNamedRefNames(row.supplyModes).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="合作商品SKU数" align="center" prop="skuCount" min-width="160" />
@@ -211,21 +206,21 @@
       <el-table-column
         label="接入时间"
         align="center"
-        prop="accessTime"
+        prop="onboardedAt"
         :formatter="dateFormatter"
         width="180"
       />
       <el-table-column
         label="更新时间"
         align="center"
-        prop="updateTime"
+        prop="updatedAt"
         :formatter="dateFormatter"
         width="180"
       />
       <el-table-column label="操作" align="center" fixed="right" width="280">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row.id)">详情</el-button>
-          <el-button link type="primary" @click="openForm(row.id)">编辑</el-button>
+          <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+          <el-button link type="primary" @click="openForm(row)">编辑</el-button>
           <!-- 正常：暂停 -->
           <el-button
             v-if="row.status === SupplierStatusEnum.NORMAL"
@@ -275,32 +270,29 @@
 
   <SupplierFormDialog
     v-model="formVisible"
-    :id="formId"
+    :supplier-code="formSupplierCode"
     :mode="formMode"
     @success="handleFormSuccess"
   />
   <SupplierDetailDrawer
     ref="detailRef"
     v-model="detailVisible"
-    :id="detailId"
+    :supplier-code="detailSupplierCode"
     @success="getList"
-    @edit="openForm"
+    @edit="openFormByCode"
   />
 </template>
 
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
-import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
+import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
 import {
-  SUPPLIER_STATUS_OPTIONS,
   SUPPLIER_CATEGORY_OPTIONS,
+  SUPPLIER_STATUS_OPTIONS,
   SUPPLIER_SUPPLY_MODE_OPTIONS,
   SupplierStatusEnum,
-  getCategoryLabel,
-  getProductTypeLabel,
-  getProductCategoryLabel,
   getSupplyModeLabel,
   getSupplierStatusLabel,
   getSupplierStatusType
@@ -315,23 +307,51 @@ const list = ref<SupplierVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const selectedList = ref<SupplierVO[]>([])
-const nameOptions = ref<{ value: string; label: string }[]>([])
 const formVisible = ref(false)
-const formId = ref<number | undefined>(undefined)
+const formSupplierCode = ref<string | undefined>(undefined)
 const formMode = ref<'create' | 'edit' | 'view'>('create')
 const detailVisible = ref(false)
-const detailId = ref<number | undefined>(undefined)
+const detailSupplierCode = ref<string | undefined>(undefined)
 const detailRef = ref()
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
-  name: undefined as string | undefined,
-  code: undefined as string | undefined,
-  category: [] as string[],
-  supplyMode: [] as string[],
-  status: [] as number[],
-  updateTime: [] as string[]
+  supplierName: undefined as string | undefined,
+  supplierCode: undefined as string | undefined,
+  categoryL1Ids: [] as Array<string | number>,
+  supplyModes: [] as string[],
+  status: [] as string[],
+  updatedFrom: undefined as string | undefined,
+  updatedTo: undefined as string | undefined
 })
+
+/** 更新时间范围 <-> updatedFrom / updatedTo */
+const updatedRange = computed<string[]>({
+  get: () =>
+    queryParams.updatedFrom && queryParams.updatedTo
+      ? [queryParams.updatedFrom, queryParams.updatedTo]
+      : [],
+  set: (val) => {
+    queryParams.updatedFrom = val?.[0]
+    queryParams.updatedTo = val?.[1]
+  }
+})
+
+/** 从 { id, name }[] 提取展示名称 */
+const getNamedRefNames = (refs?: NamedRef[] | null) => {
+  if (!refs?.length) return []
+  return [
+    ...new Set(
+      refs
+        .map((item) => item?.name)
+        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    )
+  ]
+}
+
+const getSupplierDisplayName = (row: SupplierVO) => row.supplierName || row.name || ''
+
+const getSupplierBizCode = (row?: SupplierVO) => row?.supplierCode || row?.code || ''
 
 /** 查询列表（默认按更新时间倒序，由后端处理） */
 const getList = async () => {
@@ -343,7 +363,6 @@ const getList = async () => {
   } catch (error: any) {
     list.value = []
     total.value = 0
-    message.error(error?.message || '加载供应商列表失败')
   } finally {
     loading.value = false
   }
@@ -356,18 +375,31 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
+  queryParams.updatedFrom = undefined
+  queryParams.updatedTo = undefined
   handleQuery()
 }
 
-const openForm = (id?: number) => {
-  formId.value = id
-  formMode.value = id ? 'edit' : 'create'
+const openForm = (row?: SupplierVO) => {
+  formSupplierCode.value = row ? getSupplierBizCode(row) || undefined : undefined
+  formMode.value = formSupplierCode.value ? 'edit' : 'create'
   formVisible.value = true
 }
 
-const openDetail = (id?: number) => {
-  if (!id) return
-  detailId.value = id
+const openFormByCode = (supplierCode?: string) => {
+  if (!supplierCode) return
+  formSupplierCode.value = supplierCode
+  formMode.value = 'edit'
+  formVisible.value = true
+}
+
+const openDetail = (row?: SupplierVO) => {
+  const code = getSupplierBizCode(row)
+  if (!code) {
+    message.error('缺少供应商编号，无法查看详情')
+    return
+  }
+  detailSupplierCode.value = code
   detailVisible.value = true
 }
 
@@ -380,18 +412,35 @@ const handleFormSuccess = () => {
 }
 
 /** 按当前状态展示对应操作文案并二次确认 */
-const getStatusActionText = (row: SupplierVO, targetStatus: number) => {
+const getStatusActionText = (row: SupplierVO, targetStatus: string) => {
   if (targetStatus === SupplierStatusEnum.PAUSED) return '暂停供货'
   if (targetStatus === SupplierStatusEnum.BLACKLIST) return '移入黑名单'
   if (row.status === SupplierStatusEnum.BLACKLIST) return '移出黑名单'
   return '恢复合作'
 }
 
-const handleStatusChange = async (row: SupplierVO, status: number) => {
+const handleStatusChange = async (row: SupplierVO, status: string) => {
+  const supplierCode = getSupplierBizCode(row)
+  if (!supplierCode) {
+    message.error('缺少供应商编号，无法变更状态')
+    return
+  }
   const actionText = getStatusActionText(row, status)
   try {
-    await message.confirm(`确认将供应商「${row.name}」${actionText}吗？`, `${actionText}确认`)
-    await SupplierApi.updateSupplierStatus(row.id!, status)
+    await message.confirm(
+      `确认将供应商「${getSupplierDisplayName(row)}」${actionText}吗？`,
+      `${actionText}确认`
+    )
+    // 暂停 / 恢复走批量接口（单条也复用）；移入/移出黑名单走单条状态变更
+    const isPauseOrResume =
+      status === SupplierStatusEnum.PAUSED ||
+      (status === SupplierStatusEnum.NORMAL && row.status === SupplierStatusEnum.PAUSED)
+
+    if (isPauseOrResume) {
+      await SupplierApi.batchUpdateSupplierStatus([supplierCode], status)
+    } else {
+      await SupplierApi.updateSupplierStatus(supplierCode, status)
+    }
     message.success(`${actionText}成功`)
     await getList()
   } catch {}
@@ -402,36 +451,46 @@ const handleSelectionChange = (rows: SupplierVO[]) => {
   selectedList.value = rows
 }
 
-/** 批量状态变更 */
-const handleBatchStatusChange = async (status: number) => {
-  if (selectedList.value.length === 0) return
-  const actionText = status === SupplierStatusEnum.PAUSED ? '暂停供货' : '恢复合作'
-  const names = selectedList.value.map((v) => v.name).join('、')
+/** 批量暂停：仅当前「正常」的选中项 */
+const pausableSelectedList = computed(() =>
+  selectedList.value.filter((row) => row.status === SupplierStatusEnum.NORMAL)
+)
+
+/** 批量恢复：仅当前「暂停供货」的选中项 */
+const resumableSelectedList = computed(() =>
+  selectedList.value.filter((row) => row.status === SupplierStatusEnum.PAUSED)
+)
+
+/** 批量状态变更（暂停/恢复各自只处理符合状态的数据） */
+const handleBatchStatusChange = async (status: string) => {
+  const isPause = status === SupplierStatusEnum.PAUSED
+  const targetList = isPause ? pausableSelectedList.value : resumableSelectedList.value
+  const actionText = isPause ? '暂停供货' : '恢复合作'
+  if (targetList.length === 0) {
+    message.warning(
+      isPause
+        ? '请选择状态为「正常」的供应商后再批量暂停'
+        : '请选择状态为「暂停供货」的供应商后再批量恢复'
+    )
+    return
+  }
+  const supplierCodes = targetList
+    .map((row) => getSupplierBizCode(row))
+    .filter((code): code is string => !!code)
+  if (!supplierCodes.length) {
+    message.error('选中供应商缺少编号，无法批量变更状态')
+    return
+  }
   try {
-    await message.confirm(
-      `确认将选中的 ${selectedList.value.length} 家供应商（${names}）${actionText}吗？`,
-      `批量${actionText}确认`
-    )
-    await Promise.all(
-      selectedList.value.map((row) => SupplierApi.updateSupplierStatus(row.id!, status))
-    )
+    await message.confirm(`确认批量${actionText}选中的 ${targetList.length} 家供应商吗？`, `批量${actionText}确认`)
+    await SupplierApi.batchUpdateSupplierStatus(supplierCodes, status)
     message.success(`批量${actionText}成功`)
     await getList()
   } catch {}
 }
 
-/** 加载供应商名称下拉选项 */
-const getNameOptions = async () => {
-  try {
-    nameOptions.value = (await SupplierApi.getSupplierNameList()) || []
-  } catch {
-    nameOptions.value = []
-  }
-}
-
 const loadPage = () => {
   getList()
-  getNameOptions()
 }
 
 onMounted(loadPage)

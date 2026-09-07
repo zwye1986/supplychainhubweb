@@ -1,16 +1,19 @@
 <template>
-  <el-cascader
-    v-loading="loading"
-    :model-value="modelValue"
-    :options="areaTree"
-    :props="cascaderProps"
-    :disabled="disabled"
-    :clearable="clearable"
-    :filterable="filterable"
-    :placeholder="placeholder"
-    :show-all-levels="showAllLevels"
-    @update:model-value="handleChange"
-  />
+  <!-- v-loading 必须挂在原生元素上；挂在 el-cascader 上会触发非元素根节点告警 -->
+  <div v-loading="loading" class="w-full">
+    <el-cascader
+      class="w-full"
+      :model-value="modelValue"
+      :options="areaTree"
+      :props="cascaderProps"
+      :disabled="disabled"
+      :clearable="clearable"
+      :filterable="filterable"
+      :placeholder="placeholder"
+      :show-all-levels="showAllLevels"
+      @update:model-value="handleChange"
+    />
+  </div>
 </template>
 
 <script lang="ts" setup>

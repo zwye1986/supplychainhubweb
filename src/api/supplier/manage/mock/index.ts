@@ -38,6 +38,10 @@ const syncListFields = (supplier: SupplierVO) => {
   const firstContact = supplier.contacts?.[0]
   supplier.contactName = firstContact?.name || supplier.contactName || ''
   supplier.contactMobile = firstContact?.mobile || supplier.contactMobile || ''
+  supplier.supplierCode = supplier.supplierCode || supplier.code
+  supplier.supplierName = supplier.supplierName || supplier.name
+  supplier.code = supplier.code || supplier.supplierCode
+  supplier.name = supplier.name || supplier.supplierName
   const relatedCount = products.filter((item) => item.supplierId === supplier.id).length
   // 列表 SKU 数优先保留 mock 配置；没有配置时再用实际关联商品数
   supplier.productCount = relatedCount || supplier.productCount || 0
@@ -51,8 +55,26 @@ const syncListFields = (supplier: SupplierVO) => {
       )
     ]
   }
+  if (!supplier.categories?.length && supplier.category?.length) {
+    supplier.categories = supplier.category.map((name) => ({ name }))
+  }
+  if (!supplier.productTypes?.length && supplier.productType?.length) {
+    supplier.productTypes = supplier.productType.map((name) => ({ name }))
+  }
+  if (!supplier.productCategories?.length && supplier.productCategory?.length) {
+    supplier.productCategories = supplier.productCategory.map((name) => ({ name }))
+  }
+  if (!supplier.supplyModes?.length && supplier.supplyMode?.length) {
+    supplier.supplyModes = supplier.supplyMode.map((name) => ({ name }))
+  }
   if (!supplier.accessTime && supplier.accessDate) {
     supplier.accessTime = `${supplier.accessDate} 00:00:00`
+  }
+  if (supplier.onboardedAt == null && supplier.accessTime) {
+    supplier.onboardedAt = supplier.accessTime
+  }
+  if (supplier.updatedAt == null && supplier.updateTime) {
+    supplier.updatedAt = supplier.updateTime
   }
   return supplier
 }
@@ -69,32 +91,49 @@ export const SupplierMockApi = {
   async getSupplierPage(params: any) {
     await delay()
     let list = [...suppliers].map((item) => syncListFields(clone(item)))
-    if (params?.name) {
-      const keyword = String(params.name).trim().toLowerCase()
+    const supplierName = params?.supplierName || params?.name
+    if (supplierName) {
+      const keyword = String(supplierName).trim().toLowerCase()
       list = list.filter(
         (item) =>
+          item.supplierName?.toLowerCase().includes(keyword) ||
           item.name?.toLowerCase().includes(keyword) ||
+          item.supplierCode?.toLowerCase().includes(keyword) ||
           item.code?.toLowerCase().includes(keyword) ||
           item.companyName?.toLowerCase().includes(keyword)
       )
     }
-    if (params?.code) {
-      const keyword = String(params.code).trim().toLowerCase()
-      list = list.filter((item) => item.code?.toLowerCase().includes(keyword))
+    const supplierCode = params?.supplierCode || params?.code
+    if (supplierCode) {
+      const keyword = String(supplierCode).trim().toLowerCase()
+      list = list.filter(
+        (item) =>
+          item.supplierCode?.toLowerCase().includes(keyword) ||
+          item.code?.toLowerCase().includes(keyword)
+      )
     }
-    
+
     if (Array.isArray(params?.status) && params.status.length > 0) {
-      const statusSet = new Set(params.status.map((item: any) => Number(item)))
-      list = list.filter((item) => statusSet.has(Number(item.status)))
+      const statusSet = new Set(params.status.map((item: any) => String(item)))
+      list = list.filter((item) => statusSet.has(String(item.status)))
     }
-    
-    if (Array.isArray(params?.category) && params.category.length > 0) {
+
+    if (Array.isArray(params?.categoryL1Ids) && params.categoryL1Ids.length > 0) {
+      const idSet = new Set(params.categoryL1Ids.map((item: any) => Number(item)))
+      list = list.filter((item) =>
+        item.scopes?.some((scope) => scope.categoryL1Id != null && idSet.has(Number(scope.categoryL1Id)))
+      )
+    } else if (Array.isArray(params?.category) && params.category.length > 0) {
       list = list.filter((item) => item.category?.some((tag) => params.category.includes(tag)))
     }
-    if (Array.isArray(params?.supplyMode) && params.supplyMode.length > 0) {
-      list = list.filter((item) =>
-        item.supplyMode?.some((tag) => params.supplyMode.includes(tag))
-      )
+
+    const supplyModes = params?.supplyModes || params?.supplyMode
+    if (Array.isArray(supplyModes) && supplyModes.length > 0) {
+      list = list.filter((item) => {
+        const modes =
+          item.supplyModes?.map((mode) => mode.name).filter(Boolean) || item.supplyMode || []
+        return modes.some((tag) => supplyModes.includes(tag))
+      })
     }
     if (params?.capabilityTag) {
       list = list.filter((item) => item.capabilityTags?.includes(params.capabilityTag))
@@ -105,20 +144,35 @@ export const SupplierMockApi = {
         item.contacts?.some((contact) => contact.name?.includes(keyword))
       )
     }
-    if (Array.isArray(params?.updateTime) && params.updateTime.length === 2) {
+    if (params?.updatedFrom || params?.updatedTo) {
+      list = list.filter((item) => {
+        const time = item.updatedAt || item.updateTime
+        if (!time) return false
+        if (params.updatedFrom && time < params.updatedFrom) return false
+        if (params.updatedTo && time > params.updatedTo) return false
+        return true
+      })
+    } else if (Array.isArray(params?.updateTime) && params.updateTime.length === 2) {
       const [start, end] = params.updateTime
       list = list.filter((item) => {
-        if (!item.updateTime) return false
-        return item.updateTime >= start && item.updateTime <= end
+        const time = item.updatedAt || item.updateTime
+        if (!time) return false
+        return time >= start && time <= end
       })
     }
-    list.sort((a, b) => String(b.updateTime || '').localeCompare(String(a.updateTime || '')))
+    list.sort((a, b) =>
+      String(b.updatedAt || b.updateTime || '').localeCompare(String(a.updatedAt || a.updateTime || ''))
+    )
     return paginate(list, params?.pageNo || 1, params?.pageSize || 20)
   },
 
   async getSupplierNameList() {
     await delay()
-    return suppliers.map((item) => ({ value: item.name, label: item.name }))
+    return suppliers.map((item) => ({
+      value: item.supplierName || item.name || '',
+      label: item.supplierName || item.name || '',
+      code: item.supplierCode || item.code
+    }))
   },
 
   async getSupplier(id: number) {
@@ -203,14 +257,17 @@ export const SupplierMockApi = {
     return true
   },
 
-  async updateSupplierStatus(id: number, status: number) {
+  async updateSupplierStatus(idOrCode: number | string, status: string) {
     await delay()
-    const target = suppliers.find((item) => item.id === id)
+    const target = suppliers.find(
+      (item) => item.id === idOrCode || item.code === idOrCode || item.supplierCode === idOrCode
+    )
     if (!target) {
       return Promise.reject(new Error('供应商不存在'))
     }
     target.status = status
     target.updateTime = now()
+    target.updatedAt = now()
     return true
   },
 

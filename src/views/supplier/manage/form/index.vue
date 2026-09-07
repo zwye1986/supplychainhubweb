@@ -18,19 +18,23 @@
       <el-divider content-position="left">基础信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="供应商名称" prop="name">
-            <el-input v-model="formData.name" placeholder="请输入供应商名称" maxlength="100" />
+          <el-form-item label="供应商名称" prop="supplierName">
+            <el-input
+              v-model="formData.supplierName"
+              placeholder="请输入供应商名称"
+              maxlength="128"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="供应商编号" prop="code">
+          <el-form-item label="供应商编号" prop="supplierCode">
             <el-input
-              :model-value="formData.code"
+              :model-value="formData.supplierCode"
               placeholder="保存后系统自动生成"
               readonly
             >
-              <template v-if="!formData.code" #suffix>
-                <span class="text-gray-400 text-12px">YYYYMMDD-XXX</span>
+              <template v-if="!formData.supplierCode" #suffix>
+                <span class="text-gray-400 text-12px">SPL_xxx</span>
               </template>
             </el-input>
           </el-form-item>
@@ -77,7 +81,7 @@
                 <el-button
                   link
                   type="danger"
-                  :disabled="formData.contacts!.length <= 1"
+                  :disabled="(formData.contacts?.length || 0) <= 1"
                   @click="removeContact($index)"
                 >
                   删除
@@ -95,14 +99,14 @@
       <el-divider content-position="left">服务能力</el-divider>
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="配送区域" prop="deliveryAreaType">
+          <el-form-item label="配送区域" prop="deliveryRegionType">
             <div class="flex w-full flex-col gap-10px">
               <el-select
-                v-model="formData.deliveryAreaType"
+                v-model="formData.deliveryRegionType"
                 placeholder="请选择配送区域"
                 clearable
                 class="!w-full"
-                @change="handleDeliveryAreaTypeChange"
+                @change="handleDeliveryRegionTypeChange"
               >
                 <el-option
                   v-for="item in DELIVERY_AREA_TYPE_OPTIONS"
@@ -112,8 +116,8 @@
                 />
               </el-select>
               <AreaSelect
-                v-if="formData.deliveryAreaType === DeliveryAreaTypeEnum.SPECIFIED"
-                v-model="formData.deliveryAreaId"
+                v-if="formData.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED"
+                v-model="selectedDeliveryAdcode"
                 :disabled="isView"
                 check-strictly
                 class="!w-full"
@@ -123,14 +127,14 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="发货时效" prop="shippingTimeliness">
+          <el-form-item label="发货时效" prop="shippingSlaCode">
             <div class="flex w-full items-center gap-10px">
               <el-select
-                v-model="formData.shippingTimeliness"
+                v-model="formData.shippingSlaCode"
                 placeholder="请选择发货时效"
                 clearable
                 class="!w-full"
-                @change="handleShippingTimelinessChange"
+                @change="handleShippingSlaChange"
               >
                 <el-option
                   v-for="item in SHIPPING_TIMELINESS_OPTIONS"
@@ -140,8 +144,8 @@
                 />
               </el-select>
               <el-input
-                v-if="formData.shippingTimeliness === ShippingTimelinessEnum.CUSTOM"
-                v-model="formData.shippingTimelinessCustom"
+                v-if="formData.shippingSlaCode === ShippingTimelinessEnum.CUSTOM"
+                v-model="formData.shippingSlaCustom"
                 placeholder="请输入自定义时效"
                 maxlength="50"
                 class="!w-220px"
@@ -150,8 +154,8 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="是否支持售后" prop="supportAfterSale">
-            <el-radio-group v-model="formData.supportAfterSale">
+          <el-form-item label="是否支持售后" prop="aftersalesSupported">
+            <el-radio-group v-model="formData.aftersalesSupported">
               <el-radio :value="true">是</el-radio>
               <el-radio :value="false">否</el-radio>
             </el-radio-group>
@@ -163,9 +167,9 @@
       <el-divider content-position="left">商务信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="结算方式" prop="settlementType">
+          <el-form-item label="结算方式" prop="settlementMethod">
             <el-select
-              v-model="formData.settlementType"
+              v-model="formData.settlementMethod"
               placeholder="请选择结算方式"
               clearable
               class="!w-full"
@@ -180,10 +184,10 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="结算周期（天）" prop="settlementCycle">
+          <el-form-item label="结算周期（天）" prop="settlementCycleDays">
             <el-input-number
-              v-model="formData.settlementCycle"
-              :min="0"
+              v-model="formData.settlementCycleDays"
+              :min="1"
               :precision="0"
               class="!w-full"
               placeholder="请输入结算账期天数"
@@ -191,9 +195,9 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="对接方式" prop="integrationMethods">
+          <el-form-item label="对接方式" prop="integrationModes">
             <el-select
-              v-model="formData.integrationMethods"
+              v-model="formData.integrationModes"
               multiple
               collapse-tags
               collapse-tags-tooltip
@@ -211,12 +215,12 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="接入时间" prop="accessDate">
+          <el-form-item label="接入时间" prop="onboardedAt">
             <el-date-picker
-              v-model="formData.accessDate"
-              type="date"
-              value-format="YYYY-MM-DD"
-              placeholder="请选择接入日期"
+              v-model="formData.onboardedAt"
+              type="datetime"
+              value-format="YYYY-MM-DDTHH:mm:ss"
+              placeholder="请选择接入时间"
               class="!w-full"
             />
           </el-form-item>
@@ -235,9 +239,9 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="合作说明" prop="cooperationRemark">
+          <el-form-item label="合作说明" prop="cooperationNote">
             <el-input
-              v-model="formData.cooperationRemark"
+              v-model="formData.cooperationNote"
               type="textarea"
               :rows="3"
               maxlength="200"
@@ -252,19 +256,19 @@
       <el-divider content-position="left">公司及法人信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="公司名称" prop="companyName">
+          <el-form-item label="公司名称" prop="legalEntityName">
             <el-input
-              v-model="formData.companyName"
+              v-model="formData.legalEntityName"
               placeholder="请输入营业执照上的公司全称"
-              maxlength="100"
+              maxlength="256"
               show-word-limit
             />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="社会统一信用代码" prop="socialCreditCode">
+          <el-form-item label="社会统一信用代码" prop="creditCode">
             <el-input
-              v-model="formData.socialCreditCode"
+              v-model="formData.creditCode"
               placeholder="请输入统一社会信用代码"
               maxlength="18"
               show-word-limit
@@ -272,14 +276,14 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="营业执照" prop="businessLicenseUrls">
-            <UploadFile
-              v-model="formData.businessLicenseUrls"
-              :file-type="UNLIMITED_FILE_TYPES"
-              :file-size="10"
+          <el-form-item label="营业执照" prop="licenseFileKeys">
+            <UploadImgs
+              v-model="licenseFileKeysModel"
               :limit="5"
-              :drag="true"
+              :file-size="10"
               :disabled="isView"
+              height="120px"
+              width="120px"
             />
           </el-form-item>
         </el-col>
@@ -302,15 +306,25 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="24">
-          <el-form-item label="法人身份证" prop="legalIdUrls">
-            <UploadFile
-              v-model="formData.legalIdUrls"
-              :file-type="UNLIMITED_FILE_TYPES"
+        <el-col :span="12">
+          <el-form-item label="身份证正面" prop="idFrontFileKey">
+            <UploadImg
+              v-model="formData.idFrontFileKey"
               :file-size="10"
-              :limit="2"
-              :drag="true"
               :disabled="isView"
+              height="120px"
+              width="200px"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="身份证反面" prop="idBackFileKey">
+            <UploadImg
+              v-model="formData.idBackFileKey"
+              :file-size="10"
+              :disabled="isView"
+              height="120px"
+              width="200px"
             />
           </el-form-item>
         </el-col>
@@ -349,10 +363,10 @@
             />
           </el-form-item>
         </el-col>
-        <el-col :span="12">
-          <el-form-item label="当前账户余额" prop="accountBalance">
+        <el-col v-if="!isEdit" :span="12">
+          <el-form-item label="当前账户余额" prop="openingBalanceYuan">
             <el-input-number
-              v-model="formData.accountBalance"
+              v-model="openingBalanceYuan"
               :min="0"
               :precision="2"
               class="!w-full"
@@ -366,9 +380,9 @@
       <el-divider content-position="left">资质信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="24">
-          <el-form-item label="资质文件" prop="otherCertUrls">
+          <el-form-item label="资质文件" prop="qualificationFileKeys">
             <UploadFile
-              v-model="formData.otherCertUrls"
+              v-model="formData.qualificationFileKeys"
               :file-type="UNLIMITED_FILE_TYPES"
               :file-size="10"
               :limit="5"
@@ -391,9 +405,14 @@
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import { UploadFile } from '@/components/UploadFile'
+import { UploadFile, UploadImg, UploadImgs } from '@/components/UploadFile'
 import AreaSelect from '@/views/system/area/components/AreaSelect.vue'
-import { SupplierApi, SupplierContactVO, SupplierVO } from '@/api/supplier/manage'
+import {
+  SupplierApi,
+  SupplierContactVO,
+  SupplierSaveReqVO,
+  SupplierVO
+} from '@/api/supplier/manage'
 import {
   DELIVERY_AREA_TYPE_OPTIONS,
   DeliveryAreaTypeEnum,
@@ -417,7 +436,8 @@ const emit = defineEmits(['success', 'update:modelValue'])
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
-    id?: number
+    /** 供应商业务编码；有值时为编辑/详情 */
+    supplierCode?: string
     /** create 新增 / edit 编辑 / view 详情只读 */
     mode?: 'create' | 'edit' | 'view'
   }>(),
@@ -425,6 +445,10 @@ const props = withDefaults(
     mode: 'create'
   }
 )
+
+type SupplierFormModel = SupplierSaveReqVO & {
+  supplierCode?: string
+}
 
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -434,7 +458,12 @@ const dialogVisible = computed({
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
 const isView = computed(() => props.mode === 'view')
-const isEdit = computed(() => props.mode === 'edit' || (!!props.id && props.mode !== 'view'))
+const isEdit = computed(
+  () => props.mode === 'edit' || (!!props.supplierCode && props.mode !== 'view')
+)
+
+/** 期初余额（元），提交时转换为分 */
+const openingBalanceYuan = ref<number | undefined>(undefined)
 
 const createEmptyContact = (): SupplierContactVO => ({
   name: '',
@@ -442,44 +471,95 @@ const createEmptyContact = (): SupplierContactVO => ({
   email: ''
 })
 
-const createDefaultForm = (): SupplierVO =>
-  ({
-    id: undefined,
-    code: '',
-    name: '',
-    shortName: '',
-    status: SupplierStatusEnum.NORMAL,
-    deliveryAreaType: undefined,
-    deliveryAreaId: undefined,
-    shippingTimeliness: undefined,
-    shippingTimelinessCustom: '',
-    supportAfterSale: undefined,
-    companyName: '',
-    socialCreditCode: '',
-    businessLicenseUrls: [],
-    legalPersonName: '',
-    legalIdUrls: [],
-    legalPersonMobile: '',
-    contactAddress: '',
-    settlementType: undefined,
-    settlementCycle: undefined,
-    integrationMethods: [],
-    accessDate: undefined,
-    cooperationRemark: '',
-    bankName: '',
-    bankAccount: '',
-    accountBalance: undefined,
-    otherCertUrls: [],
-    remark: '',
-    contacts: [createEmptyContact()]
-  }) as SupplierVO
+const createDefaultForm = (): SupplierFormModel => ({
+  supplierCode: undefined,
+  supplierName: '',
+  status: SupplierStatusEnum.NORMAL,
+  deliveryRegionType: '',
+  deliveryRegionAdcodes: [],
+  shippingSlaCode: undefined,
+  shippingSlaCustom: '',
+  aftersalesSupported: true,
+  legalEntityName: '',
+  creditCode: '',
+  licenseFileKeys: [],
+  idFrontFileKey: '',
+  idBackFileKey: '',
+  legalPersonName: '',
+  legalPersonMobile: '',
+  contactAddress: '',
+  settlementMethod: undefined,
+  settlementCycleDays: undefined,
+  integrationModes: [],
+  onboardedAt: undefined,
+  cooperationNote: '',
+  bankName: '',
+  bankAccount: '',
+  qualificationFileKeys: [],
+  contacts: [createEmptyContact()]
+})
 
-const formData = ref<SupplierVO>(createDefaultForm())
+/** 新增弹窗临时模拟数据，走与详情相同的回显映射；对接接口后删除 */
+const CREATE_MOCK_SUPPLIER: SupplierVO = {
+  supplierName: '深圳华南电子科技',
+  status: SupplierStatusEnum.NORMAL,
+  deliveryRegionType: DeliveryAreaTypeEnum.SPECIFIED,
+  deliveryRegionAdcodes: ['440300'],
+  shippingSlaCode: ShippingTimelinessEnum.CUSTOM,
+  shippingSlaCustom: '工作日 36 小时内发货',
+  aftersalesSupported: true,
+  legalEntityName: '深圳华南电子科技有限公司',
+  creditCode: '91440300MA5E1A2B3C',
+  licenseFileKeys: ['https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg'],
+  idFrontFileKey: 'https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg',
+  idBackFileKey: 'https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg',
+  legalPersonName: '张明',
+  legalPersonMobile: '13800138001',
+  contactAddress: '深圳市南山区科技园南路1号',
+  settlementMethod: 'MONTHLY',
+  settlementCycleDays: 30,
+  integrationModes: ['API', 'H5'],
+  onboardedAt: '2026-07-15T09:30:00',
+  cooperationNote: '主要供应电子元器件，支持一件代发与 API 直连',
+  bankName: '中国银行深圳南山支行',
+  bankAccount: '6217000000000000001',
+  qualificationFileKeys: ['https://img13.360buyimg.com/n12/jfs/t1/388963/30/13416/108141/69797b19F9fda6cf5/0083320320221667.jpg'],
+  openingBalanceCents: 8600000,
+  contacts: [
+    { name: '张明', mobile: '13800138001', email: 'zhangming@hndz.com' },
+    { name: '王丽', mobile: '13900139001', email: 'wangli@hndz.com' }
+  ]
+}
+
+const formData = ref<SupplierFormModel>(createDefaultForm())
+
+/** UploadImgs 要求 string[]，避免 undefined */
+const licenseFileKeysModel = computed<string[]>({
+  get: () => formData.value.licenseFileKeys || [],
+  set: (val) => {
+    formData.value.licenseFileKeys = Array.isArray(val) ? val : val ? [val] : []
+  }
+})
+
+/** AreaSelect 单选 <-> deliveryRegionAdcodes[] */
+const selectedDeliveryAdcode = computed<number | undefined>({
+  get: () => {
+    const first = formData.value.deliveryRegionAdcodes?.[0]
+    if (first === undefined || first === null || first === '') return undefined
+    const num = Number(first)
+    return Number.isNaN(num) ? undefined : num
+  },
+  set: (val) => {
+    formData.value.deliveryRegionAdcodes = val != null ? [String(val)] : []
+  }
+})
 
 const formRules = reactive<FormRules>({
-  name: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
-  companyName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
-  socialCreditCode: [
+  supplierName: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
+  deliveryRegionType: [{ required: true, message: '请选择配送区域', trigger: 'change' }],
+  aftersalesSupported: [{ required: true, message: '请选择是否支持售后', trigger: 'change' }],
+  legalEntityName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
+  creditCode: [
     { required: true, message: '请输入社会统一信用代码', trigger: 'blur' },
     {
       pattern: /^[0-9A-Z]{18}$/,
@@ -503,18 +583,32 @@ const formRules = reactive<FormRules>({
 
 const pageTitle = computed(() => {
   if (props.mode === 'view') return '供应商详情'
-  if (props.mode === 'edit' || props.id) return '编辑供应商'
+  if (props.mode === 'edit' || props.supplierCode) return '编辑供应商'
   return '新增供应商'
 })
 
-/** 弹窗打开或切换 id/mode 时加载并回显数据 */
+/** 新增时用模拟数据走详情回显链路（编号仍由保存后系统生成） */
+const applyCreateMock = () => {
+  formData.value = mapDetailToForm(CREATE_MOCK_SUPPLIER)
+  formData.value.supplierCode = undefined
+  const cents = CREATE_MOCK_SUPPLIER.openingBalanceCents
+  openingBalanceYuan.value =
+    cents == null ? undefined : Number((cents / 100).toFixed(2))
+}
+
+/** 弹窗打开或切换 supplierCode/mode 时加载并回显数据 */
 watch(
-  () => [props.modelValue, props.id, props.mode] as const,
-  ([visible]) => {
+  () => [props.modelValue, props.supplierCode, props.mode] as const,
+  async ([visible]) => {
     if (!visible) return
     resetForm()
-    if (props.id) {
-      loadDetail(props.id)
+    if (props.supplierCode) {
+      await loadDetail(props.supplierCode)
+      return
+    }
+    if (props.mode === 'create') {
+      await nextTick()
+      applyCreateMock()
     }
   }
 )
@@ -531,39 +625,133 @@ const removeContact = (index: number) => {
   formData.value.contacts?.splice(index, 1)
 }
 
-const handleDeliveryAreaTypeChange = () => {
-  if (formData.value.deliveryAreaType !== DeliveryAreaTypeEnum.SPECIFIED) {
-    formData.value.deliveryAreaId = undefined
+const handleDeliveryRegionTypeChange = () => {
+  if (formData.value.deliveryRegionType !== DeliveryAreaTypeEnum.SPECIFIED) {
+    formData.value.deliveryRegionAdcodes = []
   }
 }
 
-const handleShippingTimelinessChange = () => {
-  if (formData.value.shippingTimeliness !== ShippingTimelinessEnum.CUSTOM) {
-    formData.value.shippingTimelinessCustom = ''
+const handleShippingSlaChange = () => {
+  if (formData.value.shippingSlaCode !== ShippingTimelinessEnum.CUSTOM) {
+    formData.value.shippingSlaCustom = ''
   }
 }
 
 const resetForm = () => {
   formData.value = createDefaultForm()
+  openingBalanceYuan.value = undefined
   formRef.value?.resetFields()
 }
 
-const loadDetail = async (id: number) => {
+const toFileArray = (value?: string | string[] | null) => {
+  if (Array.isArray(value)) return value.filter(Boolean)
+  return value ? [value] : []
+}
+
+const toSingleFile = (value?: string | string[] | null) => {
+  if (Array.isArray(value)) return value[0] || ''
+  return value || ''
+}
+
+const formatOnboardedAt = (value?: string | number | null) => {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value === 'number') {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return undefined
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+  return String(value)
+}
+
+const mapDetailToForm = (data: SupplierVO): SupplierFormModel => {
+  return {
+    ...createDefaultForm(),
+    supplierCode: data.supplierCode || data.code,
+    supplierName: data.supplierName || data.name || '',
+    status: data.status || SupplierStatusEnum.NORMAL,
+    deliveryRegionType: data.deliveryRegionType || data.deliveryAreaType || '',
+    deliveryRegionAdcodes:
+      data.deliveryRegionAdcodes?.length
+        ? data.deliveryRegionAdcodes.map(String)
+        : data.deliveryAreaId != null
+          ? [String(data.deliveryAreaId)]
+          : [],
+    shippingSlaCode: data.shippingSlaCode || data.shippingTimeliness,
+    shippingSlaCustom: data.shippingSlaCustom || data.shippingTimelinessCustom || '',
+    aftersalesSupported:
+      data.aftersalesSupported ?? data.supportAfterSale ?? true,
+    legalEntityName: data.legalEntityName || data.companyName || '',
+    creditCode: data.creditCode || data.socialCreditCode || '',
+    licenseFileKeys: toFileArray(data.licenseFileKeys || data.businessLicenseUrls),
+    idFrontFileKey: data.idFrontFileKey || toFileArray(data.legalIdUrls)[0] || '',
+    idBackFileKey: data.idBackFileKey || toFileArray(data.legalIdUrls)[1] || '',
+    legalPersonName: data.legalPersonName || '',
+    legalPersonMobile: data.legalPersonMobile || data.legalPersonMobileMasked || '',
+    contactAddress: data.contactAddress || '',
+    settlementMethod: data.settlementMethod || data.settlementType,
+    settlementCycleDays: data.settlementCycleDays ?? data.settlementCycle,
+    integrationModes: data.integrationModes || data.integrationMethods || [],
+    onboardedAt: formatOnboardedAt(data.onboardedAt || data.accessDate || data.accessTime),
+    cooperationNote: data.cooperationNote || data.cooperationRemark || '',
+    bankName: data.bankName || '',
+    bankAccount: data.bankAccount || data.bankAccountMasked || '',
+    qualificationFileKeys: toFileArray(data.qualificationFileKeys || data.otherCertUrls),
+    contacts: data.contacts?.length ? data.contacts : [createEmptyContact()]
+  }
+}
+
+const loadDetail = async (supplierCode: string) => {
   formLoading.value = true
   try {
-    const data = await SupplierApi.getSupplier(id)
-    formData.value = {
-      ...createDefaultForm(),
-      ...data,
-      contacts: data.contacts?.length ? data.contacts : [createEmptyContact()],
-      integrationMethods: data.integrationMethods || [],
-      businessLicenseUrls: data.businessLicenseUrls || [],
-      legalIdUrls: data.legalIdUrls || [],
-      otherCertUrls: data.otherCertUrls || []
-    } as SupplierVO
+    const data = await SupplierApi.getSupplier(supplierCode)
+    formData.value = mapDetailToForm(data)
   } finally {
     formLoading.value = false
   }
+}
+
+const buildSavePayload = (): SupplierSaveReqVO => {
+  const licenseFileKeys = toFileArray(formData.value.licenseFileKeys)
+  const qualificationFileKeys = toFileArray(formData.value.qualificationFileKeys)
+  const payload: SupplierSaveReqVO = {
+    supplierName: formData.value.supplierName,
+    contacts: formData.value.contacts || [],
+    deliveryRegionType: formData.value.deliveryRegionType,
+    deliveryRegionAdcodes:
+      formData.value.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED
+        ? formData.value.deliveryRegionAdcodes || []
+        : [],
+    aftersalesSupported: !!formData.value.aftersalesSupported,
+    shippingSlaCode: formData.value.shippingSlaCode || undefined,
+    shippingSlaCustom:
+      formData.value.shippingSlaCode === ShippingTimelinessEnum.CUSTOM
+        ? formData.value.shippingSlaCustom
+        : undefined,
+    settlementMethod: formData.value.settlementMethod || undefined,
+    settlementCycleDays: formData.value.settlementCycleDays || undefined,
+    integrationModes: formData.value.integrationModes || [],
+    onboardedAt: formData.value.onboardedAt || undefined,
+    status: formData.value.status || undefined,
+    cooperationNote: formData.value.cooperationNote || undefined,
+    legalEntityName: formData.value.legalEntityName,
+    creditCode: formData.value.creditCode,
+    legalPersonName: formData.value.legalPersonName || undefined,
+    legalPersonMobile: formData.value.legalPersonMobile || undefined,
+    contactAddress: formData.value.contactAddress || undefined,
+    bankName: formData.value.bankName || undefined,
+    bankAccount: formData.value.bankAccount || undefined,
+    licenseFileKeys,
+    licenseFileKey: licenseFileKeys[0],
+    idFrontFileKey: toSingleFile(formData.value.idFrontFileKey) || undefined,
+    idBackFileKey: toSingleFile(formData.value.idBackFileKey) || undefined,
+    qualificationFileKeys,
+    qualificationFileKey: qualificationFileKeys[0]
+  }
+  if (!isEdit.value && openingBalanceYuan.value != null) {
+    payload.openingBalanceCents = Math.round(Number(openingBalanceYuan.value) * 100)
+  }
+  return payload
 }
 
 const submitForm = async () => {
@@ -573,24 +761,29 @@ const submitForm = async () => {
     return
   }
   if (
-    formData.value.deliveryAreaType === DeliveryAreaTypeEnum.SPECIFIED &&
-    !formData.value.deliveryAreaId
+    formData.value.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED &&
+    !formData.value.deliveryRegionAdcodes?.length
   ) {
     message.warning('请选择指定配送区域')
     return
   }
   if (
-    formData.value.shippingTimeliness === ShippingTimelinessEnum.CUSTOM &&
-    !formData.value.shippingTimelinessCustom?.trim()
+    formData.value.shippingSlaCode === ShippingTimelinessEnum.CUSTOM &&
+    !formData.value.shippingSlaCustom?.trim()
   ) {
     message.warning('请输入自定义发货时效')
     return
   }
   formLoading.value = true
   try {
-    const data = { ...formData.value } as SupplierVO
+    const data = buildSavePayload()
     if (isEdit.value) {
-      await SupplierApi.updateSupplier(data)
+      const supplierCode = formData.value.supplierCode || props.supplierCode
+      if (!supplierCode) {
+        message.error('缺少供应商编号，无法保存')
+        return
+      }
+      await SupplierApi.updateSupplier(supplierCode, data)
       message.success(t('common.updateSuccess'))
     } else {
       await SupplierApi.createSupplier(data)
