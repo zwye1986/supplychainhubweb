@@ -7,45 +7,25 @@
       :inline="true"
       label-width="96px"
     >
-      <el-form-item label="分销商名称" prop="name">
-        <el-select
-          v-model="queryParams.name"
-          placeholder="请选择/搜索分销商名称"
-          filterable
-          allow-create
-          default-first-option
+      <el-form-item label="分销商名称" prop="buyerName">
+        <el-input
+          v-model="queryParams.buyerName"
+          placeholder="请输入分销商名称"
           clearable
-          :reserve-keyword="false"
-        >
-          <el-option
-            v-for="item in nameOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
+          @keyup.enter="handleQuery"
+        />
       </el-form-item>
-      <el-form-item label="分销商编号" prop="code">
-        <el-select
-          v-model="queryParams.code"
-          placeholder="请选择/搜索编号"
-          filterable
-          allow-create
-          default-first-option
+      <el-form-item label="分销商编号" prop="buyerCode">
+        <el-input
+          v-model="queryParams.buyerCode"
+          placeholder="请输入分销商编号"
           clearable
-          :reserve-keyword="false"
-        >
-          <el-option
-            v-for="item in codeOptions"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          />
-        </el-select>
+          @keyup.enter="handleQuery"
+        />
       </el-form-item>
-      <el-form-item label="等级" prop="level">
+      <el-form-item label="等级" prop="distributionLevels">
         <el-select
-          v-model="queryParams.level"
+          v-model="queryParams.distributionLevels"
           placeholder="请选择等级"
           multiple
           clearable
@@ -60,9 +40,9 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="合作模式" prop="cooperationMode">
+      <el-form-item label="合作模式" prop="cooperationModes">
         <el-select
-          v-model="queryParams.cooperationMode"
+          v-model="queryParams.cooperationModes"
           placeholder="请选择合作模式"
           multiple
           clearable
@@ -77,9 +57,9 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="分销品类" prop="category">
+      <el-form-item label="分销品类" prop="categoryL1Ids">
         <el-select
-          v-model="queryParams.category"
+          v-model="queryParams.categoryL1Ids"
           placeholder="请选择分销品类"
           multiple
           clearable
@@ -111,10 +91,10 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="更新时间" prop="updateTime">
+      <el-form-item label="更新时间">
         <el-date-picker
-          v-model="queryParams.updateTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
+          v-model="updatedRange"
+          value-format="YYYY-MM-DDTHH:mm:ss"
           type="datetimerange"
           start-placeholder="开始时间"
           end-placeholder="结束时间"
@@ -133,7 +113,7 @@
         <el-button
           type="warning"
           plain
-          :disabled="selectedList.length === 0"
+          :disabled="pausableSelectedList.length === 0"
           @click="handleBatchStatusChange(DistributorStatusEnum.PAUSED)"
         >
           <Icon icon="ep:video-pause" class="mr-5px" /> 批量暂停
@@ -141,7 +121,7 @@
         <el-button
           type="success"
           plain
-          :disabled="selectedList.length === 0"
+          :disabled="resumableSelectedList.length === 0"
           @click="handleBatchStatusChange(DistributorStatusEnum.NORMAL)"
         >
           <Icon icon="ep:video-play" class="mr-5px" /> 批量恢复
@@ -159,39 +139,38 @@
       @selection-change="handleSelectionChange"
     >
       <el-table-column type="selection" width="48" />
-      <el-table-column label="分销商名称" align="center" prop="name" min-width="160">
+      <el-table-column label="分销商名称" align="center" prop="buyerName" min-width="160">
         <template #default="{ row }">
-          <el-link :underline="false" type="primary" @click="openDetail(row.id)">
-            {{ row.name }}
+          <el-link :underline="false" type="primary" @click="openDetail(row)">
+            {{ getDistributorDisplayName(row) }}
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="分销商编号" align="center" prop="code" min-width="110" />
-      <el-table-column label="等级" align="center" prop="level" min-width="110">
+      <el-table-column label="分销商编号" align="center" prop="buyerCode" min-width="110">
+        <template #default="{ row }">
+          {{ getDistributorBizCode(row) || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="等级" align="center" prop="distributionLevel" min-width="110">
         <template #default="{ row }">
           <el-tag size="small" type="primary">
-            {{ getDistributionLevelLabel(row.level) }}
+            {{ getDistributionLevelLabel(row.distributionLevel ?? row.level) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="合作模式" align="center" prop="cooperationMode" min-width="160">
+      <el-table-column label="合作模式" align="center" prop="cooperationModes" min-width="160">
         <template #default="{ row }">
-          <el-tag
-            v-for="mode in row.cooperationMode || []"
-            :key="mode"
-            class="m-2px"
-            size="small"
-          >
+          <el-tag v-for="mode in getCooperationModeValues(row)" :key="mode" class="m-2px" size="small">
             {{ getCooperationModeLabel(mode) }}
           </el-tag>
-          <span v-if="!row.cooperationMode?.length">-</span>
+          <span v-if="!getCooperationModeValues(row).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="关联项目" align="center" prop="projectCount" min-width="100" />
-      <el-table-column label="分销品类" align="center" prop="category" min-width="160">
+      <el-table-column label="分销品类" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.category || []"
+            v-for="tag in getNamedRefNames(row.categories, row.category)"
             :key="tag"
             class="m-2px"
             size="small"
@@ -199,13 +178,13 @@
           >
             {{ getDistCategoryLabel(tag) }}
           </el-tag>
-          <span v-if="!row.category?.length">-</span>
+          <span v-if="!getNamedRefNames(row.categories, row.category).length">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="商品类型" align="center" prop="productType" min-width="160">
+      <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in row.productType || []"
+            v-for="tag in getNamedRefNames(row.productTypes, row.productType)"
             :key="tag"
             class="m-2px"
             size="small"
@@ -213,7 +192,7 @@
           >
             {{ getDistProductTypeLabel(tag) }}
           </el-tag>
-          <span v-if="!row.productType?.length">-</span>
+          <span v-if="!getNamedRefNames(row.productTypes, row.productType).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="分销SKU商品数" align="center" prop="skuCount" min-width="130" />
@@ -234,14 +213,14 @@
       <el-table-column
         label="更新时间"
         align="center"
-        prop="updateTime"
+        prop="updatedAt"
         :formatter="dateFormatter"
         width="180"
       />
       <el-table-column label="操作" align="center" fixed="right" width="280">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row.id)">详情</el-button>
-          <el-button link type="primary" @click="openForm(row.id)">编辑</el-button>
+          <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+          <el-button link type="primary" @click="openForm(row)">编辑</el-button>
           <el-button
             v-if="row.status === DistributorStatusEnum.NORMAL"
             link
@@ -287,23 +266,23 @@
 
   <DistributorFormDialog
     v-model="formVisible"
-    :id="formId"
+    :buyer-code="formBuyerCode"
     :mode="formMode"
     @success="handleFormSuccess"
   />
   <DistributorDetailDrawer
     ref="detailRef"
     v-model="detailVisible"
-    :id="detailId"
+    :buyer-code="detailBuyerCode"
     @success="getList"
-    @edit="openForm"
-    @open-detail="openDetail"
+    @edit="openFormByCode"
+    @open-detail="openDetailByCode"
   />
 </template>
 
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
-import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
+import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'
 import {
@@ -329,25 +308,54 @@ const list = ref<DistributorVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const selectedList = ref<DistributorVO[]>([])
-const nameOptions = ref<{ value: string; label: string }[]>([])
-const codeOptions = ref<{ value: string; label: string }[]>([])
 const formVisible = ref(false)
-const formId = ref<number | undefined>(undefined)
+const formBuyerCode = ref<string | undefined>(undefined)
 const formMode = ref<'create' | 'edit' | 'view'>('create')
 const detailVisible = ref(false)
-const detailId = ref<number | undefined>(undefined)
+const detailBuyerCode = ref<string | undefined>(undefined)
 const detailRef = ref()
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
-  name: undefined as string | undefined,
-  code: undefined as string | undefined,
-  level: [] as number[],
-  cooperationMode: [] as string[],
-  category: [] as string[],
-  status: [] as number[],
-  updateTime: [] as string[]
+  buyerName: undefined as string | undefined,
+  buyerCode: undefined as string | undefined,
+  distributionLevels: [] as number[],
+  cooperationModes: [] as string[],
+  categoryL1Ids: [] as Array<string | number>,
+  status: [] as string[],
+  updatedFrom: undefined as string | undefined,
+  updatedTo: undefined as string | undefined
 })
+
+/** 更新时间范围 <-> updatedFrom / updatedTo */
+const updatedRange = computed<string[]>({
+  get: () =>
+    queryParams.updatedFrom && queryParams.updatedTo
+      ? [queryParams.updatedFrom, queryParams.updatedTo]
+      : [],
+  set: (val) => {
+    queryParams.updatedFrom = val?.[0]
+    queryParams.updatedTo = val?.[1]
+  }
+})
+
+/** 从 { id, name }[] 或 string[] 提取展示名称 */
+const getNamedRefNames = (refs?: NamedRef[] | null, fallback?: string[]) => {
+  const fromRefs = (refs || [])
+    .map((item) => item?.name)
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+  const names = fromRefs.length ? fromRefs : fallback || []
+  return [...new Set(names)]
+}
+
+const getCooperationModeValues = (row: DistributorVO) => {
+  const modes = row.cooperationModes?.length ? row.cooperationModes : row.cooperationMode || []
+  return [...new Set(modes.filter(Boolean))]
+}
+
+const getDistributorDisplayName = (row: DistributorVO) => row.buyerName || row.name || ''
+
+const getDistributorBizCode = (row?: DistributorVO) => row?.buyerCode || row?.code || ''
 
 const getList = async () => {
   loading.value = true
@@ -358,7 +366,6 @@ const getList = async () => {
   } catch (error: any) {
     list.value = []
     total.value = 0
-    message.error(error?.message || '加载分销商列表失败')
   } finally {
     loading.value = false
   }
@@ -371,41 +378,67 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
+  queryParams.updatedFrom = undefined
+  queryParams.updatedTo = undefined
   handleQuery()
 }
 
-const openForm = (id?: number) => {
-  formId.value = id
-  formMode.value = id ? 'edit' : 'create'
+const openForm = (row?: DistributorVO) => {
+  formBuyerCode.value = row ? getDistributorBizCode(row) || undefined : undefined
+  formMode.value = formBuyerCode.value ? 'edit' : 'create'
   formVisible.value = true
 }
 
-const openDetail = (id?: number) => {
-  if (!id) return
-  detailId.value = id
+const openFormByCode = (buyerCode?: string) => {
+  if (!buyerCode) return
+  formBuyerCode.value = buyerCode
+  formMode.value = 'edit'
+  formVisible.value = true
+}
+
+const openDetail = (row?: DistributorVO) => {
+  const code = getDistributorBizCode(row)
+  if (!code) {
+    message.error('缺少分销商编号，无法查看详情')
+    return
+  }
+  detailBuyerCode.value = code
+  detailVisible.value = true
+}
+
+const openDetailByCode = (buyerCode?: string) => {
+  if (!buyerCode) return
+  detailBuyerCode.value = buyerCode
   detailVisible.value = true
 }
 
 const handleFormSuccess = () => {
   getList()
-  getFilterOptions()
   if (detailVisible.value) {
     detailRef.value?.reload?.()
   }
 }
 
-const getStatusActionText = (row: DistributorVO, targetStatus: number) => {
+const getStatusActionText = (row: DistributorVO, targetStatus: string) => {
   if (targetStatus === DistributorStatusEnum.PAUSED) return '暂停分销'
   if (targetStatus === DistributorStatusEnum.BLACKLIST) return '移入黑名单'
   if (row.status === DistributorStatusEnum.BLACKLIST) return '移出黑名单'
   return '恢复合作'
 }
 
-const handleStatusChange = async (row: DistributorVO, status: number) => {
+const handleStatusChange = async (row: DistributorVO, status: string) => {
+  const buyerCode = getDistributorBizCode(row)
+  if (!buyerCode) {
+    message.error('缺少分销商编号，无法变更状态')
+    return
+  }
   const actionText = getStatusActionText(row, status)
   try {
-    await message.confirm(`确认将分销商「${row.name}」${actionText}吗？`, `${actionText}确认`)
-    await DistributorApi.updateDistributorStatus(row.id!, status)
+    await message.confirm(
+      `确认将分销商「${getDistributorDisplayName(row)}」${actionText}吗？`,
+      `${actionText}确认`
+    )
+    await DistributorApi.batchUpdateDistributorStatus([buyerCode], status)
     message.success(`${actionText}成功`)
     await getList()
   } catch {}
@@ -415,40 +448,46 @@ const handleSelectionChange = (rows: DistributorVO[]) => {
   selectedList.value = rows
 }
 
-const handleBatchStatusChange = async (status: number) => {
-  if (selectedList.value.length === 0) return
-  const actionText = status === DistributorStatusEnum.PAUSED ? '暂停分销' : '恢复合作'
-  const names = selectedList.value.map((v) => v.name).join('、')
+const pausableSelectedList = computed(() =>
+  selectedList.value.filter((row) => row.status === DistributorStatusEnum.NORMAL)
+)
+
+const resumableSelectedList = computed(() =>
+  selectedList.value.filter((row) => row.status === DistributorStatusEnum.PAUSED)
+)
+
+const handleBatchStatusChange = async (status: string) => {
+  const isPause = status === DistributorStatusEnum.PAUSED
+  const targetList = isPause ? pausableSelectedList.value : resumableSelectedList.value
+  const actionText = isPause ? '暂停分销' : '恢复合作'
+  if (targetList.length === 0) {
+    message.warning(
+      isPause
+        ? '请选择状态为「正常」的分销商后再批量暂停'
+        : '请选择状态为「暂停分销」的分销商后再批量恢复'
+    )
+    return
+  }
+  const supplierCodes = targetList
+    .map((row) => getDistributorBizCode(row))
+    .filter((code): code is string => !!code)
+  if (!supplierCodes.length) {
+    message.error('选中分销商缺少编号，无法批量变更状态')
+    return
+  }
   try {
     await message.confirm(
-      `确认将选中的 ${selectedList.value.length} 家分销商（${names}）${actionText}吗？`,
+      `确认批量${actionText}选中的 ${targetList.length} 家分销商吗？`,
       `批量${actionText}确认`
     )
-    await Promise.all(
-      selectedList.value.map((row) => DistributorApi.updateDistributorStatus(row.id!, status))
-    )
+    await DistributorApi.batchUpdateDistributorStatus(supplierCodes, status)
     message.success(`批量${actionText}成功`)
     await getList()
   } catch {}
 }
 
-const getFilterOptions = async () => {
-  try {
-    const [names, codes] = await Promise.all([
-      DistributorApi.getDistributorNameList(),
-      DistributorApi.getDistributorCodeList()
-    ])
-    nameOptions.value = names || []
-    codeOptions.value = codes || []
-  } catch {
-    nameOptions.value = []
-    codeOptions.value = []
-  }
-}
-
 const loadPage = () => {
   getList()
-  getFilterOptions()
 }
 
 onMounted(loadPage)

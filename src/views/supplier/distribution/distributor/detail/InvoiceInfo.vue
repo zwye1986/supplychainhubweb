@@ -4,7 +4,7 @@
       class="mb-16px"
       type="info"
       :closable="false"
-      title="进入标签页时，系统自动从基础信息中读取开票相关字段进行预填；可二次编辑并独立保存。"
+      :title="invoiceTip"
     />
     <el-form
       ref="formRef"
@@ -85,11 +85,7 @@
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import {
-  DistributorApi,
-  DistributorInvoiceVO,
-  DistributorVO
-} from '@/api/supplier/distribution'
+import { BuyerInvoiceView, DistributorApi, InvoiceSaveReqVO } from '@/api/supplier/distribution'
 import {
   INVOICE_TITLE_TYPE_OPTIONS,
   InvoiceTitleTypeEnum
@@ -98,8 +94,7 @@ import {
 defineOptions({ name: 'DistributorInvoiceInfo' })
 
 const props = defineProps<{
-  distributorId: number
-  distributor: DistributorVO
+  buyerCode: string
 }>()
 
 const message = useMessage()
@@ -107,31 +102,43 @@ const loading = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
 const formRef = ref<FormInstance>()
-const snapshot = ref('')
 
-const formData = reactive<DistributorInvoiceVO>({
-  distributorId: undefined,
+const createDefaultForm = (): BuyerInvoiceView => ({
+  id: undefined,
+  persisted: false,
+  buyerCode: props.buyerCode,
   titleType: InvoiceTitleTypeEnum.ENTERPRISE,
   invoiceTitle: '',
   socialCreditCode: '',
   phone: '',
   bankName: '',
   bankAccount: '',
-  invoiceAddress: ''
+  invoiceAddress: '',
+  createdAt: undefined,
+  updatedAt: undefined
 })
 
-const displayText = (value?: string | number | null) => {
-  if (value === undefined || value === null || value === '') return '-'
-  return String(value)
+const formData = reactive<BuyerInvoiceView>(createDefaultForm())
+const originFormData = ref<BuyerInvoiceView>()
+
+const snapshotFormData = () => {
+  originFormData.value = { ...formData }
 }
 
-const titleTypeText = computed(() => {
-  return (
-    INVOICE_TITLE_TYPE_OPTIONS.find((item) => item.value === formData.titleType)?.label || '-'
-  )
-})
+const restoreFormData = () => {
+  if (!originFormData.value) return
+  Object.assign(formData, originFormData.value)
+}
+
+const applyInvoice = (data?: BuyerInvoiceView | null) => {
+  Object.assign(formData, createDefaultForm(), data || {})
+  if (!formData.titleType) {
+    formData.titleType = InvoiceTitleTypeEnum.ENTERPRISE
+  }
+}
 
 const formRules = computed<FormRules>(() => {
+  if (!isEditing.value) return {}
   const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
   return {
     titleType: [{ required: true, message: '请选择抬头类型', trigger: 'change' }],
@@ -146,33 +153,35 @@ const formRules = computed<FormRules>(() => {
   }
 })
 
-const prefillFromDistributor = () => {
-  formData.distributorId = props.distributorId
-  formData.titleType = InvoiceTitleTypeEnum.ENTERPRISE
-  formData.invoiceTitle = props.distributor.companyName || props.distributor.name || ''
-  formData.socialCreditCode = props.distributor.socialCreditCode || ''
-  formData.phone =
-    props.distributor.contactMobile || props.distributor.contacts?.[0]?.mobile || ''
-  formData.bankName = props.distributor.bankName || ''
-  formData.bankAccount = props.distributor.bankAccount || ''
-  formData.invoiceAddress = props.distributor.contactAddress || ''
+const displayText = (value?: string | number | null) => {
+  if (value === undefined || value === null || value === '') return '-'
+  return String(value)
 }
 
+const titleTypeText = computed(() => {
+  return (
+    INVOICE_TITLE_TYPE_OPTIONS.find((item) => item.value === formData.titleType)?.label || '-'
+  )
+})
+
+const invoiceTip = computed(() => {
+  if (formData.persisted) {
+    return '开票信息已独立保存，不会回写分销商档案。'
+  }
+  return '暂无开票记录时，系统按分销商档案预填（不落库）；保存后独立存储，不会回写档案。'
+})
+
 const loadData = async () => {
-  if (!props.distributorId) return
-  loading.value = true
+  if (!props.buyerCode) return
   isEditing.value = false
+  loading.value = true
   try {
-    const data = await DistributorApi.getInvoice(props.distributorId)
-    if (data?.id || data?.invoiceTitle) {
-      Object.assign(formData, data, { distributorId: props.distributorId })
-    } else {
-      prefillFromDistributor()
-    }
-    snapshot.value = JSON.stringify(formData)
+    const data = await DistributorApi.getInvoice(props.buyerCode)
+    applyInvoice(data)
+    snapshotFormData()
   } catch {
-    prefillFromDistributor()
-    snapshot.value = JSON.stringify(formData)
+    applyInvoice()
+    snapshotFormData()
   } finally {
     loading.value = false
   }
@@ -188,31 +197,51 @@ const handleTitleTypeChange = () => {
 }
 
 const handleEdit = () => {
+  snapshotFormData()
   isEditing.value = true
-  snapshot.value = JSON.stringify(formData)
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 const handleCancel = () => {
-  Object.assign(formData, JSON.parse(snapshot.value || '{}'))
+  restoreFormData()
   isEditing.value = false
-  formRef.value?.clearValidate()
+  nextTick(() => formRef.value?.clearValidate())
+}
+
+const buildSavePayload = (): InvoiceSaveReqVO => {
+  const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
+  return {
+    titleType: formData.titleType,
+    invoiceTitle: formData.invoiceTitle,
+    socialCreditCode: isEnterprise ? formData.socialCreditCode : undefined,
+    phone: formData.phone,
+    bankName: isEnterprise ? formData.bankName : undefined,
+    bankAccount: isEnterprise ? formData.bankAccount : undefined,
+    invoiceAddress: formData.invoiceAddress
+  }
 }
 
 const handleSave = async () => {
+  if (!props.buyerCode) {
+    message.error('缺少分销商编号，无法保存')
+    return
+  }
   await formRef.value?.validate()
   saving.value = true
   try {
-    await DistributorApi.saveInvoice({ ...formData, distributorId: props.distributorId })
+    const data = await DistributorApi.saveInvoice(props.buyerCode, buildSavePayload())
+    applyInvoice(data)
+    snapshotFormData()
     message.success('开票信息保存成功')
     isEditing.value = false
-    snapshot.value = JSON.stringify(formData)
+    formRef.value?.clearValidate()
   } finally {
     saving.value = false
   }
 }
 
 watch(
-  () => props.distributorId,
+  () => props.buyerCode,
   () => loadData(),
   { immediate: true }
 )

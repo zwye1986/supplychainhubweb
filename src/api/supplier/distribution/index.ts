@@ -2,6 +2,10 @@ import request from '@/config/axios'
 import { DistributorMockApi, ProjectMockApi } from './mock'
 
 export type {
+  BatchStatusReqVO,
+  BuyerDetail,
+  BuyerInvoiceView,
+  BuyerSaveReqVO,
   DistributorContactVO,
   DistributorInvoiceVO,
   DistributorProjectVO,
@@ -9,79 +13,135 @@ export type {
   DistributorVO,
   DistributorPageParam,
   DistPlatformSkuVO,
+  InvoiceSaveReqVO,
+  BuyerProductListItem,
+  BuyerProductPageParam,
+  PatchBuyerProductReqVO,
+  NamedRef,
   ProjectVO,
   ProjectPageParam,
   ProjectProductVO
 } from './types'
 
 import type {
-  DistributorInvoiceVO,
+  BatchStatusReqVO,
+  BuyerDetail,
+  BuyerInvoiceView,
+  BuyerSaveReqVO,
   DistributorPageParam,
   DistributorProductVO,
-  DistributorVO,
+  InvoiceSaveReqVO,
+  BuyerProductListItem,
+  BuyerProductPageParam,
+  PatchBuyerProductReqVO,
   ProjectPageParam,
   ProjectProductVO,
   ProjectVO
 } from './types'
 
-/** 本地 JSON 模拟开关：后端就绪后改为 false */
+/** 关联项目、分销层级、新增商品、项目选品等尚未接真实接口时使用 */
 export const USE_DISTRIBUTOR_MOCK = true
-export const USE_PROJECT_MOCK = USE_DISTRIBUTOR_MOCK
+/** 项目管理尚未接真实接口 */
+export const USE_PROJECT_MOCK = true
 
 export const DistributorApi = {
+  /** 分页查询分销商：GET /supply-chain/buyers */
   getDistributorPage: async (params: DistributorPageParam | any) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getDistributorPage(params)
-    return await request.get({ url: '/scm/distributor/page', params })
+    return await request.get({ url: '/supply-chain/buyers', params })
   },
 
+  /** 获取分销商名称列表（供下拉选择，view=simple） */
   getDistributorNameList: async () => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getDistributorNameList()
-    return await request.get({ url: '/scm/distributor/simple-list' })
+    const data = await request.get({
+      url: '/supply-chain/buyers',
+      params: { view: 'simple' }
+    })
+    const list = Array.isArray(data) ? data : data?.list || []
+    return list.map((item: { buyerCode?: string; buyerName?: string }) => ({
+      value: item.buyerName || '',
+      label: item.buyerName || '',
+      code: item.buyerCode
+    }))
   },
 
   getDistributorCodeList: async () => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getDistributorCodeList()
-    return await request.get({ url: '/scm/distributor/code-list' })
+    const data = await request.get({
+      url: '/supply-chain/buyers',
+      params: { view: 'simple' }
+    })
+    const list = Array.isArray(data) ? data : data?.list || []
+    return list
+      .map((item: { buyerCode?: string; buyerName?: string }) => ({
+        value: item.buyerCode || '',
+        label: item.buyerCode || '',
+        name: item.buyerName
+      }))
+      .filter((item) => item.value)
   },
 
-  getParentOptions: async (excludeId?: number) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getParentOptions(excludeId)
-    return await request.get({
-      url: '/scm/distributor/parent-options',
-      params: { excludeId }
+  /** 上级下拉：GET /buyers?view=parent-options */
+  getParentOptions: async (params?: { excludeBuyerCode?: string; forLevel?: number }) => {
+    const data = await request.get({
+      url: '/supply-chain/buyers',
+      params: {
+        view: 'parent-options',
+        excludeBuyerCode: params?.excludeBuyerCode,
+        forLevel: params?.forLevel
+      }
+    })
+    const list = Array.isArray(data) ? data : data?.list || []
+    return list.map(
+      (item: {
+        buyerCode?: string
+        buyerName?: string
+        code?: string
+        name?: string
+        distributionLevel?: number
+        level?: number
+      }) => ({
+        buyerCode: item.buyerCode || item.code || '',
+        buyerName: item.buyerName || item.name || '',
+        distributionLevel: item.distributionLevel ?? item.level
+      })
+    )
+  },
+
+  /** 分销商详情：GET /supply-chain/buyers/{buyerCode}，身份用 buyerCode */
+  getDistributor: async (buyerCode: string) => {
+    return await request.get<BuyerDetail>({ url: `/supply-chain/buyers/${buyerCode}` })
+  },
+
+  /** 新增分销商（含期初）：POST /supply-chain/buyers，返回 buyerCode */
+  createDistributor: async (data: BuyerSaveReqVO) => {
+    return await request.post<string>({ url: '/supply-chain/buyers', data })
+  },
+
+  /** 编辑分销商档案：PUT /supply-chain/buyers/{buyerCode}，勿传 openingBalanceCents */
+  updateDistributor: async (buyerCode: string, data: BuyerSaveReqVO) => {
+    return await request.put<boolean>({ url: `/supply-chain/buyers/${buyerCode}`, data })
+  },
+
+  /** 变更合作状态：PATCH /supply-chain/buyers；单条也走该接口，supplierCodes 只传一个 buyerCode */
+  batchUpdateDistributorStatus: async (supplierCodes: string[], status: string) => {
+    const data: BatchStatusReqVO = { supplierCodes, status }
+    return await request.patch<boolean>({ url: '/supply-chain/buyers', data })
+  },
+
+  /** 查询开票信息：GET /buyers/{buyerCode}/invoice
+   *  无开票行时后端用档案预填返回且不落库；已保存行明文回传。不回写档案。
+   */
+  getInvoice: async (buyerCode: string) => {
+    return await request.get<BuyerInvoiceView>({
+      url: `/supply-chain/buyers/${buyerCode}/invoice`
     })
   },
 
-  getDistributor: async (id: number) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getDistributor(id)
-    return await request.get({ url: '/scm/distributor/get?id=' + id })
-  },
-
-  createDistributor: async (data: DistributorVO) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.createDistributor(data)
-    return await request.post({ url: '/scm/distributor/create', data })
-  },
-
-  updateDistributor: async (data: DistributorVO) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.updateDistributor(data)
-    return await request.put({ url: '/scm/distributor/update', data })
-  },
-
-  updateDistributorStatus: async (id: number, status: number) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.updateDistributorStatus(id, status)
-    return await request.put({ url: '/scm/distributor/update-status', data: { id, status } })
-  },
-
-  getInvoice: async (distributorId: number) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getInvoice(distributorId)
-    return await request.get({
-      url: '/scm/distributor/invoice/get?distributorId=' + distributorId
+  /** 保存开票信息：PUT /buyers/{buyerCode}/invoice（upsert，开户账号明文存储） */
+  saveInvoice: async (buyerCode: string, data: InvoiceSaveReqVO) => {
+    return await request.put<BuyerInvoiceView>({
+      url: `/supply-chain/buyers/${buyerCode}/invoice`,
+      data
     })
-  },
-
-  saveInvoice: async (data: DistributorInvoiceVO) => {
-    if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.saveInvoice(data)
-    return await request.post({ url: '/scm/distributor/invoice/save', data })
   },
 
   getProjectList: async (distributorId: number) => {
@@ -91,6 +151,34 @@ export const DistributorApi = {
     })
   },
 
+  /** 分页查询分销商品：GET /buyers/{buyerCode}/products，只返回未移除行，金额单位 CNY 分 */
+  getBuyerProductPage: async (buyerCode: string, params?: BuyerProductPageParam) => {
+    return await request.get<{ list: BuyerProductListItem[]; total: number }>({
+      url: `/supply-chain/buyers/${buyerCode}/products`,
+      params
+    })
+  },
+
+  /** 逻辑移除分销商品：DELETE /buyers/{buyerCode}/products/{buyerProductCode} */
+  deleteBuyerProduct: async (buyerCode: string, buyerProductCode: string) => {
+    return await request.delete<boolean>({
+      url: `/supply-chain/buyers/${buyerCode}/products/${buyerProductCode}`
+    })
+  },
+
+  /** 改分销商品 L2 覆盖：PATCH /buyers/{buyerCode}/products/{buyerProductCode} */
+  patchBuyerProduct: async (
+    buyerCode: string,
+    buyerProductCode: string,
+    data: PatchBuyerProductReqVO
+  ) => {
+    return await request.patch<boolean>({
+      url: `/supply-chain/buyers/${buyerCode}/products/${buyerProductCode}`,
+      data
+    })
+  },
+
+  /** 项目选品等仍走 mock 的分销商品分页（按 distributorId） */
   getProductPage: async (params: any) => {
     if (USE_DISTRIBUTOR_MOCK) return DistributorMockApi.getProductPage(params)
     return await request.get({ url: '/scm/distributor/product/page', params })

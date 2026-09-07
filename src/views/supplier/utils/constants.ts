@@ -373,12 +373,14 @@ export const getSupplierStatusType = (
   return (status && map[status]) || 'info'
 }
 
-/** 分销商合作状态（PRD：正常 / 暂停分销 / 黑名单） */
+/** 分销商合作状态（接口枚举名） */
 export const DistributorStatusEnum = {
-  NORMAL: 1,
-  PAUSED: 2,
-  BLACKLIST: 3
+  NORMAL: 'ACTIVE',
+  PAUSED: 'SUSPENDED',
+  BLACKLIST: 'BLACKLIST'
 } as const
+
+export type DistributorStatus = (typeof DistributorStatusEnum)[keyof typeof DistributorStatusEnum]
 
 export const DISTRIBUTOR_STATUS_OPTIONS = [
   { value: DistributorStatusEnum.NORMAL, label: '正常' },
@@ -399,18 +401,18 @@ export const DISTRIBUTION_LEVEL_OPTIONS = [
   { value: DistributionLevelEnum.L3, label: '三级分销商' }
 ]
 
-/** 合作模式（可多选）：直营分销 / 代理分销 / 渠道分销 */
+/** 合作模式（接口枚举名，可多选） */
 export const COOPERATION_MODE_OPTIONS = [
-  { value: 'direct', label: '直营分销' },
-  { value: 'agent', label: '代理分销' },
-  { value: 'channel', label: '渠道分销' }
+  { value: 'DIRECT', label: '直营分销' },
+  { value: 'AGENT', label: '代理分销' },
+  { value: 'CHANNEL', label: '渠道分销' }
 ]
 
-/** 分销商类型 */
+/** 分销商类型（接口枚举名） */
 export const DISTRIBUTOR_TYPE_OPTIONS = [
-  { value: 'enterprise', label: '企业' },
-  { value: 'personal', label: '个人' },
-  { value: 'platform', label: '平台入驻' }
+  { value: 'ENTERPRISE', label: '企业' },
+  { value: 'PERSONAL', label: '个人' },
+  { value: 'PLATFORM', label: '平台入驻' }
 ]
 
 /** 分销品类 */
@@ -449,19 +451,36 @@ export const DIST_PRICE_ADJUST_MODE_OPTIONS = [
   { value: DistPriceAdjustModeEnum.CUSTOM, label: '自定义设置' }
 ]
 
-export const getDistributorStatusLabel = (status?: number): string => {
+/** 分销商品 L2 调价方式（PATCH l2AdjustMode） */
+export const DistL2AdjustModeEnum = {
+  FOLLOW_TEMPLATE: 'FOLLOW_TEMPLATE',
+  EQUAL_L1: 'EQUAL_L1',
+  CUSTOM: 'CUSTOM'
+} as const
+
+export const DIST_L2_ADJUST_MODE_OPTIONS = [
+  { value: DistL2AdjustModeEnum.FOLLOW_TEMPLATE, label: '跟随模板' },
+  { value: DistL2AdjustModeEnum.EQUAL_L1, label: '等于L1' },
+  { value: DistL2AdjustModeEnum.CUSTOM, label: '自定义公式' }
+]
+
+export const getDistL2AdjustModeLabel = (value?: string): string => {
+  return DIST_L2_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || value || '-'
+}
+
+export const getDistributorStatusLabel = (status?: string): string => {
   return DISTRIBUTOR_STATUS_OPTIONS.find((item) => item.value === status)?.label || '未知'
 }
 
 export const getDistributorStatusType = (
-  status?: number
+  status?: string
 ): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
-  const map: Record<number, 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
+  const map: Record<string, 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
     [DistributorStatusEnum.NORMAL]: 'success',
     [DistributorStatusEnum.PAUSED]: 'warning',
     [DistributorStatusEnum.BLACKLIST]: 'danger'
   }
-  return (status != null && map[status]) || 'info'
+  return (status && map[status]) || 'info'
 }
 
 /** 项目状态 */
@@ -517,11 +536,25 @@ export const getDistributionLevelLabel = (value?: number): string => {
 }
 
 export const getCooperationModeLabel = (value?: string): string => {
-  return COOPERATION_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
+  if (!value) return '-'
+  const aliases: Record<string, string> = {
+    direct: 'DIRECT',
+    agent: 'AGENT',
+    channel: 'CHANNEL'
+  }
+  const key = aliases[value] || value
+  return COOPERATION_MODE_OPTIONS.find((item) => item.value === key)?.label || value
 }
 
 export const getDistributorTypeLabel = (value?: string): string => {
-  return DISTRIBUTOR_TYPE_OPTIONS.find((item) => item.value === value)?.label || '-'
+  if (!value) return '-'
+  const aliases: Record<string, string> = {
+    enterprise: 'ENTERPRISE',
+    personal: 'PERSONAL',
+    platform: 'PLATFORM'
+  }
+  const key = aliases[value] || value
+  return DISTRIBUTOR_TYPE_OPTIONS.find((item) => item.value === key)?.label || value
 }
 
 export const getDistCategoryLabel = (value?: string): string => {

@@ -11,17 +11,17 @@
       <div class="flex items-start justify-between">
         <div class="min-w-0">
           <div class="mb-8px flex items-center gap-10px">
-            <span class="truncate text-20px font-700">{{ distributor.name || '分销商详情' }}</span>
+            <span class="truncate text-20px font-700">
+              {{ displayName || '分销商详情' }}
+            </span>
             <el-tag :type="getDistributorStatusType(distributor.status)" size="small">
               {{ getDistributorStatusLabel(distributor.status) }}
             </el-tag>
             <el-tag size="small" type="primary">
-              {{ getDistributionLevelLabel(distributor.level) }}
+              {{ getDistributionLevelLabel(distributionLevel) }}
             </el-tag>
           </div>
-          <div class="text-13px text-gray-500">
-            编号：{{ distributor.code || '-' }}
-          </div>
+          <div class="text-13px text-gray-500">编号：{{ displayCode || '-' }}</div>
         </div>
         <div>
           <el-button type="primary" @click="openEdit">编辑</el-button>
@@ -62,28 +62,23 @@
 
       <el-descriptions class="mt-16px" :column="3" border>
         <el-descriptions-item label="分销等级">
-          {{ getDistributionLevelLabel(distributor.level) }}
+          {{ getDistributionLevelLabel(distributionLevel) }}
         </el-descriptions-item>
         <el-descriptions-item label="上级分销商">
-          {{ distributor.parentName || '-' }}
+          {{ displayText(distributor.parentBuyerCode || distributor.parentName) }}
         </el-descriptions-item>
         <el-descriptions-item label="合作模式">
-          <template v-if="distributor.cooperationMode?.length">
-            <el-tag
-              v-for="mode in distributor.cooperationMode"
-              :key="mode"
-              class="m-2px"
-              size="small"
-            >
+          <template v-if="cooperationModes.length">
+            <el-tag v-for="mode in cooperationModes" :key="mode" class="m-2px" size="small">
               {{ getCooperationModeLabel(mode) }}
             </el-tag>
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="分销品类">
-          <template v-if="distributor.category?.length">
+          <template v-if="categoryL1Names.length">
             <el-tag
-              v-for="tag in distributor.category"
+              v-for="tag in categoryL1Names"
               :key="tag"
               class="m-2px"
               size="small"
@@ -95,9 +90,9 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="商品类型">
-          <template v-if="distributor.productType?.length">
+          <template v-if="categoryL2Names.length">
             <el-tag
-              v-for="tag in distributor.productType"
+              v-for="tag in categoryL2Names"
               :key="tag"
               class="m-2px"
               size="small"
@@ -108,17 +103,25 @@
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
-        <el-descriptions-item label="分销SKU商品数">
-          {{ distributor.skuCount ?? 0 }}
+        <el-descriptions-item label="主联系人">
+          {{
+            displayText(
+              distributor.primaryContactName || distributor.contacts?.[0]?.name
+            )
+          }}
         </el-descriptions-item>
-        <el-descriptions-item label="关联项目">
-          {{ distributor.projectCount ?? 0 }}
+        <el-descriptions-item label="手机号">
+          {{
+            displayText(
+              distributor.primaryContactMobile || distributor.contacts?.[0]?.mobile
+            )
+          }}
         </el-descriptions-item>
         <el-descriptions-item label="供货择优倾向">
           {{ getSupplyPreferenceLabel(distributor.supplyPreference) }}
         </el-descriptions-item>
-        <el-descriptions-item label="合作开始日期">
-          {{ distributor.cooperationStartDate || '-' }}
+        <el-descriptions-item label="合作开始时间">
+          {{ displayText(distributor.cooperationStartedAt || distributor.cooperationStartDate) }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -129,12 +132,12 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="分销商名称">
-                  {{ displayText(distributor.name) }}
+                  {{ displayText(displayName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="分销商编号">
-                  {{ displayText(distributor.code) }}
+                  {{ displayText(displayCode) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -155,20 +158,18 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="分销等级">
-                  {{ getDistributionLevelLabel(distributor.level) }}
+                  {{ getDistributionLevelLabel(distributionLevel) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="上级分销商">
-                  {{ displayText(distributor.parentName) }}
+                  {{ displayText(distributor.parentBuyerCode || distributor.parentName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="合作模式">
                   {{
-                    (distributor.cooperationMode || [])
-                      .map((mode) => getCooperationModeLabel(mode))
-                      .join('、') || '-'
+                    cooperationModes.map((mode) => getCooperationModeLabel(mode)).join('、') || '-'
                   }}
                 </el-form-item>
               </el-col>
@@ -179,20 +180,12 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="分销品类">
-                  {{
-                    (distributor.category || [])
-                      .map((tag) => getDistCategoryLabel(tag))
-                      .join('、') || '-'
-                  }}
+                  {{ categoryL1Names.map((tag) => getDistCategoryLabel(tag)).join('、') || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="商品类型">
-                  {{
-                    (distributor.productType || [])
-                      .map((tag) => getDistProductTypeLabel(tag))
-                      .join('、') || '-'
-                  }}
+                  {{ categoryL2Names.map((tag) => getDistProductTypeLabel(tag)).join('、') || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -206,12 +199,14 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="结算方式">
-                  {{ getSettlementLabel(distributor.settlementType) }}
+                  {{
+                    getSettlementLabel(distributor.settlementMethod || distributor.settlementType)
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算周期（天）">
-                  {{ displayText(distributor.settlementCycle) }}
+                  {{ displayText(distributor.settlementCycleDays ?? distributor.settlementCycle) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -220,8 +215,10 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="合作开始日期">
-                  {{ displayText(distributor.cooperationStartDate) }}
+                <el-form-item label="合作开始时间">
+                  {{
+                    displayText(distributor.cooperationStartedAt || distributor.cooperationStartDate)
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -231,7 +228,7 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="合作说明">
-                  {{ displayText(distributor.cooperationRemark) }}
+                  {{ displayText(distributor.cooperationNote || distributor.cooperationRemark) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -240,12 +237,29 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="公司名称">
-                  {{ displayText(distributor.companyName) }}
+                  {{ displayText(distributor.legalEntityName || distributor.companyName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="社会统一信用代码">
-                  {{ displayText(distributor.socialCreditCode) }}
+                  {{ displayText(distributor.creditCode || distributor.socialCreditCode) }}
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="营业执照">
+                  <template v-if="licenseFileKeys.length">
+                    <el-link
+                      v-for="(url, index) in licenseFileKeys"
+                      :key="url"
+                      :href="url"
+                      type="primary"
+                      target="_blank"
+                      class="mr-12px"
+                    >
+                      附件{{ index + 1 }}
+                    </el-link>
+                  </template>
+                  <span v-else>-</span>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -255,7 +269,11 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="法人手机号">
-                  {{ displayText(distributor.legalPersonMobile) }}
+                  {{
+                    displayText(
+                      distributor.legalPersonMobileMasked || distributor.legalPersonMobile
+                    )
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -274,7 +292,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="开户账号">
-                  {{ displayText(distributor.bankAccount) }}
+                  {{ displayText(distributor.bankAccountMasked || distributor.bankAccount) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -283,28 +301,49 @@
                 </el-form-item>
               </el-col>
             </el-row>
+
+            <el-divider content-position="left">资质信息</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="24">
+                <el-form-item label="资质文件">
+                  <template v-if="qualificationFileKeys.length">
+                    <el-link
+                      v-for="(url, index) in qualificationFileKeys"
+                      :key="url"
+                      :href="url"
+                      type="primary"
+                      target="_blank"
+                      class="mr-12px"
+                    >
+                      附件{{ index + 1 }}
+                    </el-link>
+                  </template>
+                  <span v-else>-</span>
+                </el-form-item>
+              </el-col>
+            </el-row>
           </el-form>
         </el-tab-pane>
 
         <el-tab-pane label="开票信息" name="invoice" lazy>
-          <InvoiceInfo
-            v-if="distributorId"
-            :distributor-id="distributorId"
-            :distributor="distributor"
-          />
+          <InvoiceInfo v-if="buyerCode" :buyer-code="buyerCode" />
         </el-tab-pane>
 
         <el-tab-pane label="关联项目" name="project" lazy>
-          <ProjectList v-if="distributorId" :distributor-id="distributorId" />
+          <ProjectList v-if="hasInternalId" :distributor-id="distributorId" />
         </el-tab-pane>
 
         <el-tab-pane label="分销商品" name="product" lazy>
-          <ProductList v-if="distributorId" :distributor-id="distributorId" />
+          <ProductList
+            v-if="buyerCode"
+            :buyer-code="buyerCode"
+            :distributor-id="distributorId"
+          />
         </el-tab-pane>
 
         <el-tab-pane label="分销层级" name="hierarchy" lazy>
           <HierarchyList
-            v-if="distributorId"
+            v-if="hasInternalId"
             :distributor-id="distributorId"
             @open-detail="handleOpenChildDetail"
           />
@@ -315,9 +354,10 @@
 </template>
 
 <script lang="ts" setup>
-import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
+import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
 import {
   DistributorStatusEnum,
+  formatCentsYuan,
   getCooperationModeLabel,
   getDistCategoryLabel,
   getDistProductTypeLabel,
@@ -338,7 +378,7 @@ defineOptions({ name: 'DistributorDetailDrawer' })
 
 const props = defineProps<{
   modelValue: boolean
-  id?: number
+  buyerCode?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'success', 'edit', 'open-detail'])
@@ -352,44 +392,91 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const distributor = ref<DistributorVO>({} as DistributorVO)
-const distributorId = computed(() => props.id)
+const distributorId = computed(() => distributor.value.id as number)
+const hasInternalId = computed(() => distributor.value.id != null)
+
+const displayName = computed(
+  () => distributor.value.buyerName || distributor.value.name || ''
+)
+const displayCode = computed(
+  () => distributor.value.buyerCode || distributor.value.code || props.buyerCode || ''
+)
+const distributionLevel = computed(
+  () => distributor.value.distributionLevel ?? distributor.value.level
+)
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
 }
 
+const namedRefNames = (refs?: NamedRef[] | null, fallback?: string[]) => {
+  const fromRefs = (refs || [])
+    .map((item) => item?.name)
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+  const names = fromRefs.length ? fromRefs : fallback || []
+  return [...new Set(names)]
+}
+
+const cooperationModes = computed(() => {
+  const modes = distributor.value.cooperationModes?.length
+    ? distributor.value.cooperationModes
+    : distributor.value.cooperationMode || []
+  return [...new Set(modes.filter(Boolean))]
+})
+
+const categoryL1Names = computed(() =>
+  namedRefNames(
+    distributor.value.categoryL1s || distributor.value.categories,
+    distributor.value.category
+  )
+)
+
+const categoryL2Names = computed(() =>
+  namedRefNames(
+    distributor.value.categoryL2s || distributor.value.productTypes,
+    distributor.value.productType
+  )
+)
+
+const licenseFileKeys = computed(
+  () => distributor.value.licenseFileKeys || distributor.value.businessLicenseUrls || []
+)
+
+const qualificationFileKeys = computed(
+  () => distributor.value.qualificationFileKeys || distributor.value.otherCertUrls || []
+)
+
 const integrationText = computed(() => {
-  const methods = distributor.value.integrationMethods || []
+  const methods = distributor.value.integrationModes || distributor.value.integrationMethods || []
   if (!methods.length) return '-'
   return methods.map((method) => getIntegrationLabel(method)).join('、')
 })
 
 const accountBalanceText = computed(() => {
-  if (
-    distributor.value.accountBalance === undefined ||
-    distributor.value.accountBalance === null
-  ) {
+  if (distributor.value.accountBalanceCents != null) {
+    return formatCentsYuan(distributor.value.accountBalanceCents)
+  }
+  if (distributor.value.accountBalance === undefined || distributor.value.accountBalance === null) {
     return '-'
   }
   return Number(distributor.value.accountBalance).toFixed(2)
 })
 
 const getDetail = async () => {
-  if (!distributorId.value) return
+  if (!props.buyerCode) return
   loading.value = true
   try {
-    const data = await DistributorApi.getDistributor(distributorId.value)
+    const data = await DistributorApi.getDistributor(props.buyerCode)
     distributor.value = {
       ...data,
       contacts: data.contacts || [],
-      cooperationMode: data.cooperationMode || [],
-      category: data.category || [],
-      productType: data.productType || [],
-      integrationMethods: data.integrationMethods || [],
-      businessLicenseUrls: data.businessLicenseUrls || [],
-      legalIdUrls: data.legalIdUrls || [],
-      otherCertUrls: data.otherCertUrls || []
+      cooperationModes: data.cooperationModes || [],
+      categoryL1s: data.categoryL1s || [],
+      categoryL2s: data.categoryL2s || [],
+      integrationModes: data.integrationModes || [],
+      licenseFileKeys: data.licenseFileKeys || [],
+      qualificationFileKeys: data.qualificationFileKeys || []
     }
   } finally {
     loading.value = false
@@ -397,39 +484,44 @@ const getDetail = async () => {
 }
 
 watch(
-  () => [props.modelValue, props.id] as const,
+  () => [props.modelValue, props.buyerCode] as const,
   ([visible]) => {
-    if (!visible || !props.id) return
+    if (!visible || !props.buyerCode) return
     activeTab.value = 'basic'
     getDetail()
   }
 )
 
 const openEdit = () => {
-  if (!props.id) return
-  emit('edit', props.id)
+  const code = displayCode.value
+  if (!code) return
+  emit('edit', code)
 }
 
-const handleOpenChildDetail = (id: number) => {
-  emit('open-detail', id)
+const handleOpenChildDetail = (buyerCode?: string) => {
+  emit('open-detail', buyerCode)
 }
 
-const getStatusActionText = (targetStatus: number) => {
+const getStatusActionText = (targetStatus: string) => {
   if (targetStatus === DistributorStatusEnum.PAUSED) return '暂停分销'
   if (targetStatus === DistributorStatusEnum.BLACKLIST) return '移入黑名单'
   if (distributor.value.status === DistributorStatusEnum.BLACKLIST) return '移出黑名单'
   return '恢复合作'
 }
 
-const handleStatusChange = async (status: number) => {
-  if (!distributorId.value) return
+const handleStatusChange = async (status: string) => {
+  const buyerCode = displayCode.value
+  if (!buyerCode) {
+    message.error('缺少分销商编号，无法变更状态')
+    return
+  }
   const actionText = getStatusActionText(status)
   try {
     await message.confirm(
-      `确认将分销商「${distributor.value.name}」${actionText}吗？`,
+      `确认将分销商「${displayName.value}」${actionText}吗？`,
       `${actionText}确认`
     )
-    await DistributorApi.updateDistributorStatus(distributorId.value, status)
+    await DistributorApi.batchUpdateDistributorStatus([buyerCode], status)
     message.success(`${actionText}成功`)
     await getDetail()
     emit('success')

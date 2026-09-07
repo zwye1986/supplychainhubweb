@@ -10,23 +10,27 @@
     <el-empty v-if="!loading && !list.length" description="暂无下级分销商" />
 
     <el-table v-else :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="分销商名称" prop="name" min-width="160">
+      <el-table-column label="分销商名称" min-width="160">
         <template #default="{ row }">
-          <el-link :underline="false" type="primary" @click="emit('open-detail', row.id)">
-            {{ row.name }}
+          <el-link :underline="false" type="primary" @click="openChildDetail(row)">
+            {{ row.buyerName || row.name }}
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="分销商编号" prop="code" min-width="150" />
-      <el-table-column label="分销等级" prop="level" min-width="120">
+      <el-table-column label="分销商编号" min-width="150">
         <template #default="{ row }">
-          {{ getDistributionLevelLabel(row.level) }}
+          {{ row.buyerCode || row.code || '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="合作模式" prop="cooperationMode" min-width="140">
+      <el-table-column label="分销等级" min-width="120">
+        <template #default="{ row }">
+          {{ getDistributionLevelLabel(row.distributionLevel ?? row.level) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="合作模式" min-width="140">
         <template #default="{ row }">
           {{
-            (row.cooperationMode || [])
+            (row.cooperationModes || row.cooperationMode || [])
               .map((mode: string) => getCooperationModeLabel(mode))
               .join('、') || '-'
           }}
@@ -50,7 +54,7 @@
       />
       <el-table-column label="操作" width="100" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="emit('open-detail', row.id)">详情</el-button>
+          <el-button link type="primary" @click="openChildDetail(row)">详情</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -74,11 +78,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-detail': [id: number]
+  'open-detail': [buyerCode: string]
 }>()
 
 const loading = ref(false)
 const list = ref<DistributorVO[]>([])
+
+const openChildDetail = (row: DistributorVO) => {
+  const code = row.buyerCode || row.code
+  if (!code) return
+  emit('open-detail', code)
+}
 
 const loadData = async () => {
   if (!props.distributorId) return

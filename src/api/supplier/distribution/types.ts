@@ -6,17 +6,87 @@ export interface DistributorContactVO {
   email?: string
 }
 
-/** 开票信息 */
-export interface DistributorInvoiceVO {
+/** 新增分销商请求体（BuyerSaveReqVO） */
+export interface BuyerSaveReqVO {
+  buyerName: string
+  contacts?: DistributorContactVO[]
+  /** 上级分销商编码，一级为空 */
+  parentBuyerCode?: string
+  /** 组织等级：1一级 2二级 3三级，默认1 */
+  distributionLevel?: number
+  /** ENTERPRISE / PERSONAL / PLATFORM */
+  distributorType?: string
+  supplyPreference?: string
+  settlementMethod?: string
+  settlementCycleDays?: number
+  cooperationModes?: string[]
+  /** API / H5 / MANUAL */
+  integrationModes?: string[]
+  /** 合作开始时间，Asia/Shanghai */
+  cooperationStartedAt?: string
+  cooperationNote?: string
+  legalEntityName?: string
+  creditCode?: string
+  legalPersonName?: string
+  legalPersonMobile?: string
+  contactAddress?: string
+  bankName?: string
+  bankAccount?: string
+  licenseFileKey?: string
+  idFrontFileKey?: string
+  idBackFileKey?: string
+  qualificationFileKey?: string
+  licenseFileKeys?: string[]
+  qualificationFileKeys?: string[]
+  categoryL1Ids?: Array<string | number>
+  categoryL2Ids?: Array<string | number>
+  /** 期初余额，单位 CNY 分，仅创建可写（空视为 0）；编辑再带会拒绝 */
+  openingBalanceCents?: number
+}
+
+/** 批量暂停或恢复（BatchStatusReqVO） */
+export interface BatchStatusReqVO {
+  /** 文档字段名为 supplierCodes，值为分销商 buyerCode */
+  supplierCodes: string[]
+  /** 合作状态，优先于 targetStatus：仅 ACTIVE / SUSPENDED */
+  status?: string
+  /** 兼容字段，status 为空时使用 */
+  targetStatus?: string
+}
+
+/** 开票信息视图（GET/PUT /buyers/{buyerCode}/invoice） */
+export interface BuyerInvoiceView {
+  /** 分销商开票信息内部主键 */
   id?: number
-  distributorId?: number
-  titleType?: string | number
+  /** 是否已有开票行；false 时为档案预填且未落库 */
+  persisted?: boolean
+  buyerCode?: string
+  /** 抬头类型：ENTERPRISE 企业，PERSONAL 个人 */
+  titleType?: string
   invoiceTitle?: string
   socialCreditCode?: string
   phone?: string
   bankName?: string
   bankAccount?: string
   invoiceAddress?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 开票信息保存（InvoiceSaveReqVO） */
+export interface InvoiceSaveReqVO {
+  titleType?: string
+  invoiceTitle?: string
+  socialCreditCode?: string
+  phone?: string
+  bankName?: string
+  bankAccount?: string
+  invoiceAddress?: string
+}
+
+/** 开票信息（兼容旧 mock） */
+export interface DistributorInvoiceVO extends BuyerInvoiceView {
+  distributorId?: number
 }
 
 /** 项目（项目管理 / 分销商关联项目共用） */
@@ -57,7 +127,53 @@ export interface ProjectPageParam {
   period?: string[]
 }
 
-/** 分销商品（SKU 级，三级定价） */
+/** 分销商品列表项（GET /buyers/{buyerCode}/products） */
+export interface BuyerProductListItem {
+  /** 分销商品稳定业务编码 */
+  buyerProductCode?: string
+  platformSkuCode?: string
+  skuName?: string
+  spuCode?: string
+  spuName?: string
+  categoryPath?: string
+  /** 建议结算价，当前 L1，单位 CNY 分 */
+  suggestPriceCents?: number
+  /** 定价规则文案：模板 / 等于L1 / 自定义公式 */
+  pricingRule?: string
+  /** 有效 L2，单位 CNY 分 */
+  distPriceCents?: number
+  /** 恰有一个未移除项目 listing 时的当前版本单价，单位 CNY 分 */
+  projectPriceCents?: number
+  /** 按 L3>L2>L1 解析的有效 B 端结算价，单位 CNY 分 */
+  finalPriceCents?: number
+  /** 价格来源层级：L1 / L2 / L3 */
+  priceSource?: string
+  /** 是否被多个项目 L3 覆盖 */
+  projectPriceCovered?: boolean
+  projectNames?: string[]
+  /** 利润空间低于该百分比时 C 端隐藏，本批不消费 */
+  displayThresholdPercent?: number
+}
+
+/** 分销商品分页查询 */
+export interface BuyerProductPageParam {
+  pageNo?: number
+  pageSize?: number
+}
+
+/** 改分销商品 L2 覆盖（PatchBuyerProductReqVO） */
+export interface PatchBuyerProductReqVO {
+  /** L2 调价方式：FOLLOW_TEMPLATE / EQUAL_L1 / CUSTOM */
+  l2AdjustMode: string
+  /** CUSTOM 时的整数百分比，100 等于 L1 */
+  percent?: number
+  /** CUSTOM 时加减的 CNY 分 */
+  amountCents?: number
+  /** 利润空间低于该百分比时 C 端隐藏，本批不消费 */
+  displayThresholdPercent?: number
+}
+
+/** 分销商品（SKU 级，三级定价，mock / 项目选品兼容） */
 export interface DistributorProductVO {
   id?: number
   distributorId?: number
@@ -106,69 +222,167 @@ export interface ProjectProductVO extends DistributorProductVO {
   projectId?: number
 }
 
-/** 分销商 */
+/** 命名引用（类目等） */
+export interface NamedRef {
+  id?: number
+  name?: string
+}
+
+/** 分销商（列表字段对齐 GET /supply-chain/buyers） */
 export interface DistributorVO {
   id?: number
+  /** 采购商永久业务编码 */
+  buyerCode?: string
+  /** 采购商标准名称 */
+  buyerName?: string
+  /** 合作状态：ACTIVE / SUSPENDED / BLACKLIST */
+  status?: string
+  /** 组织等级：1 / 2 / 3 */
+  distributionLevel?: number
+  /** 合作模式枚举名 */
+  cooperationModes?: string[]
+  /** 可售品类（列表） */
+  categories?: NamedRef[]
+  /** 可售品类（详情） */
+  categoryL1s?: NamedRef[]
+  /** 商品类型（列表） */
+  productTypes?: NamedRef[]
+  /** 商品类型（详情） */
+  categoryL2s?: NamedRef[]
+  skuCount?: number
+  projectCount?: number
+  childCount?: number
+  /** 合作时间 */
+  cooperationTime?: string
+  /** 最后修改时间 */
+  updatedAt?: number | string | null
+  primaryContactName?: string | null
+  primaryContactMobile?: string | null
+
+  // —— 以下为表单/详情 mock 兼容旧字段，待后续整体迁移 ——
+  /** @deprecated 使用 buyerCode */
   code?: string
-  name: string
+  /** @deprecated 使用 buyerName */
+  name?: string
   shortName?: string
-  status?: number
-  /** 分销等级：1/2/3 */
+  /** @deprecated 使用 distributionLevel */
   level?: number
   /** 上级分销商 ID */
   parentId?: number
   parentName?: string
-  /** 合作模式（可多选）：direct / agent / channel */
+  /** @deprecated 使用 cooperationModes */
   cooperationMode?: string[]
-  /** 分销商类型：enterprise / personal / platform */
+  /** 上级分销商编码 */
+  parentBuyerCode?: string
+  parentBuyerName?: string
+  /** 分销商类型：ENTERPRISE / PERSONAL / PLATFORM */
   distributorType?: string
-  /** 分销品类 */
+  /** @deprecated 使用 categories / categoryL1Ids */
   category?: string[]
-  /** 商品类型 */
+  categoryL1Ids?: Array<string | number>
+  /** @deprecated 使用 productTypes / categoryL2Ids */
   productType?: string[]
-  /** 供货择优倾向：stable / price / comprehensive */
+  categoryL2Ids?: Array<string | number>
   supplyPreference?: string
   companyName?: string
+  legalEntityName?: string
   socialCreditCode?: string
+  creditCode?: string
   businessLicenseUrls?: string[]
+  licenseFileKeys?: string[]
+  licenseFileKey?: string
   legalPersonName?: string
   legalIdUrls?: string[]
+  idFrontFileKey?: string
+  idBackFileKey?: string
   legalPersonMobile?: string
+  /** 法人手机号（详情脱敏） */
+  legalPersonMobileMasked?: string
   contactAddress?: string
   settlementType?: string
+  settlementMethod?: string
   settlementCycle?: number
+  settlementCycleDays?: number
   integrationMethods?: string[]
-  /** 合作开始日期 YYYY-MM-DD */
+  integrationModes?: string[]
   cooperationStartDate?: string
-  /** 列表兼容：合作时间展示 */
-  cooperationTime?: string
+  cooperationStartedAt?: string
   cooperationRemark?: string
+  cooperationNote?: string
   bankName?: string
   bankAccount?: string
+  /** 开户账号（详情脱敏） */
+  bankAccountMasked?: string
   accountBalance?: number
+  /** 采购商账本余额，单位 CNY 分，只读 */
+  accountBalanceCents?: number
+  openingBalanceCents?: number
+  qualificationFileKeys?: string[]
+  qualificationFileKey?: string
   otherCertUrls?: string[]
   remark?: string
   contacts?: DistributorContactVO[]
-  projectCount?: number
-  skuCount?: number
-  childCount?: number
   contactName?: string
   contactMobile?: string
+  /** @deprecated 使用 updatedAt */
   updateTime?: string
   createTime?: string
 }
 
-/** 分销商分页查询参数 */
+/** 分销商详情（GET /supply-chain/buyers/{buyerCode}） */
+export interface BuyerDetail {
+  id?: number
+  buyerCode?: string
+  buyerName?: string
+  status?: string
+  parentBuyerCode?: string
+  distributionLevel?: number
+  distributorType?: string
+  supplyPreference?: string
+  settlementMethod?: string
+  settlementCycleDays?: number
+  cooperationStartedAt?: string
+  cooperationNote?: string
+  legalEntityName?: string
+  creditCode?: string
+  legalPersonName?: string
+  legalPersonMobileMasked?: string
+  contactAddress?: string
+  bankName?: string
+  bankAccountMasked?: string
+  licenseFileKeys?: string[]
+  qualificationFileKeys?: string[]
+  integrationModes?: string[]
+  cooperationModes?: string[]
+  categoryL1s?: NamedRef[]
+  categoryL2s?: NamedRef[]
+  contacts?: DistributorContactVO[]
+  primaryContactName?: string | null
+  primaryContactMobile?: string | null
+  /** 采购商账本余额，单位 CNY 分，只读 */
+  accountBalanceCents?: number
+}
+
+/** 分销商分页查询参数（对齐 GET /supply-chain/buyers） */
 export interface DistributorPageParam {
   pageNo: number
   pageSize: number
-  name?: string
-  code?: string
-  level?: number[]
-  cooperationMode?: string[]
-  category?: string[]
-  status?: number[]
-  updateTime?: string[]
+  buyerName?: string
+  buyerCode?: string
+  /** 组织等级，可多选：1 / 2 / 3 */
+  distributionLevels?: number[]
+  /** 合作模式枚举名，可多选 */
+  cooperationModes?: string[]
+  /** 可售品类内部主键，可多选 */
+  categoryL1Ids?: Array<string | number>
+  /** 管理状态枚举名：ACTIVE / SUSPENDED / BLACKLIST */
+  status?: string[]
+  updatedFrom?: string
+  updatedTo?: string
+  /** simple 名称下拉；parent-options 上级下拉 */
+  view?: string
+  excludeBuyerCode?: string
+  forLevel?: number
 }
 
 /** 标品 SKU（新增分销商品弹窗） */
