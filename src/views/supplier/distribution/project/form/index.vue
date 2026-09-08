@@ -14,30 +14,34 @@
       :disabled="isView"
       label-width="120px"
     >
-      <el-form-item label="项目名称" prop="name">
-        <el-input v-model="formData.name" placeholder="请输入项目名称" maxlength="100" show-word-limit />
+      <el-form-item label="项目名称" prop="projectName">
+        <el-input
+          v-model="formData.projectName"
+          placeholder="请输入项目名称"
+          maxlength="100"
+          show-word-limit
+        />
       </el-form-item>
-      <el-form-item label="项目编号" prop="code">
-        <el-input :model-value="formData.code" placeholder="保存后系统自动生成" readonly>
-          <template v-if="!formData.code" #suffix>
-            <span class="text-12px text-gray-400">如 PRJ20260901010</span>
+      <el-form-item label="项目编号" prop="projectCode">
+        <el-input :model-value="formData.projectCode" placeholder="保存后系统自动生成" readonly>
+          <template v-if="!formData.projectCode" #suffix>
+            <span class="text-12px text-gray-400">如 PRJ_</span>
           </template>
         </el-input>
       </el-form-item>
-      <el-form-item label="关联分销商" prop="distributorId">
+      <el-form-item label="关联分销商" prop="buyerCode">
         <el-select
-          v-model="formData.distributorId"
+          v-model="formData.buyerCode"
           filterable
           clearable
-          placeholder="请选择关联分销商（一个项目关联一个分销商）"
+          placeholder="请选择关联分销商"
           class="!w-full"
-          @change="handleDistributorChange"
         >
           <el-option
-            v-for="item in distributorOptions"
-            :key="item.id"
-            :label="item.label"
-            :value="item.id"
+            v-for="item in buyerOptions"
+            :key="item.buyerCode"
+            :label="item.buyerName"
+            :value="item.buyerCode"
           />
         </el-select>
       </el-form-item>
@@ -62,7 +66,7 @@
         />
       </el-form-item>
       <el-form-item label="结算方" prop="settlementPartyType">
-        <el-radio-group v-model="formData.settlementPartyType" @change="syncSettlementParty">
+        <el-radio-group v-model="formData.settlementPartyType">
           <el-radio
             v-for="item in SETTLEMENT_PARTY_TYPE_OPTIONS"
             :key="item.value"
@@ -79,14 +83,14 @@
           </el-radio>
         </el-radio-group>
       </el-form-item>
-      <el-form-item label="项目描述" prop="description">
+      <el-form-item label="项目说明" prop="description">
         <el-input
           v-model="formData.description"
           type="textarea"
           :rows="4"
           maxlength="500"
           show-word-limit
-          placeholder="请输入项目描述，说明合作场景、SKU 范围或定价规则"
+          placeholder="请输入项目说明"
         />
       </el-form-item>
     </el-form>
@@ -101,7 +105,7 @@
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import { DistributorApi, ProjectApi, ProjectVO } from '@/api/supplier/distribution'
+import { DistributorApi, ProjectApi, ProjectSaveReqVO, ProjectVO } from '@/api/supplier/distribution'
 import {
   PROJECT_STATUS_OPTIONS,
   PROJECT_TYPE_OPTIONS,
@@ -119,7 +123,7 @@ const emit = defineEmits(['success', 'update:modelValue'])
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
-    id?: number
+    projectCode?: string
     mode?: 'create' | 'edit' | 'view'
   }>(),
   { mode: 'create' }
@@ -134,31 +138,29 @@ type ProjectFormData = ProjectVO & { period?: string[] }
 
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
-const distributorOptions = ref<{ id: number; label: string }[]>([])
+const buyerOptions = ref<{ buyerCode: string; buyerName: string }[]>([])
 const isView = computed(() => props.mode === 'view')
-const isEdit = computed(() => props.mode === 'edit' || (!!props.id && props.mode !== 'view'))
+const isEdit = computed(() => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view'))
 
 const createDefaultForm = (): ProjectFormData => ({
-  id: undefined,
-  name: '',
-  code: '',
-  distributorId: undefined,
-  distributorName: '',
+  projectCode: undefined,
+  projectName: '',
+  buyerCode: undefined,
+  buyerName: '',
   projectType: undefined,
   status: ProjectStatusEnum.DRAFT,
   startDate: undefined,
   endDate: undefined,
   period: [],
   settlementPartyType: SettlementPartyTypeEnum.DISTRIBUTOR,
-  settlementParty: '',
   description: ''
 })
 
 const formData = ref<ProjectFormData>(createDefaultForm())
 
 const formRules = reactive<FormRules>({
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
-  distributorId: [{ required: true, message: '请选择关联分销商', trigger: 'change' }],
+  projectName: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  buyerCode: [{ required: true, message: '请选择关联分销商', trigger: 'change' }],
   projectType: [{ required: true, message: '请选择项目类型', trigger: 'change' }],
   period: [{ required: true, message: '请选择项目周期', trigger: 'change', type: 'array' }],
   settlementPartyType: [{ required: true, message: '请选择结算方', trigger: 'change' }],
@@ -167,48 +169,34 @@ const formRules = reactive<FormRules>({
 
 const pageTitle = computed(() => {
   if (props.mode === 'view') return '项目详情'
-  if (props.mode === 'edit' || props.id) return '编辑项目'
+  if (props.mode === 'edit' || props.projectCode) return '编辑项目'
   return '创建项目'
 })
 
 watch(
-  () => [props.modelValue, props.id, props.mode] as const,
+  () => [props.modelValue, props.projectCode, props.mode] as const,
   async ([visible]) => {
     if (!visible) return
     resetForm()
-    await loadDistributorOptions()
-    if (props.id) {
-      await loadDetail(props.id)
+    await loadBuyerOptions()
+    if (props.projectCode) {
+      await loadDetail(props.projectCode)
     }
   }
 )
 
-const loadDistributorOptions = async () => {
+const loadBuyerOptions = async () => {
   try {
     const list = (await DistributorApi.getDistributorNameList()) || []
-    distributorOptions.value = list
-      .filter((item: any) => item.id)
+    buyerOptions.value = list
       .map((item: any) => ({
-        id: item.id,
-        label: item.label || item.value || item.name
+        buyerCode: item.code || item.buyerCode || '',
+        buyerName: item.label || item.value || item.buyerName || ''
       }))
+      .filter((item) => item.buyerCode)
   } catch {
-    distributorOptions.value = []
+    buyerOptions.value = []
   }
-}
-
-const handleDistributorChange = (id?: number) => {
-  const found = distributorOptions.value.find((item) => item.id === id)
-  formData.value.distributorName = found?.label || ''
-  syncSettlementParty()
-}
-
-const syncSettlementParty = () => {
-  if (formData.value.settlementPartyType === SettlementPartyTypeEnum.PLATFORM) {
-    formData.value.settlementParty = '平台结算'
-    return
-  }
-  formData.value.settlementParty = formData.value.distributorName || ''
 }
 
 const resetForm = () => {
@@ -216,18 +204,32 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
-const loadDetail = async (id: number) => {
+const loadDetail = async (projectCode: string) => {
   formLoading.value = true
   try {
-    const data = await ProjectApi.getProject(id)
+    const data = await ProjectApi.getProject(projectCode)
     formData.value = {
       ...createDefaultForm(),
       ...data,
+      settlementPartyType: data.settlementPartyType || SettlementPartyTypeEnum.DISTRIBUTOR,
       period: data.startDate && data.endDate ? [data.startDate, data.endDate] : []
     }
-    syncSettlementParty()
   } finally {
     formLoading.value = false
+  }
+}
+
+const buildSavePayload = (): ProjectSaveReqVO => {
+  const period = formData.value.period || []
+  return {
+    projectName: formData.value.projectName || '',
+    buyerCode: formData.value.buyerCode || '',
+    projectType: formData.value.projectType,
+    startDate: period[0],
+    endDate: period[1],
+    settlementPartyType: SettlementPartyTypeEnum.DISTRIBUTOR,
+    description: formData.value.description || undefined,
+    status: formData.value.status || ProjectStatusEnum.DRAFT
   }
 }
 
@@ -239,15 +241,14 @@ const submitForm = async () => {
   }
   formLoading.value = true
   try {
-    syncSettlementParty()
-    const { period, ...rest } = formData.value
-    const data: ProjectVO = {
-      ...rest,
-      startDate: period[0],
-      endDate: period[1]
-    }
+    const data = buildSavePayload()
     if (isEdit.value) {
-      await ProjectApi.updateProject(data)
+      const projectCode = formData.value.projectCode || props.projectCode
+      if (!projectCode) {
+        message.error('缺少项目编号，无法保存')
+        return
+      }
+      await ProjectApi.updateProject(projectCode, data)
       message.success(t('common.updateSuccess'))
     } else {
       await ProjectApi.createProject(data)
@@ -256,7 +257,9 @@ const submitForm = async () => {
     dialogVisible.value = false
     emit('success')
   } catch (error: any) {
-    message.error(error?.message || '保存失败')
+    if (error?.message) {
+      message.error(error.message)
+    }
   } finally {
     formLoading.value = false
   }

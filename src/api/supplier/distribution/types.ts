@@ -89,42 +89,116 @@ export interface DistributorInvoiceVO extends BuyerInvoiceView {
   distributorId?: number
 }
 
-/** 项目（项目管理 / 分销商关联项目共用） */
-export interface ProjectVO {
+/** 项目详情 / 列表项（GET /supply-chain/projects、GET /projects/{projectCode}） */
+export interface ProjectDetail {
+  /** 采购项目内部主键，只读 */
   id?: number
-  distributorId?: number
-  distributorName?: string
-  name: string
-  code?: string
-  status?: number
-  /** 项目类型：welfare / benefit / campaign / subsidy / group */
+  /** 采购项目全局永久编码 */
+  projectCode?: string
+  /** 采购项目名称 */
+  projectName?: string
+  /** 项目状态：DRAFT / ACTIVE */
+  status?: string
+  /** 采购商永久业务编码 */
+  buyerCode?: string
+  /** 采购商标准名称 */
+  buyerName?: string
+  /** 项目类型封闭枚举 */
+  projectType?: string
+  /** 项目开始日 */
+  startDate?: string
+  /** 项目结束日 */
+  endDate?: string
+  /** 结算方，本期仅 DISTRIBUTOR */
+  settlementPartyType?: string
+  /** 项目说明 */
+  description?: string
+  /** 目录模式：MANAGED 中台管理，INDEPENDENT 项目独立 */
+  catalogMode?: string
+  /** 未移除项目商品数量 */
+  skuCount?: number
+  /** 当前 listing 中 settlement_price_level=L3 的数量 */
+  projectPriceSkuCount?: number
+}
+
+/** 项目（项目管理 / 分销商关联项目共用） */
+export type ProjectVO = ProjectDetail
+
+/** 分销商详情-关联项目卡片，与项目主体同一结构 */
+export type DistributorProjectVO = ProjectDetail
+
+/** 新增 / 保存项目（ProjectSaveReqVO） */
+export interface ProjectSaveReqVO {
+  projectName: string
+  buyerCode: string
   projectType?: string
   startDate?: string
   endDate?: string
-  skuCount?: number
-  projectPriceSkuCount?: number
-  /** 结算方展示文案 */
-  settlementParty?: string
-  /** 结算方类型：distributor 关联分销商 / platform 平台结算 */
   settlementPartyType?: string
   description?: string
-  createTime?: string
-  updateTime?: string
+  /** 创建时允许 DRAFT 或 ACTIVE，空视为草稿 */
+  status?: string
 }
 
-/** 分销商详情-关联项目卡片，与项目主体同一结构 */
-export type DistributorProjectVO = ProjectVO
-
-/** 项目分页查询参数 */
+/** 项目分页查询参数（GET /supply-chain/projects） */
 export interface ProjectPageParam {
   pageNo: number
   pageSize: number
-  name?: string
-  code?: string
-  status?: number[]
-  distributorId?: number
+  projectName?: string
+  projectCode?: string
+  /** 项目状态枚举名，可多选 */
+  status?: string[]
+  buyerCode?: string
+  /** 项目类型封闭枚举，可多选 */
   projectType?: string[]
-  period?: string[]
+  periodFrom?: string
+  periodTo?: string
+  /** simple 为名称下拉 {projectCode,projectName}[] */
+  view?: string
+}
+
+/** 项目商品列表项（GET /projects/{projectCode}/products） */
+export interface ProjectListingListItem {
+  /** 项目商品稳定业务编码 */
+  listingCode?: string
+  /** 平台 SKU 编码 */
+  platformSkuCode?: string
+  skuName?: string
+  /** 建议结算价，当前 L1，单位 CNY 分 */
+  suggestPriceCents?: number
+  /** 当前有效 L2，单位 CNY 分 */
+  distPriceCents?: number
+  /** 当前版本为 L3 时的冻结单价，单位 CNY 分 */
+  projectPriceCents?: number
+  /** 当前冻结版本单价，单位 CNY 分 */
+  finalPriceCents?: number
+  /** 冻结版本结算层级：L1 / L2 / L3 */
+  priceSource?: string
+  /** 当前版本 settlement_price_level 是否 L3 */
+  projectPriceCovered?: boolean
+}
+
+/** 从分销商品发布到项目（单行） */
+export interface ProjectProductItemReqVO {
+  platformSkuCode: string
+  /** L3 调价方式：FOLLOW_L2 / EQUAL_L1 / CUSTOM，默认 FOLLOW_L2 */
+  l3AdjustMode?: string
+  /** CUSTOM 时的整数百分比，100 等于 L1 */
+  percent?: number
+  /** CUSTOM 时加减的 CNY 分 */
+  amountCents?: number
+}
+
+/** 从分销商品批量发布到项目 */
+export interface AddProjectProductsReqVO {
+  items: ProjectProductItemReqVO[]
+}
+
+/** 改项目商品 L3 覆盖（PatchProjectListingReqVO） */
+export interface PatchProjectListingReqVO {
+  l3AdjustMode: string
+  percent?: number
+  amountCents?: number
 }
 
 /** 分销商品列表项（GET /buyers/{buyerCode}/products） */

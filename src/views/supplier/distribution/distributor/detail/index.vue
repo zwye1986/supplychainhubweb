@@ -330,7 +330,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="关联项目" name="project" lazy>
-          <ProjectList v-if="hasInternalId" :distributor-id="distributorId" />
+          <ProjectList v-if="buyerCode" :buyer-code="buyerCode" />
         </el-tab-pane>
 
         <el-tab-pane label="分销商品" name="product" lazy>

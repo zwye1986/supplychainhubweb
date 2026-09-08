@@ -11,7 +11,7 @@
       <div class="flex items-start justify-between">
         <div class="min-w-0">
           <div class="mb-8px flex items-center gap-10px">
-            <span class="truncate text-20px font-700">{{ project.name || '项目详情' }}</span>
+            <span class="truncate text-20px font-700">{{ project.projectName || '项目详情' }}</span>
             <el-tag :type="getProjectStatusType(project.status)" size="small">
               {{ getProjectStatusLabel(project.status) }}
             </el-tag>
@@ -19,51 +19,16 @@
               {{ getProjectTypeLabel(project.projectType) }}
             </el-tag>
           </div>
-          <div class="text-13px text-gray-500">编号：{{ project.code || '-' }}</div>
+          <div class="text-13px text-gray-500">编号：{{ project.projectCode || '-' }}</div>
         </div>
         <div>
           <el-button type="primary" @click="openEdit">编辑</el-button>
-          <el-button
-            v-if="project.status === ProjectStatusEnum.DRAFT"
-            type="success"
-            plain
-            @click="handleStatusChange(ProjectStatusEnum.ACTIVE, '启动项目')"
-          >
-            启动
-          </el-button>
-          <el-button
-            v-if="project.status === ProjectStatusEnum.ACTIVE"
-            type="warning"
-            plain
-            @click="handleStatusChange(ProjectStatusEnum.PAUSED, '暂停项目')"
-          >
-            暂停
-          </el-button>
-          <el-button
-            v-if="project.status === ProjectStatusEnum.PAUSED"
-            type="success"
-            plain
-            @click="handleStatusChange(ProjectStatusEnum.ACTIVE, '恢复项目')"
-          >
-            恢复
-          </el-button>
-          <el-button
-            v-if="
-              project.status === ProjectStatusEnum.ACTIVE ||
-              project.status === ProjectStatusEnum.PAUSED
-            "
-            type="info"
-            plain
-            @click="handleStatusChange(ProjectStatusEnum.CLOSED, '结束项目')"
-          >
-            结束
-          </el-button>
         </div>
       </div>
 
       <el-descriptions class="mt-16px" :column="3" border>
         <el-descriptions-item label="关联分销商">
-          {{ project.distributorName || '-' }}
+          {{ project.buyerName || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="项目类型">
           {{ getProjectTypeLabel(project.projectType) }}
@@ -80,7 +45,7 @@
           </span>
         </el-descriptions-item>
         <el-descriptions-item label="结算方">
-          {{ project.settlementParty || '-' }}
+          {{ getSettlementPartyTypeLabel(project.settlementPartyType) }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -95,17 +60,22 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="项目名称">
-                  {{ displayText(project.name) }}
+                  {{ displayText(project.projectName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="项目编号">
-                  {{ displayText(project.code) }}
+                  {{ displayText(project.projectCode) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="关联分销商">
-                  {{ displayText(project.distributorName) }}
+                  {{ displayText(project.buyerName) }}
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="分销商编号">
+                  {{ displayText(project.buyerCode) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -120,7 +90,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算方">
-                  {{ displayText(project.settlementParty) }}
+                  {{ getSettlementPartyTypeLabel(project.settlementPartyType) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -128,8 +98,13 @@
                   {{ getProjectStatusLabel(project.status) }}
                 </el-form-item>
               </el-col>
+              <el-col :span="12">
+                <el-form-item label="目录模式">
+                  {{ getCatalogModeLabel(project.catalogMode) }}
+                </el-form-item>
+              </el-col>
               <el-col :span="24">
-                <el-form-item label="项目描述">
+                <el-form-item label="项目说明">
                   {{ displayText(project.description) }}
                 </el-form-item>
               </el-col>
@@ -139,9 +114,10 @@
 
         <el-tab-pane label="分销商品" name="product" lazy>
           <ProductList
-            v-if="projectId"
-            :project-id="projectId"
-            :distributor-id="project.distributorId"
+            v-if="projectCode"
+            :project-code="projectCode"
+            :buyer-code="project.buyerCode"
+            @success="handleProductChange"
           />
         </el-tab-pane>
       </el-tabs>
@@ -152,10 +128,11 @@
 <script lang="ts" setup>
 import { ProjectApi, ProjectVO } from '@/api/supplier/distribution'
 import {
-  ProjectStatusEnum,
+  getCatalogModeLabel,
   getProjectStatusLabel,
   getProjectStatusType,
-  getProjectTypeLabel
+  getProjectTypeLabel,
+  getSettlementPartyTypeLabel
 } from '@/views/supplier/utils/constants'
 import ProductList from './ProductList.vue'
 
@@ -163,11 +140,10 @@ defineOptions({ name: 'DistributionProjectDetailDrawer' })
 
 const props = defineProps<{
   modelValue: boolean
-  id?: number
+  projectCode?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'success', 'edit'])
-const message = useMessage()
 
 const drawerVisible = computed({
   get: () => props.modelValue,
@@ -177,7 +153,7 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const project = ref<ProjectVO>({} as ProjectVO)
-const projectId = computed(() => props.id)
+const projectCode = computed(() => props.projectCode)
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
@@ -190,38 +166,32 @@ const periodText = computed(() => {
 })
 
 const getDetail = async () => {
-  if (!projectId.value) return
+  if (!projectCode.value) return
   loading.value = true
   try {
-    project.value = await ProjectApi.getProject(projectId.value)
+    project.value = await ProjectApi.getProject(projectCode.value)
   } finally {
     loading.value = false
   }
 }
 
 watch(
-  () => [props.modelValue, props.id] as const,
+  () => [props.modelValue, props.projectCode] as const,
   ([visible]) => {
-    if (!visible || !props.id) return
+    if (!visible || !props.projectCode) return
     activeTab.value = 'basic'
     getDetail()
   }
 )
 
 const openEdit = () => {
-  if (!props.id) return
-  emit('edit', props.id)
+  if (!props.projectCode) return
+  emit('edit', props.projectCode)
 }
 
-const handleStatusChange = async (status: number, actionText: string) => {
-  if (!projectId.value) return
-  try {
-    await message.confirm(`确认将项目「${project.value.name}」${actionText}吗？`, `${actionText}确认`)
-    await ProjectApi.updateProjectStatus(projectId.value, status)
-    message.success(`${actionText}成功`)
-    await getDetail()
-    emit('success')
-  } catch {}
+const handleProductChange = async () => {
+  await getDetail()
+  emit('success')
 }
 
 const handleClosed = () => {

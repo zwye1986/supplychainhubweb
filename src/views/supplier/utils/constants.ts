@@ -483,52 +483,64 @@ export const getDistributorStatusType = (
   return (status && map[status]) || 'info'
 }
 
-/** 项目状态 */
+/** 项目状态（接口枚举名；创建仅允许 DRAFT / ACTIVE） */
 export const ProjectStatusEnum = {
-  DRAFT: 0,
-  ACTIVE: 1,
-  PAUSED: 2,
-  CLOSED: 3
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE'
 } as const
 
 export const PROJECT_STATUS_OPTIONS = [
   { value: ProjectStatusEnum.DRAFT, label: '草稿', type: 'info' as const },
-  { value: ProjectStatusEnum.ACTIVE, label: '进行中', type: 'success' as const },
-  { value: ProjectStatusEnum.PAUSED, label: '已暂停', type: 'warning' as const },
-  { value: ProjectStatusEnum.CLOSED, label: '已结束', type: 'info' as const }
+  { value: ProjectStatusEnum.ACTIVE, label: '进行中', type: 'success' as const }
 ]
 
-/** 项目类型 */
+/** 项目类型封闭枚举 */
 export const PROJECT_TYPE_OPTIONS = [
-  { value: 'welfare', label: '企业福利' },
-  { value: 'benefit', label: '员工权益' },
-  { value: 'campaign', label: '专项活动' },
-  { value: 'subsidy', label: '补贴项目' },
-  { value: 'group', label: '团购项目' }
+  { value: 'WELFARE', label: '企业福利' },
+  { value: 'BENEFIT', label: '员工权益' },
+  { value: 'CAMPAIGN', label: '专项活动' },
+  { value: 'SUBSIDY', label: '补贴项目' },
+  { value: 'GROUP', label: '团购项目' }
 ]
 
-/** 结算方类型 */
+/** 结算方类型，本期仅 DISTRIBUTOR */
 export const SettlementPartyTypeEnum = {
-  DISTRIBUTOR: 'distributor',
-  PLATFORM: 'platform'
+  DISTRIBUTOR: 'DISTRIBUTOR'
 } as const
 
 export const SETTLEMENT_PARTY_TYPE_OPTIONS = [
-  { value: SettlementPartyTypeEnum.DISTRIBUTOR, label: '关联分销商' },
-  { value: SettlementPartyTypeEnum.PLATFORM, label: '平台结算' }
+  { value: SettlementPartyTypeEnum.DISTRIBUTOR, label: '分销商' }
 ]
 
-/** 项目专属价调价方式：0 沿用分销商基础价 / 1 按销售建议价 / 2 自定义 */
-export const ProjectPriceAdjustModeEnum = {
-  FOLLOW: 0,
-  SUGGEST: 1,
-  CUSTOM: 2
+/** 目录模式 */
+export const CatalogModeEnum = {
+  MANAGED: 'MANAGED',
+  INDEPENDENT: 'INDEPENDENT'
 } as const
 
-export const PROJECT_PRICE_ADJUST_MODE_OPTIONS = [
-  { value: ProjectPriceAdjustModeEnum.FOLLOW, label: '沿用分销商基础价' },
-  { value: ProjectPriceAdjustModeEnum.SUGGEST, label: '按项目价=销售建议价' },
-  { value: ProjectPriceAdjustModeEnum.CUSTOM, label: '自定义设置' }
+export const CATALOG_MODE_OPTIONS = [
+  { value: CatalogModeEnum.MANAGED, label: '中台管理' },
+  { value: CatalogModeEnum.INDEPENDENT, label: '项目独立' }
+]
+
+/** 项目商品 L3 调价方式 */
+export const ProjectL3AdjustModeEnum = {
+  FOLLOW_L2: 'FOLLOW_L2',
+  EQUAL_L1: 'EQUAL_L1',
+  CUSTOM: 'CUSTOM'
+} as const
+
+export const PROJECT_L3_ADJUST_MODE_OPTIONS = [
+  { value: ProjectL3AdjustModeEnum.FOLLOW_L2, label: '沿用分销商基础价' },
+  { value: ProjectL3AdjustModeEnum.EQUAL_L1, label: '等于L1' },
+  { value: ProjectL3AdjustModeEnum.CUSTOM, label: '自定义公式' }
+]
+
+/** 冻结版本结算层级 */
+export const PRICE_SOURCE_OPTIONS = [
+  { value: 'L1', label: '平台默认定价' },
+  { value: 'L2', label: '分销商基础价' },
+  { value: 'L3', label: '项目专属价' }
 ]
 
 export const getDistributionLevelLabel = (value?: number): string => {
@@ -575,25 +587,49 @@ export const getDistPriceAdjustModeLabel = (value?: number): string => {
   return DIST_PRICE_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
 }
 
-export const getProjectStatusLabel = (status?: number): string => {
-  return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.label || '-'
+export const getProjectStatusLabel = (status?: string): string => {
+  if (!status) return '-'
+  return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.label || status
 }
 
 export const getProjectStatusType = (
-  status?: number
+  status?: string
 ): 'success' | 'warning' | 'info' | 'danger' | 'primary' => {
   return PROJECT_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
 }
 
 export const getProjectTypeLabel = (value?: string): string => {
   if (!value) return '-'
-  return PROJECT_TYPE_OPTIONS.find((item) => item.value === value)?.label || value
+  const aliases: Record<string, string> = {
+    welfare: 'WELFARE',
+    benefit: 'BENEFIT',
+    campaign: 'CAMPAIGN',
+    subsidy: 'SUBSIDY',
+    group: 'GROUP'
+  }
+  const key = aliases[value] || value
+  return PROJECT_TYPE_OPTIONS.find((item) => item.value === key)?.label || value
 }
 
 export const getSettlementPartyTypeLabel = (value?: string): string => {
-  return SETTLEMENT_PARTY_TYPE_OPTIONS.find((item) => item.value === value)?.label || '-'
+  if (!value) return '-'
+  const aliases: Record<string, string> = {
+    distributor: SettlementPartyTypeEnum.DISTRIBUTOR,
+    platform: SettlementPartyTypeEnum.DISTRIBUTOR
+  }
+  const key = aliases[value] || value
+  return SETTLEMENT_PARTY_TYPE_OPTIONS.find((item) => item.value === key)?.label || value
 }
 
-export const getProjectPriceAdjustModeLabel = (value?: number): string => {
-  return PROJECT_PRICE_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || '-'
+export const getCatalogModeLabel = (value?: string): string => {
+  return CATALOG_MODE_OPTIONS.find((item) => item.value === value)?.label || value || '-'
+}
+
+export const getProjectL3AdjustModeLabel = (value?: string): string => {
+  return PROJECT_L3_ADJUST_MODE_OPTIONS.find((item) => item.value === value)?.label || value || '-'
+}
+
+export const getPriceSourceLabel = (value?: string): string => {
+  if (!value) return '-'
+  return PRICE_SOURCE_OPTIONS.find((item) => item.value === value)?.label || value
 }
