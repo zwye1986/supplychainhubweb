@@ -267,6 +267,8 @@ export interface SupplierVO {
   /** 合作状态：ACTIVE / SUSPENDED / BLACKLIST */
   status?: string
   /** 可售品类 */
+  sellableCategories?: NamedRef[]
+  /** @deprecated 使用 sellableCategories */
   categories?: NamedRef[]
   /** 商品类型 */
   productTypes?: NamedRef[]

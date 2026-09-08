@@ -61,24 +61,26 @@
 
       <el-descriptions class="mt-16px" :column="3" border>
         <el-descriptions-item label="可售品类">
-          <template v-if="sellableCategories.length">
+          <template v-if="supplier.sellableCategories?.length">
             <el-tag
-              v-for="tag in sellableCategories"
-              :key="tag"
+              v-for="item in supplier.sellableCategories"
+              :key="item"
               class="m-2px"
               size="small"
               type="info"
             >
-              {{ getCategoryLabel(tag) }}
+              {{
+                getDictLabel('supply_chain_sellable_category', item) || '-'
+              }}
             </el-tag>
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="主联系人">
-          {{ supplier.contactName || supplier.contacts?.[0]?.name || '-' }}
+          {{ supplier.primaryContactName || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="手机号">
-          {{ supplier.contactMobile || supplier.contacts?.[0]?.mobile || '-' }}
+          {{ supplier.primaryContactMobile || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="合作商品数(SPU)">
           {{ supplier.productCount ?? 0 }}
@@ -317,6 +319,7 @@
 <script lang="ts" setup>
 import * as AreaApi from '@/api/system/area'
 import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
+import { getDictLabel } from '@/utils/dict'
 import {
   DeliveryAreaTypeEnum,
   SupplierStatusEnum,
@@ -411,15 +414,6 @@ const resolveDeliveryAreaName = async (areaId?: number) => {
   }
 }
 
-/** 可售品类：优先列表字段，其次供货配置品类 */
-const sellableCategories = computed(() => {
-  if (supplier.value.category?.length) return supplier.value.category
-  const fromConfig = (supplier.value.supplyConfigs || [])
-    .map((item) => item.categoryCode)
-    .filter(Boolean) as string[]
-  return [...new Set(fromConfig)]
-})
-
 /** 供货配置摘要：品类组合 + 供货模式 */
 const supplyConfigSummary = computed(() => {
   return (supplier.value.supplyConfigs || [])
@@ -441,8 +435,6 @@ const getDetail = async () => {
     const data = await SupplierApi.getSupplier(props.supplierCode)
     supplier.value = {
       ...data,
-      contacts: data.contacts || [],
-      integrationModes: data.integrationModes || data.integrationMethods || [],
       integrationMethods: data.integrationModes || data.integrationMethods || [],
       licenseFileKeys: data.licenseFileKeys || data.businessLicenseUrls || [],
       businessLicenseUrls: data.licenseFileKeys || data.businessLicenseUrls || [],

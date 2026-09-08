@@ -152,7 +152,7 @@
       <el-table-column label="可售品类" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getDictRefLabels(row.categories, 'supply_chain_sellable_category')"
+            v-for="tag in getDictRefLabels(row.sellableCategories, 'supply_chain_sellable_category')"
             :key="tag"
             class="m-2px"
             size="small"
@@ -160,7 +160,7 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getDictRefLabels(row.categories, 'supply_chain_sellable_category').length">-</span>
+          <span v-if="!getDictRefLabels(row.sellableCategories, 'supply_chain_sellable_category').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品类型" align="center" min-width="160">
