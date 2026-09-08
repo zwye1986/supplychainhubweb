@@ -136,12 +136,12 @@ export const SUPPLIER_CAPABILITY_OPTIONS = [
 /** 配送区域类型（接口 deliveryRegionType） */
 export const DeliveryAreaTypeEnum = {
   NATIONWIDE: 'NATIONWIDE',
-  SPECIFIED: 'SPECIFIED'
+  DESIGNATED: 'DESIGNATED'
 } as const
 
 export const DELIVERY_AREA_TYPE_OPTIONS = [
   { value: DeliveryAreaTypeEnum.NATIONWIDE, label: '全国' },
-  { value: DeliveryAreaTypeEnum.SPECIFIED, label: '指定区域' }
+  { value: DeliveryAreaTypeEnum.DESIGNATED, label: '指定区域' }
 ]
 
 /** 发货时效（接口 shippingSlaCode） */

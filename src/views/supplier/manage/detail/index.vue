@@ -384,7 +384,7 @@ const accountBalanceText = computed(() => {
 const deliveryAreaText = computed(() => {
   const regionType = supplier.value.deliveryRegionType || supplier.value.deliveryAreaType
   const typeLabel = getDeliveryAreaTypeLabel(regionType)
-  if (regionType !== DeliveryAreaTypeEnum.SPECIFIED) return typeLabel
+  if (regionType !== DeliveryAreaTypeEnum.DESIGNATED) return typeLabel
   if (deliveryAreaName.value) return `${typeLabel} / ${deliveryAreaName.value}`
   const adcode = supplier.value.deliveryRegionAdcodes?.[0] || supplier.value.deliveryAreaId
   if (adcode) return `${typeLabel}（${adcode}）`

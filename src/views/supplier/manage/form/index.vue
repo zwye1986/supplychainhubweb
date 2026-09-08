@@ -109,14 +109,14 @@
                 @change="handleDeliveryRegionTypeChange"
               >
                 <el-option
-                  v-for="item in DELIVERY_AREA_TYPE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
+                  v-for="dict in getStrDictOptions('supply_chain_delivery_region_type')"
+                  :key="dict.value"
+                  :label="dict.label"
+                  :value="dict.value"
                 />
               </el-select>
               <AreaSelect
-                v-if="formData.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED"
+                v-if="formData.deliveryRegionType === 'DESIGNATED'"
                 v-model="selectedDeliveryAdcode"
                 :disabled="isView"
                 check-strictly
@@ -137,14 +137,14 @@
                 @change="handleShippingSlaChange"
               >
                 <el-option
-                  v-for="item in SHIPPING_TIMELINESS_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
+                  v-for="dict in getStrDictOptions('supply_chain_shipping_sla_code')"
+                  :key="dict.value"
+                  :label="dict.label"
+                  :value="dict.value"
                 />
               </el-select>
               <el-input
-                v-if="formData.shippingSlaCode === ShippingTimelinessEnum.CUSTOM"
+                v-if="formData.shippingSlaCode === 'CUSTOM'"
                 v-model="formData.shippingSlaCustom"
                 placeholder="请输入自定义时效"
                 maxlength="50"
@@ -156,8 +156,13 @@
         <el-col :span="12">
           <el-form-item label="是否支持售后" prop="aftersalesSupported">
             <el-radio-group v-model="formData.aftersalesSupported">
-              <el-radio :value="true">是</el-radio>
-              <el-radio :value="false">否</el-radio>
+              <el-radio
+                v-for="dict in getBoolDictOptions('supply_chain_aftersales_supported')"
+                :key="String(dict.value)"
+                :value="dict.value"
+              >
+                {{ dict.label }}
+              </el-radio>
             </el-radio-group>
           </el-form-item>
         </el-col>
@@ -175,10 +180,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in SUPPLIER_SETTLEMENT_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_settlement_method')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -206,10 +211,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in SUPPLIER_INTEGRATION_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_integration_mode')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -229,11 +234,11 @@
           <el-form-item label="合作状态" prop="status">
             <el-radio-group v-model="formData.status">
               <el-radio
-                v-for="item in SUPPLIER_STATUS_OPTIONS"
-                :key="item.value"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_supplier_status')"
+                :key="dict.value"
+                :value="dict.value"
               >
-                {{ item.label }}
+                {{ dict.label }}
               </el-radio>
             </el-radio-group>
           </el-form-item>
@@ -413,16 +418,7 @@ import {
   SupplierSaveReqVO,
   SupplierVO
 } from '@/api/supplier/manage'
-import {
-  DELIVERY_AREA_TYPE_OPTIONS,
-  DeliveryAreaTypeEnum,
-  SHIPPING_TIMELINESS_OPTIONS,
-  ShippingTimelinessEnum,
-  SUPPLIER_INTEGRATION_OPTIONS,
-  SUPPLIER_SETTLEMENT_OPTIONS,
-  SUPPLIER_STATUS_OPTIONS,
-  SupplierStatusEnum
-} from '@/views/supplier/utils/constants'
+import { getBoolDictOptions, getStrDictOptions } from '@/utils/dict'
 
 /** UploadFile 用空串绕过扩展名校验，实现「格式不限」 */
 const UNLIMITED_FILE_TYPES = ['']
@@ -474,7 +470,7 @@ const createEmptyContact = (): SupplierContactVO => ({
 const createDefaultForm = (): SupplierFormModel => ({
   supplierCode: undefined,
   supplierName: '',
-  status: SupplierStatusEnum.NORMAL,
+  status: 'ACTIVE',
   deliveryRegionType: '',
   deliveryRegionAdcodes: [],
   shippingSlaCode: undefined,
@@ -580,13 +576,13 @@ const removeContact = (index: number) => {
 }
 
 const handleDeliveryRegionTypeChange = () => {
-  if (formData.value.deliveryRegionType !== DeliveryAreaTypeEnum.SPECIFIED) {
+  if (formData.value.deliveryRegionType !== 'DESIGNATED') {
     formData.value.deliveryRegionAdcodes = []
   }
 }
 
 const handleShippingSlaChange = () => {
-  if (formData.value.shippingSlaCode !== ShippingTimelinessEnum.CUSTOM) {
+  if (formData.value.shippingSlaCode !== 'CUSTOM') {
     formData.value.shippingSlaCustom = ''
   }
 }
@@ -623,7 +619,7 @@ const mapDetailToForm = (data: SupplierVO): SupplierFormModel => {
     ...createDefaultForm(),
     supplierCode: data.supplierCode || data.code,
     supplierName: data.supplierName || data.name || '',
-    status: data.status || SupplierStatusEnum.NORMAL,
+    status: data.status || 'ACTIVE',
     deliveryRegionType: data.deliveryRegionType || data.deliveryAreaType || '',
     deliveryRegionAdcodes:
       data.deliveryRegionAdcodes?.length
@@ -673,13 +669,13 @@ const buildSavePayload = (): SupplierSaveReqVO => {
     contacts: formData.value.contacts || [],
     deliveryRegionType: formData.value.deliveryRegionType,
     deliveryRegionAdcodes:
-      formData.value.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED
+      formData.value.deliveryRegionType === 'DESIGNATED'
         ? formData.value.deliveryRegionAdcodes || []
         : [],
     aftersalesSupported: !!formData.value.aftersalesSupported,
     shippingSlaCode: formData.value.shippingSlaCode || undefined,
     shippingSlaCustom:
-      formData.value.shippingSlaCode === ShippingTimelinessEnum.CUSTOM
+      formData.value.shippingSlaCode === 'CUSTOM'
         ? formData.value.shippingSlaCustom
         : undefined,
     settlementMethod: formData.value.settlementMethod || undefined,
@@ -715,14 +711,14 @@ const submitForm = async () => {
     return
   }
   if (
-    formData.value.deliveryRegionType === DeliveryAreaTypeEnum.SPECIFIED &&
+    formData.value.deliveryRegionType === 'DESIGNATED' &&
     !formData.value.deliveryRegionAdcodes?.length
   ) {
     message.warning('请选择指定配送区域')
     return
   }
   if (
-    formData.value.shippingSlaCode === ShippingTimelinessEnum.CUSTOM &&
+    formData.value.shippingSlaCode === 'CUSTOM' &&
     !formData.value.shippingSlaCustom?.trim()
   ) {
     message.warning('请输入自定义发货时效')

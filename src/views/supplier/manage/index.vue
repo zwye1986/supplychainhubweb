@@ -8,12 +8,22 @@
       label-width="90px"
     >
       <el-form-item label="供应商名称" prop="supplierName">
-        <el-input
+        <el-select
           v-model="queryParams.supplierName"
-          placeholder="请输入供应商名称"
+          placeholder="请选择/搜索供应商名称"
+          filterable
+          allow-create
+          default-first-option
           clearable
-          @keyup.enter="handleQuery"
-        />
+          :reserve-keyword="false"
+        >
+          <el-option
+            v-for="item in nameOptions"
+            :key="item.supplierCode"
+            :label="item.supplierName"
+            :value="item.supplierName"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="供应商编号" prop="supplierCode">
         <el-input
@@ -33,10 +43,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in SUPPLIER_CATEGORY_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -50,10 +60,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in SUPPLIER_SUPPLY_MODE_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('scm_supply_mode')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -67,10 +77,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in SUPPLIER_STATUS_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_supplier_status')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -142,7 +152,7 @@
       <el-table-column label="可售品类" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.categories)"
+            v-for="tag in getDictRefLabels(row.categories, 'supply_chain_sellable_category')"
             :key="tag"
             class="m-2px"
             size="small"
@@ -150,13 +160,13 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.categories).length">-</span>
+          <span v-if="!getDictRefLabels(row.categories, 'supply_chain_sellable_category').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.productTypes)"
+            v-for="tag in getDictRefLabels(row.productTypes, 'scm_product_type')"
             :key="tag"
             class="m-2px"
             size="small"
@@ -164,13 +174,13 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.productTypes).length">-</span>
+          <span v-if="!getDictRefLabels(row.productTypes, 'scm_product_type').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品分类" align="center" min-width="200">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.productCategories)"
+            v-for="tag in getDictRefLabels(row.productCategories, 'scm_product_category')"
             :key="tag"
             class="m-2px"
             size="small"
@@ -178,28 +188,28 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.productCategories).length">-</span>
+          <span v-if="!getDictRefLabels(row.productCategories, 'scm_product_category').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="供货模式" align="center" prop="supplyModes" min-width="180">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.supplyModes)"
+            v-for="tag in getDictRefLabels(row.supplyModes, 'scm_supply_mode')"
             :key="tag"
             class="m-2px"
             size="small"
             type="primary"
           >
-            {{ getSupplyModeLabel(tag) }}
+            {{ tag }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.supplyModes).length">-</span>
+          <span v-if="!getDictRefLabels(row.supplyModes, 'scm_supply_mode').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="合作商品SKU数" align="center" prop="skuCount" min-width="160" />
       <el-table-column label="合作状态" align="center" prop="status" min-width="110">
         <template #default="{ row }">
           <el-tag :type="getSupplierStatusType(row.status)" size="small">
-            {{ getSupplierStatusLabel(row.status) }}
+            {{ getDictLabel('supply_chain_supplier_status', row.status) || '-' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -285,18 +295,11 @@
 
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
-import {
-  SUPPLIER_CATEGORY_OPTIONS,
-  SUPPLIER_STATUS_OPTIONS,
-  SUPPLIER_SUPPLY_MODE_OPTIONS,
-  SupplierStatusEnum,
-  getSupplyModeLabel,
-  getSupplierStatusLabel,
-  getSupplierStatusType
-} from '@/views/supplier/utils/constants'
+import { SupplierStatusEnum, getSupplierStatusType } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierManage' })
 
@@ -306,6 +309,7 @@ const loading = ref(true)
 const list = ref<SupplierVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
+const nameOptions = ref<Pick<SupplierVO, 'id' | 'supplierName'>[]>([])
 const selectedList = ref<SupplierVO[]>([])
 const formVisible = ref(false)
 const formSupplierCode = ref<string | undefined>(undefined)
@@ -337,14 +341,18 @@ const updatedRange = computed<string[]>({
   }
 })
 
-/** 从 { id, name }[] 提取展示名称 */
-const getNamedRefNames = (refs?: NamedRef[] | null) => {
+/** 用字典把 { id, name }[] 转成展示文案 */
+const getDictRefLabels = (refs: NamedRef[] | null | undefined, dictType: string) => {
   if (!refs?.length) return []
   return [
     ...new Set(
       refs
-        .map((item) => item?.name)
-        .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+        .map((item) => {
+          const label =
+            getDictLabel(dictType, item?.id) || getDictLabel(dictType, item?.name) || item?.name || ''
+          return label.trim()
+        })
+        .filter((label) => label.length > 0)
     )
   ]
 }
@@ -403,11 +411,22 @@ const openDetail = (row?: SupplierVO) => {
   detailVisible.value = true
 }
 
-/** 表单保存后刷新列表；详情抽屉仍打开时同步刷新 */
+/** 表单保存后刷新列表和下拉选项；详情抽屉仍打开时同步刷新 */
 const handleFormSuccess = () => {
   getList()
+  getFilterOptions()
   if (detailVisible.value) {
     detailRef.value?.reload?.()
+  }
+}
+
+/** 读取供应商名称列表，供搜索下拉模糊筛选 */
+const getFilterOptions = async () => {
+  try {
+    const data = await SupplierApi.getSupplierNameList({ view: 'simple' })
+    nameOptions.value  = Array.isArray(data) ? data : data?.list || []
+  } catch {
+    nameOptions.value = []
   }
 }
 
@@ -491,9 +510,8 @@ const handleBatchStatusChange = async (status: string) => {
 
 const loadPage = () => {
   getList()
+  getFilterOptions()
 }
 
 onMounted(loadPage)
-/** keep-alive 场景下再次进入时重新拉取，避免缓存空列表 */
-onActivated(loadPage)
 </script>

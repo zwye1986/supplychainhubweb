@@ -1,6 +1,6 @@
-import type { PlatformSkuVO } from '../types'
+import type { DistPlatformSkuVO } from '../types'
 
-export const PLATFORM_SKU_MOCK_LIST: PlatformSkuVO[] = [
+export const PLATFORM_SKU_MOCK_LIST: DistPlatformSkuVO[] = [
   {
     "spuId": 100,
     "spuName": "爱奇艺黄金会员",

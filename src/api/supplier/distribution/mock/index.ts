@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { PLATFORM_SKU_MOCK_LIST } from '@/api/supplier/manage/mock/platformSkus'
+import { PLATFORM_SKU_MOCK_LIST } from './platformSkus'
 import type {
   DistPlatformSkuVO,
   DistributorProductVO,

@@ -1,5 +1,4 @@
 import request from '@/config/axios'
-import { SupplierMockApi } from './mock'
 
 export type {
   SupplierContactVO,
@@ -40,42 +39,24 @@ import type {
   SupplierProductVO,
   SupplierSaveReqVO,
   SupplierSupplyConfigVO,
-  SupplierSupplyScopeDO,
-  SupplierVO
+  SupplierSupplyScopeDO
 } from './types'
-
-/** 本地 JSON 模拟开关：后端就绪后改为 false */
-export const USE_SUPPLIER_MOCK = true
 
 export const SupplierApi = {
   getSupplierPage: async (params: SupplierPageParam | any) => {
     return await request.get({ url: '/supply-chain/suppliers', params })
   },
 
-  /** 获取供应商名称列表（供下拉选择，view=simple） */
-  getSupplierNameList: async () => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getSupplierNameList()
-    const data = await request.get({
+  /** 获取供应商名称列表（供下拉选择，view=simple，字段 id / supplierName） */
+  getSupplierNameList: async (queryParams: any) => {
+    return await request.get({
       url: '/supply-chain/suppliers',
-      params: { view: 'simple' }
+      params: queryParams
     })
-    const list = Array.isArray(data) ? data : data?.list || []
-    return list.map((item: { supplierCode?: string; supplierName?: string }) => ({
-      value: item.supplierName || '',
-      label: item.supplierName || '',
-      code: item.supplierCode
-    }))
   },
 
   /** 供应商详情（身份用 supplierCode） */
   getSupplier: async (supplierCode: string) => {
-    if (USE_SUPPLIER_MOCK) {
-      // mock 仍按 id 兼容；真实接口使用 supplierCode
-      const numericId = Number(supplierCode)
-      if (!Number.isNaN(numericId) && String(numericId) === String(supplierCode)) {
-        return SupplierMockApi.getSupplier(numericId)
-      }
-    }
     return await request.get({ url: `/supply-chain/suppliers/${supplierCode}` })
   },
 
@@ -90,7 +71,6 @@ export const SupplierApi = {
   },
 
   deleteSupplier: async (id: number) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.deleteSupplier(id)
     return await request.delete({ url: '/scm/supplier/delete?id=' + id })
   },
 
@@ -140,7 +120,6 @@ export const SupplierApi = {
   },
 
   getSupplyConfigList: async (supplierId: number) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getSupplyConfigList(supplierId)
     return await request.get({ url: '/scm/supplier/supply-config/list?supplierId=' + supplierId })
   },
 
@@ -153,7 +132,6 @@ export const SupplierApi = {
   },
 
   saveSupplyConfigs: async (supplierId: number, configs: SupplierSupplyConfigVO[]) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.saveSupplyConfigs(supplierId, configs)
     return await request.post({
       url: '/scm/supplier/supply-config/save',
       data: { supplierId, configs }
@@ -200,17 +178,14 @@ export const SupplierApi = {
   },
 
   getProductPage: async (params: any) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getProductPage(params)
     return await request.get({ url: '/scm/supplier/product/page', params })
   },
 
   deleteProduct: async (id: number) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.deleteProduct(id)
     return await request.delete({ url: '/scm/supplier/product/delete?id=' + id })
   },
 
   createProducts: async (supplierId: number, products: SupplierProductVO[]) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.createProducts(supplierId, products)
     return await request.post({
       url: '/scm/supplier/product/create-batch',
       data: { supplierId, products }
@@ -218,12 +193,10 @@ export const SupplierApi = {
   },
 
   updateProduct: async (data: SupplierProductVO) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.updateProduct(data)
     return await request.put({ url: '/scm/supplier/product/update', data })
   },
 
   getPlatformSkuPage: async (params: any) => {
-    if (USE_SUPPLIER_MOCK) return SupplierMockApi.getPlatformSkuPage(params)
     return await request.get({ url: '/scm/supplier/platform-sku/page', params })
   }
 }
