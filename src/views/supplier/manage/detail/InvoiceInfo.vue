@@ -20,14 +20,14 @@
           @change="handleTitleTypeChange"
         >
           <el-radio
-            v-for="item in INVOICE_TITLE_TYPE_OPTIONS"
-            :key="item.value"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_invoice_title_type')"
+            :key="dict.value"
+            :value="dict.value"
           >
-            {{ item.label }}
+            {{ dict.label }}
           </el-radio>
         </el-radio-group>
-        <span v-else>{{ titleTypeText }}</span>
+        <span v-else>{{ getDictLabel('supply_chain_invoice_title_type', formData.titleType) || '-' }}</span>
       </el-form-item>
       <el-form-item label="开票抬头" prop="invoiceTitle">
         <el-input v-if="isEditing" v-model="formData.invoiceTitle" placeholder="请输入开票抬头" />
@@ -86,10 +86,8 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
 import { InvoiceSaveReqVO, SupplierApi, SupplierInvoiceView } from '@/api/supplier/manage'
-import {
-  INVOICE_TITLE_TYPE_OPTIONS,
-  InvoiceTitleTypeEnum
-} from '@/views/supplier/utils/constants'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+import { InvoiceTitleTypeEnum } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierInvoiceInfo' })
 
@@ -157,12 +155,6 @@ const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
 }
-
-const titleTypeText = computed(() => {
-  return (
-    INVOICE_TITLE_TYPE_OPTIONS.find((item) => item.value === formData.titleType)?.label || '-'
-  )
-})
 
 const invoiceTip = computed(() => {
   if (formData.persisted) {
