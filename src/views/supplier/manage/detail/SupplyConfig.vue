@@ -37,10 +37,10 @@
             @change="() => handleCategoryL2Change(row)"
           >
             <el-option
-              v-for="item in getCategoryL2Options(row)"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="dict in getStrDictOptions('supply_chain_product_type')"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </template>
@@ -57,10 +57,10 @@
             @change="() => handleCategoryL3Change(row)"
           >
             <el-option
-              v-for="item in getCategoryL3Options(row)"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="dict in getStrDictOptions('supply_chain_product_classification')"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </template>
@@ -77,10 +77,10 @@
             :disabled="!row.categoryL3Id"
           >
             <el-option
-              v-for="item in getSupplyModeOptions(row)"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="dict in getStrDictOptions('supply_chain_supply_mode')"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </template>
@@ -132,12 +132,6 @@ import {
   SupplyScopeView
 } from '@/api/supplier/manage'
 import { getStrDictOptions } from '@/utils/dict'
-import {
-  SUPPLIER_PRODUCT_CATEGORY_OPTIONS,
-  SUPPLIER_PRODUCT_TYPE_OPTIONS,
-  SUPPLIER_SUPPLY_MODE_OPTIONS,
-  getSupplyModeLabel
-} from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierSupplyConfig' })
 
@@ -171,31 +165,6 @@ const createEmptyRow = (): SupplyScopeRow => ({
   maxQuantity: DEFAULT_MAX_QUANTITY,
   minQuantity: DEFAULT_MIN_QUANTITY
 })
-
-type OptionItem = { value: string | number; label: string }
-
-const mergeOption = (
-  options: OptionItem[],
-  value?: string | number | null,
-  label?: string
-): OptionItem[] => {
-  if (value === undefined || value === null || value === '') return options
-  if (options.some((item) => String(item.value) === String(value))) return options
-  return [...options, { value, label: label || String(value) }]
-}
-
-const getCategoryL2Options = (row: SupplyScopeRow) =>
-  mergeOption(SUPPLIER_PRODUCT_TYPE_OPTIONS, row.categoryL2Id, row.categoryL2Name)
-
-const getCategoryL3Options = (row: SupplyScopeRow) =>
-  mergeOption(SUPPLIER_PRODUCT_CATEGORY_OPTIONS, row.categoryL3Id, row.categoryL3Name)
-
-const getSupplyModeOptions = (row: SupplyScopeRow) => {
-  return (row.supplyModes || []).reduce(
-    (options, mode) => mergeOption(options, mode, getSupplyModeLabel(mode)),
-    [...SUPPLIER_SUPPLY_MODE_OPTIONS]
-  )
-}
 
 const hasSupplyMode = (row: SupplyScopeRow) => {
   return Array.isArray(row.supplyModes) && row.supplyModes.length > 0

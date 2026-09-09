@@ -318,7 +318,6 @@
 import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import { getDictLabel } from '@/utils/dict'
 import { formatNullableDate } from '@/utils/formatTime'
-import {getSupplierStatusType} from '@/views/supplier/utils/constants'
 import InvoiceInfo from './InvoiceInfo.vue'
 import SupplyConfig from './SupplyConfig.vue'
 import ProductList from './ProductList.vue'
@@ -345,6 +344,13 @@ const supplier = ref<SupplierVO>({} as SupplierVO)
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
+}
+
+const getSupplierStatusType = (status?: string) => {
+  if (status === 'ACTIVE') return 'success'
+  if (status === 'SUSPENDED') return 'warning'
+  if (status === 'BLACKLIST') return 'danger'
+  return 'info'
 }
 
 const shippingSlaText = computed(() => {
