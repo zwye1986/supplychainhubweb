@@ -203,7 +203,6 @@ import ProjectDetailDrawer from './detail/index.vue'
 defineOptions({ name: 'SupplierDistributionProject' })
 
 const route = useRoute()
-const router = useRouter()
 const message = useMessage()
 
 const loading = ref(true)
@@ -277,13 +276,9 @@ const openForm = (projectCode?: string) => {
 
 const openDetail = (projectCode?: string) => {
   if (!projectCode) return
+  if (detailVisible.value && detailProjectCode.value === projectCode) return
   detailProjectCode.value = projectCode
   detailVisible.value = true
-  if (String(route.query.projectCode) !== projectCode) {
-    const query = { ...route.query }
-    delete query.id
-    router.replace({ query: { ...query, projectCode } })
-  }
 }
 
 const handleFormSuccess = () => {
@@ -320,18 +315,6 @@ const resolveRouteProjectCode = () => {
   const projectCode = route.query.projectCode || route.query.id
   return projectCode ? String(projectCode) : ''
 }
-
-watch(
-  () => detailVisible.value,
-  (visible) => {
-    if (!visible && (route.query.projectCode || route.query.id)) {
-      const query = { ...route.query }
-      delete query.projectCode
-      delete query.id
-      router.replace({ query })
-    }
-  }
-)
 
 watch(
   () => [route.query.projectCode, route.query.id] as const,
