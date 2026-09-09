@@ -1012,62 +1012,6 @@ const remainingRouter: AppRouteRecordRaw[] = [
         ]
       }
     ]
-  },
-  {
-    path: '/supplier',
-    component: Layout,
-    name: 'SupplierCenter',
-    meta: {
-      title: '供应商中台',
-      icon: 'ep:goods'
-    },
-    redirect: '/supplier/manage',
-    children: [
-      {
-        path: 'manage',
-        component: () => import('@/views/supplier/manage/index.vue'),
-        name: 'SupplierManage',
-        meta: {
-          title: '供应商管理',
-          icon: 'ep:user',
-          noCache: false
-        }
-      },
-      {
-        path: 'distribution',
-        component: getParentLayout(),
-        name: 'SupplierDistribution',
-        redirect: '/supplier/distribution/distributor',
-        meta: {
-          title: '分销管理',
-          icon: 'ep:share',
-          noCache: false,
-          alwaysShow: true
-        },
-        children: [
-          {
-            path: 'distributor',
-            component: () => import('@/views/supplier/distribution/distributor/index.vue'),
-            name: 'SupplierDistributor',
-            meta: {
-              title: '分销商管理',
-              icon: 'ep:avatar',
-              noCache: false
-            }
-          },
-          {
-            path: 'project',
-            component: () => import('@/views/supplier/distribution/project/index.vue'),
-            name: 'SupplierDistributionProject',
-            meta: {
-              title: '项目管理',
-              icon: 'ep:folder-opened',
-              noCache: false
-            }
-          }
-        ]
-      }
-    ]
   }
 ]
 

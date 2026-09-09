@@ -86,21 +86,13 @@
           {{ supplier.productCount ?? 0 }}
         </el-descriptions-item>
         <el-descriptions-item label="供货配置">
-          <template v-if="supplyConfigSummary.length">
-            <el-tag
-              v-for="item in supplyConfigSummary"
-              :key="item"
-              class="m-2px"
-              size="small"
-              type="success"
-            >
-              {{ item }}
-            </el-tag>
+          <template v-if="supplier.scopes?.length">
+           {{ supplier.scopes?.length }}组
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="接入时间">
-          {{ supplier.onboardedAt || supplier.accessDate || supplier.accessTime || '-' }}
+          {{ formatNullableDate(supplier.onboardAt || supplier.onboardedAt) }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -111,7 +103,7 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="供应商名称">
-                  {{ displayText(supplier.supplierName || supplier.name) }}
+                  {{ displayText(supplier.supplierName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -161,12 +153,12 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="结算方式">
-                  {{ getSettlementLabel(supplier.settlementMethod || supplier.settlementType) }}
+                  {{ getSettlementLabel(supplier.settlementMethod) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算周期（天）">
-                  {{ displayText(supplier.settlementCycleDays ?? supplier.settlementCycle) }}
+                  {{ displayText(supplier.settlementCycleDays) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -176,7 +168,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="接入时间">
-                  {{ displayText(supplier.onboardedAt || supplier.accessDate) }}
+                  {{ formatNullableDate(supplier.onboardAt) }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -320,6 +312,7 @@
 import * as AreaApi from '@/api/system/area'
 import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import { getDictLabel } from '@/utils/dict'
+import { formatNullableDate } from '@/utils/formatTime'
 import {
   DeliveryAreaTypeEnum,
   SupplierStatusEnum,
@@ -413,20 +406,6 @@ const resolveDeliveryAreaName = async (areaId?: number) => {
     deliveryAreaName.value = ''
   }
 }
-
-/** 供货配置摘要：品类组合 + 供货模式 */
-const supplyConfigSummary = computed(() => {
-  return (supplier.value.supplyConfigs || [])
-    .filter((item) => item.categoryCode || item.categoryName)
-    .map((item) => {
-      const category =
-        item.categoryName || getCategoryLabel(item.categoryCode) || item.categoryCode || '-'
-      const modes = (Array.isArray(item.supplyMode) ? item.supplyMode : [item.supplyMode])
-        .map((mode) => getSupplyModeLabel(mode))
-        .filter((label) => label && label !== '-')
-      return modes.length ? `${category}（${modes.join('、')}）` : category
-    })
-})
 
 const getDetail = async () => {
   if (!props.supplierCode) return

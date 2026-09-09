@@ -277,7 +277,9 @@ export interface SupplierVO {
   /** 供货模式（name 为枚举名，如 API_DIRECT） */
   supplyModes?: NamedRef[]
   skuCount?: number
-  /** 正式接入时间（毫秒时间戳） */
+  /** 正式接入时间 */
+  onboardAt?: number | string | null
+  /** @deprecated 使用 onboardAt */
   onboardedAt?: number | string | null
   /** 最后修改时间（毫秒时间戳） */
   updatedAt?: number | string | null
