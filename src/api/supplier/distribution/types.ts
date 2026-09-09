@@ -39,7 +39,8 @@ export interface BuyerSaveReqVO {
   licenseFileKeys?: string[]
   qualificationFileKeys?: string[]
   categoryL1Ids?: Array<string | number>
-  categoryL2Ids?: Array<string | number>
+  /** 商品类型，字典 supply_chain_product_type */
+  productTypes?: string[]
   /** 期初余额，单位 CNY 分，仅创建可写（空视为 0）；编辑再带会拒绝 */
   openingBalanceCents?: number
 }
@@ -315,12 +316,14 @@ export interface DistributorVO {
   distributionLevel?: number
   /** 合作模式枚举名 */
   cooperationModes?: string[]
+  /** 分销品类，字典 supply_chain_sellable_category */
+  sellableCategories?: string[]
   /** 可售品类（列表） */
   categories?: NamedRef[]
   /** 可售品类（详情） */
   categoryL1s?: NamedRef[]
-  /** 商品类型（列表） */
-  productTypes?: NamedRef[]
+  /** 商品类型，字典 supply_chain_product_type */
+  productTypes?: string[]
   /** 商品类型（详情） */
   categoryL2s?: NamedRef[]
   skuCount?: number
@@ -428,6 +431,9 @@ export interface BuyerDetail {
   qualificationFileKeys?: string[]
   integrationModes?: string[]
   cooperationModes?: string[]
+  productTypes?: string[]
+  sellableCategories?: string[]
+  categoryL1Ids?: Array<string | number>
   categoryL1s?: NamedRef[]
   categoryL2s?: NamedRef[]
   contacts?: DistributorContactVO[]

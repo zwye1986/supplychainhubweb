@@ -59,7 +59,7 @@ const syncListFields = (item: DistributorVO) => {
     item.categories = item.category.map((name) => ({ name }))
   }
   if (!item.productTypes?.length && item.productType?.length) {
-    item.productTypes = item.productType.map((name) => ({ name }))
+    item.productTypes = item.productType
   }
   if (item.parentId) {
     item.parentName =

@@ -14,11 +14,11 @@
             <span class="truncate text-20px font-700">
               {{ displayName || '分销商详情' }}
             </span>
-            <el-tag :type="getDistributorStatusType(distributor.status)" size="small">
-              {{ getDistributorStatusLabel(distributor.status) }}
+            <el-tag :type="getBuyerStatusType(distributor.status)" size="small">
+              {{ getDictLabel('supply_chain_buyer_status', distributor.status) || '-' }}
             </el-tag>
             <el-tag size="small" type="primary">
-              {{ getDistributionLevelLabel(distributionLevel) }}
+              {{ getDictLabel('supply_chain_distribution_level', distributionLevel) || '-' }}
             </el-tag>
           </div>
           <div class="text-13px text-gray-500">编号：{{ displayCode || '-' }}</div>
@@ -26,34 +26,34 @@
         <div>
           <el-button type="primary" @click="openEdit">编辑</el-button>
           <el-button
-            v-if="distributor.status === DistributorStatusEnum.NORMAL"
+            v-if="distributor.status === 'ACTIVE'"
             type="warning"
             plain
-            @click="handleStatusChange(DistributorStatusEnum.PAUSED)"
+            @click="handleStatusChange('SUSPENDED')"
           >
             暂停
           </el-button>
           <el-button
-            v-if="distributor.status === DistributorStatusEnum.PAUSED"
+            v-if="distributor.status === 'SUSPENDED'"
             type="success"
             plain
-            @click="handleStatusChange(DistributorStatusEnum.NORMAL)"
+            @click="handleStatusChange('ACTIVE')"
           >
             恢复
           </el-button>
           <el-button
-            v-if="distributor.status !== DistributorStatusEnum.BLACKLIST"
+            v-if="distributor.status !== 'BLACKLIST'"
             type="danger"
             plain
-            @click="handleStatusChange(DistributorStatusEnum.BLACKLIST)"
+            @click="handleStatusChange('BLACKLIST')"
           >
             移入黑名单
           </el-button>
           <el-button
-            v-if="distributor.status === DistributorStatusEnum.BLACKLIST"
+            v-if="distributor.status === 'BLACKLIST'"
             type="success"
             plain
-            @click="handleStatusChange(DistributorStatusEnum.NORMAL)"
+            @click="handleStatusChange('ACTIVE')"
           >
             移出黑名单
           </el-button>
@@ -62,43 +62,43 @@
 
       <el-descriptions class="mt-16px" :column="3" border>
         <el-descriptions-item label="分销等级">
-          {{ getDistributionLevelLabel(distributionLevel) }}
+          {{ getDictLabel('supply_chain_distribution_level', distributionLevel) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="上级分销商">
-          {{ displayText(distributor.parentBuyerCode || distributor.parentName) }}
+          {{ displayText(distributor.parentBuyerCode) }}
         </el-descriptions-item>
         <el-descriptions-item label="合作模式">
           <template v-if="cooperationModes.length">
             <el-tag v-for="mode in cooperationModes" :key="mode" class="m-2px" size="small">
-              {{ getCooperationModeLabel(mode) }}
+              {{ getDictLabel('supply_chain_cooperation_mode', mode) || mode }}
             </el-tag>
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="分销品类">
-          <template v-if="categoryL1Names.length">
+          <template v-if="sellableCategories.length">
             <el-tag
-              v-for="tag in categoryL1Names"
+              v-for="tag in sellableCategories"
               :key="tag"
               class="m-2px"
               size="small"
               type="info"
             >
-              {{ getDistCategoryLabel(tag) }}
+              {{ getDictLabel('supply_chain_sellable_category', tag) || tag }}
             </el-tag>
           </template>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="商品类型">
-          <template v-if="categoryL2Names.length">
+          <template v-if="productTypes.length">
             <el-tag
-              v-for="tag in categoryL2Names"
+              v-for="tag in productTypes"
               :key="tag"
               class="m-2px"
               size="small"
               type="success"
             >
-              {{ getDistProductTypeLabel(tag) }}
+              {{ getDictLabel('supply_chain_product_type', tag) || tag }}
             </el-tag>
           </template>
           <span v-else>-</span>
@@ -118,7 +118,7 @@
           }}
         </el-descriptions-item>
         <el-descriptions-item label="供货择优倾向">
-          {{ getSupplyPreferenceLabel(distributor.supplyPreference) }}
+          {{ getDictLabel('supply_chain_supply_preference', distributor.supplyPreference) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="合作开始时间">
           {{ displayText(distributor.cooperationStartedAt || distributor.cooperationStartDate) }}
@@ -158,7 +158,7 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="分销等级">
-                  {{ getDistributionLevelLabel(distributionLevel) }}
+                  {{ getDictLabel('supply_chain_distribution_level', distributionLevel) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -169,28 +169,43 @@
               <el-col :span="12">
                 <el-form-item label="合作模式">
                   {{
-                    cooperationModes.map((mode) => getCooperationModeLabel(mode)).join('、') || '-'
+                    cooperationModes
+                      .map((mode) => getDictLabel('supply_chain_cooperation_mode', mode) || mode)
+                      .join('、') || '-'
                   }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="分销商类型">
-                  {{ getDistributorTypeLabel(distributor.distributorType) }}
+                  {{
+                    getDictLabel('supply_chain_distributor_type', distributor.distributorType) || '-'
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="分销品类">
-                  {{ categoryL1Names.map((tag) => getDistCategoryLabel(tag)).join('、') || '-' }}
+                  {{
+                    sellableCategories
+                      .map((tag) => getDictLabel('supply_chain_sellable_category', tag) || tag)
+                      .join('、') || '-'
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="商品类型">
-                  {{ categoryL2Names.map((tag) => getDistProductTypeLabel(tag)).join('、') || '-' }}
+                  {{
+                    productTypes
+                      .map((tag) => getDictLabel('supply_chain_product_type', tag) || tag)
+                      .join('、') || '-'
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="供货择优倾向">
-                  {{ getSupplyPreferenceLabel(distributor.supplyPreference) }}
+                  {{
+                    getDictLabel('supply_chain_supply_preference', distributor.supplyPreference) ||
+                    '-'
+                  }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -200,7 +215,10 @@
               <el-col :span="12">
                 <el-form-item label="结算方式">
                   {{
-                    getSettlementLabel(distributor.settlementMethod || distributor.settlementType)
+                    getDictLabel(
+                      'supply_chain_settlement_method',
+                      distributor.settlementMethod || distributor.settlementType
+                    ) || '-'
                   }}
                 </el-form-item>
               </el-col>
@@ -223,7 +241,7 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="合作状态">
-                  {{ getDistributorStatusLabel(distributor.status) }}
+                  {{ getDictLabel('supply_chain_buyer_status', distributor.status) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -355,20 +373,8 @@
 
 <script lang="ts" setup>
 import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
-import {
-  DistributorStatusEnum,
-  formatCentsYuan,
-  getCooperationModeLabel,
-  getDistCategoryLabel,
-  getDistProductTypeLabel,
-  getDistributionLevelLabel,
-  getDistributorStatusLabel,
-  getDistributorStatusType,
-  getDistributorTypeLabel,
-  getIntegrationLabel,
-  getSettlementLabel,
-  getSupplyPreferenceLabel
-} from '@/views/supplier/utils/constants'
+import { getDictLabel } from '@/utils/dict'
+import { formatCentsYuan } from '@/views/supplier/utils/constants'
 import InvoiceInfo from './InvoiceInfo.vue'
 import ProjectList from './ProjectList.vue'
 import ProductList from './ProductList.vue'
@@ -410,12 +416,20 @@ const displayText = (value?: string | number | null) => {
   return String(value)
 }
 
-const namedRefNames = (refs?: NamedRef[] | null, fallback?: string[]) => {
+const getBuyerStatusType = (status?: string) => {
+  if (status === 'ACTIVE') return 'success'
+  if (status === 'SUSPENDED') return 'warning'
+  if (status === 'BLACKLIST') return 'danger'
+  return 'info'
+}
+
+const namedRefValues = (refs?: NamedRef[] | null, fallback?: Array<string | number>) => {
   const fromRefs = (refs || [])
-    .map((item) => item?.name)
-    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-  const names = fromRefs.length ? fromRefs : fallback || []
-  return [...new Set(names)]
+    .map((item) => item?.id ?? item?.name)
+    .filter((value) => value !== undefined && value !== null && String(value).trim().length > 0)
+    .map(String)
+  const values = fromRefs.length ? fromRefs : (fallback || []).map(String)
+  return [...new Set(values.filter(Boolean))]
 }
 
 const cooperationModes = computed(() => {
@@ -425,18 +439,19 @@ const cooperationModes = computed(() => {
   return [...new Set(modes.filter(Boolean))]
 })
 
-const categoryL1Names = computed(() =>
-  namedRefNames(
+const sellableCategories = computed(() => {
+  const values = distributor.value.sellableCategories || distributor.value.categoryL1Ids
+  if (values?.length) return values.map(String)
+  return namedRefValues(
     distributor.value.categoryL1s || distributor.value.categories,
     distributor.value.category
   )
-)
+})
 
-const categoryL2Names = computed(() =>
-  namedRefNames(
-    distributor.value.categoryL2s || distributor.value.productTypes,
-    distributor.value.productType
-  )
+const productTypes = computed(() =>
+  distributor.value.productTypes?.length
+    ? distributor.value.productTypes
+    : namedRefValues(distributor.value.categoryL2s, distributor.value.productType)
 )
 
 const licenseFileKeys = computed(
@@ -450,7 +465,9 @@ const qualificationFileKeys = computed(
 const integrationText = computed(() => {
   const methods = distributor.value.integrationModes || distributor.value.integrationMethods || []
   if (!methods.length) return '-'
-  return methods.map((method) => getIntegrationLabel(method)).join('、')
+  return methods
+    .map((method) => getDictLabel('supply_chain_integration_mode', method) || method)
+    .join('、')
 })
 
 const accountBalanceText = computed(() => {
@@ -472,6 +489,8 @@ const getDetail = async () => {
       ...data,
       contacts: data.contacts || [],
       cooperationModes: data.cooperationModes || [],
+      productTypes: data.productTypes || [],
+      sellableCategories: (data.sellableCategories || data.categoryL1Ids || []).map(String),
       categoryL1s: data.categoryL1s || [],
       categoryL2s: data.categoryL2s || [],
       integrationModes: data.integrationModes || [],
@@ -503,9 +522,9 @@ const handleOpenChildDetail = (buyerCode?: string) => {
 }
 
 const getStatusActionText = (targetStatus: string) => {
-  if (targetStatus === DistributorStatusEnum.PAUSED) return '暂停分销'
-  if (targetStatus === DistributorStatusEnum.BLACKLIST) return '移入黑名单'
-  if (distributor.value.status === DistributorStatusEnum.BLACKLIST) return '移出黑名单'
+  if (targetStatus === 'SUSPENDED') return '暂停分销'
+  if (targetStatus === 'BLACKLIST') return '移入黑名单'
+  if (distributor.value.status === 'BLACKLIST') return '移出黑名单'
   return '恢复合作'
 }
 

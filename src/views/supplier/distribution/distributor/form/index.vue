@@ -174,8 +174,8 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="商品类型" prop="categoryL2Ids">
-            <el-checkbox-group v-model="formData.categoryL2Ids">
+          <el-form-item label="商品类型" prop="productTypes">
+            <el-checkbox-group v-model="formData.productTypes">
               <el-checkbox
                 v-for="dict in getStrDictOptions('supply_chain_product_type')"
                 :key="dict.value"
@@ -196,10 +196,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in SUPPLY_PREFERENCE_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_supply_preference')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -443,11 +443,7 @@ import {
   DistributorVO
 } from '@/api/supplier/distribution'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import {
-  DistributorStatusEnum,
-  SUPPLY_PREFERENCE_OPTIONS,
-  yuanToCents
-} from '@/views/supplier/utils/constants'
+import { DistributorStatusEnum, yuanToCents } from '@/views/supplier/utils/constants'
 
 const UNLIMITED_FILE_TYPES = ['']
 
@@ -500,7 +496,7 @@ const createDefaultForm = (): DistributorFormModel => ({
   cooperationModes: [],
   distributorType: undefined,
   categoryL1Ids: [],
-  categoryL2Ids: [],
+  productTypes: [],
   supplyPreference: undefined,
   legalEntityName: '',
   creditCode: '',
@@ -524,6 +520,45 @@ const createDefaultForm = (): DistributorFormModel => ({
 const formData = ref<DistributorFormModel>(createDefaultForm())
 
 const isL1Distributor = computed(() => formData.value.distributionLevel === '1')
+
+/** 先用本地数据验证新增回显，后端就绪后改为 false */
+const USE_FORM_MOCK = true
+
+const firstDictValues = (dictType: string, count = 2) =>
+  getStrDictOptions(dictType)
+    .slice(0, count)
+    .map((item) => item.value)
+
+const applyMockForm = () => {
+  formData.value = {
+    ...createDefaultForm(),
+    buyerName: '华东福利分销中心',
+    status: 'ACTIVE',
+    distributionLevel: '1',
+    cooperationModes: firstDictValues('supply_chain_cooperation_mode'),
+    distributorType: firstDictValues('supply_chain_distributor_type', 1)[0],
+    categoryL1Ids: firstDictValues('supply_chain_sellable_category'),
+    productTypes: firstDictValues('supply_chain_product_type'),
+    supplyPreference: firstDictValues('supply_chain_supply_preference', 1)[0],
+    legalEntityName: '上海华东福利科技有限公司',
+    creditCode: '91310000MA1DIST001',
+    legalPersonName: '李伟',
+    legalPersonMobile: '13900010001',
+    contactAddress: '上海市浦东新区世纪大道100号',
+    settlementMethod: firstDictValues('supply_chain_settlement_method', 1)[0],
+    settlementCycleDays: 30,
+    integrationModes: firstDictValues('supply_chain_integration_mode'),
+    cooperationStartedAt: '2026-07-01T10:00:00',
+    cooperationNote: '一级分销商，覆盖华东区域企业客户',
+    bankName: '工商银行上海分行',
+    bankAccount: '6222020000000000001',
+    contacts: [
+      { name: '李伟', mobile: '13900010001', email: 'liwei@hdfl.com' },
+      { name: '王芳', mobile: '13900010002', email: 'wangfang@hdfl.com' }
+    ]
+  }
+  openingBalanceYuan.value = 10000
+}
 
 const licenseFileKeysModel = computed<string[]>({
   get: () => formData.value.licenseFileKeys || [],
@@ -556,7 +591,7 @@ const formRules = reactive<FormRules>({
   ],
   cooperationModes: [{ required: true, message: '请选择合作模式', trigger: 'change', type: 'array' }],
   categoryL1Ids: [{ required: true, message: '请选择分销品类', trigger: 'change', type: 'array' }],
-  categoryL2Ids: [{ required: true, message: '请选择商品类型', trigger: 'change', type: 'array' }],
+  productTypes: [{ required: true, message: '请选择商品类型', trigger: 'change', type: 'array' }],
   legalEntityName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
   creditCode: [
     { required: true, message: '请输入社会统一信用代码', trigger: 'blur' },
@@ -593,6 +628,8 @@ watch(
     resetForm()
     if (props.buyerCode) {
       await loadDetail(props.buyerCode)
+    } else if (USE_FORM_MOCK) {
+      applyMockForm()
     }
     await loadParentOptions()
   }
@@ -732,9 +769,7 @@ const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): Distributo
     categoryL1Ids: data.categoryL1Ids?.length
       ? data.categoryL1Ids
       : namedRefIds(data.categoryL1s || data.categories, data.category),
-    categoryL2Ids: data.categoryL2Ids?.length
-      ? data.categoryL2Ids
-      : namedRefIds(data.categoryL2s || data.productTypes, data.productType),
+    productTypes: data.productTypes || [],
     supplyPreference: data.supplyPreference,
     legalEntityName: data.legalEntityName || data.companyName || '',
     creditCode: data.creditCode || data.socialCreditCode || '',
@@ -807,7 +842,7 @@ const buildSavePayload = (): BuyerSaveReqVO => {
     qualificationFileKeys,
     qualificationFileKey: qualificationFileKeys[0],
     categoryL1Ids: formData.value.categoryL1Ids || [],
-    categoryL2Ids: formData.value.categoryL2Ids || []
+    productTypes: formData.value.productTypes || []
   }
   if (!isEdit.value) {
     payload.openingBalanceCents = yuanToCents(openingBalanceYuan.value) ?? 0
