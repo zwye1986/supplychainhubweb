@@ -39,10 +39,10 @@
               @change="handleLevelChange"
             >
               <el-option
-                v-for="item in DISTRIBUTION_LEVEL_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_distribution_level')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -55,12 +55,12 @@
               clearable
               filterable
               class="!w-full"
-              :disabled="formData.distributionLevel === DistributionLevelEnum.L1"
+              :disabled="isL1Distributor"
             >
               <el-option
                 v-for="item in parentOptions"
                 :key="item.buyerCode"
-                :label="`${item.buyerName}（${getDistributionLevelLabel(item.distributionLevel)}）`"
+                :label="`${item.buyerName}（${getDictLabel('supply_chain_distribution_level', item.distributionLevel) || '-'}）`"
                 :value="item.buyerCode"
               />
             </el-select>
@@ -77,10 +77,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in COOPERATION_MODE_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_cooperation_mode')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -94,10 +94,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in DISTRIBUTOR_TYPE_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_distributor_type')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -163,12 +163,12 @@
           <el-form-item label="分销品类" prop="categoryL1Ids">
             <el-checkbox-group v-model="formData.categoryL1Ids">
               <el-checkbox
-                v-for="item in DIST_CATEGORY_OPTIONS"
-                :key="item.value"
-                :label="item.value"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
+                :key="dict.value"
+                :label="dict.value"
+                :value="dict.value"
               >
-                {{ item.label }}
+                {{ dict.label }}
               </el-checkbox>
             </el-checkbox-group>
           </el-form-item>
@@ -177,12 +177,12 @@
           <el-form-item label="商品类型" prop="categoryL2Ids">
             <el-checkbox-group v-model="formData.categoryL2Ids">
               <el-checkbox
-                v-for="item in DIST_PRODUCT_TYPE_OPTIONS"
-                :key="item.value"
-                :label="item.value"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_product_type')"
+                :key="dict.value"
+                :label="dict.value"
+                :value="dict.value"
               >
-                {{ item.label }}
+                {{ dict.label }}
               </el-checkbox>
             </el-checkbox-group>
           </el-form-item>
@@ -217,10 +217,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in SUPPLIER_SETTLEMENT_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_settlement_method')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -248,10 +248,10 @@
               class="!w-full"
             >
               <el-option
-                v-for="item in SUPPLIER_INTEGRATION_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_integration_mode')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -271,11 +271,11 @@
           <el-form-item label="合作状态" prop="status">
             <el-radio-group v-model="formData.status">
               <el-radio
-                v-for="item in DISTRIBUTOR_STATUS_OPTIONS"
-                :key="item.value"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_buyer_status')"
+                :key="dict.value"
+                :value="dict.value"
               >
-                {{ item.label }}
+                {{ dict.label }}
               </el-radio>
             </el-radio-group>
           </el-form-item>
@@ -442,19 +442,10 @@ import {
   DistributorContactVO,
   DistributorVO
 } from '@/api/supplier/distribution'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import {
-  COOPERATION_MODE_OPTIONS,
-  DIST_CATEGORY_OPTIONS,
-  DIST_PRODUCT_TYPE_OPTIONS,
-  DISTRIBUTION_LEVEL_OPTIONS,
-  DISTRIBUTOR_STATUS_OPTIONS,
-  DISTRIBUTOR_TYPE_OPTIONS,
-  DistributionLevelEnum,
   DistributorStatusEnum,
-  SUPPLIER_INTEGRATION_OPTIONS,
-  SUPPLIER_SETTLEMENT_OPTIONS,
   SUPPLY_PREFERENCE_OPTIONS,
-  getDistributionLevelLabel,
   yuanToCents
 } from '@/views/supplier/utils/constants'
 
@@ -488,7 +479,7 @@ const dialogVisible = computed({
 
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
-const parentOptions = ref<{ buyerCode: string; buyerName: string; distributionLevel?: number }[]>([])
+const parentOptions = ref<{ buyerCode: string; buyerName: string; distributionLevel?: string | number }[]>([])
 const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.buyerCode && props.mode !== 'view'))
 const openingBalanceYuan = ref<number | undefined>(undefined)
@@ -504,7 +495,7 @@ const createDefaultForm = (): DistributorFormModel => ({
   buyerCode: undefined,
   buyerName: '',
   status: DistributorStatusEnum.NORMAL,
-  distributionLevel: DistributionLevelEnum.L1,
+  distributionLevel: '1',
   parentBuyerCode: undefined,
   cooperationModes: [],
   distributorType: undefined,
@@ -532,6 +523,8 @@ const createDefaultForm = (): DistributorFormModel => ({
 
 const formData = ref<DistributorFormModel>(createDefaultForm())
 
+const isL1Distributor = computed(() => formData.value.distributionLevel === '1')
+
 const licenseFileKeysModel = computed<string[]>({
   get: () => formData.value.licenseFileKeys || [],
   set: (val) => {
@@ -552,7 +545,7 @@ const formRules = reactive<FormRules>({
   parentBuyerCode: [
     {
       validator: (_rule, value, callback) => {
-        if (formData.value.distributionLevel === DistributionLevelEnum.L1 || value) {
+        if (isL1Distributor.value || value) {
           callback()
           return
         }
@@ -607,7 +600,7 @@ watch(
 
 const loadParentOptions = async () => {
   const level = formData.value.distributionLevel
-  if (!level || level === DistributionLevelEnum.L1) {
+  if (!level || level === '1') {
     parentOptions.value = []
     return
   }
@@ -623,7 +616,7 @@ const loadParentOptions = async () => {
 }
 
 const handleLevelChange = async () => {
-  if (formData.value.distributionLevel === DistributionLevelEnum.L1) {
+  if (isL1Distributor.value) {
     formData.value.parentBuyerCode = undefined
   }
   await loadParentOptions()
@@ -732,7 +725,7 @@ const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): Distributo
     buyerCode: data.buyerCode || data.code,
     buyerName: data.buyerName || data.name || '',
     status: data.status || DistributorStatusEnum.NORMAL,
-    distributionLevel: data.distributionLevel ?? data.level ?? DistributionLevelEnum.L1,
+    distributionLevel: String(data.distributionLevel ?? data.level ?? '1'),
     parentBuyerCode: data.parentBuyerCode || undefined,
     cooperationModes: normalizeCooperationModes(data.cooperationModes || data.cooperationMode),
     distributorType: normalizeDistributorType(data.distributorType),
@@ -785,12 +778,13 @@ const loadDetail = async (buyerCode: string) => {
 const buildSavePayload = (): BuyerSaveReqVO => {
   const licenseFileKeys = toFileArray(formData.value.licenseFileKeys)
   const qualificationFileKeys = toFileArray(formData.value.qualificationFileKeys)
-  const isL1 = formData.value.distributionLevel === DistributionLevelEnum.L1
+  const distributionLevel = formData.value.distributionLevel || '1'
+  const isL1 = distributionLevel === '1'
   const payload: BuyerSaveReqVO = {
     buyerName: formData.value.buyerName,
     contacts: formData.value.contacts || [],
     parentBuyerCode: isL1 ? undefined : formData.value.parentBuyerCode || undefined,
-    distributionLevel: formData.value.distributionLevel || DistributionLevelEnum.L1,
+    distributionLevel,
     distributorType: formData.value.distributorType || undefined,
     supplyPreference: formData.value.supplyPreference || undefined,
     settlementMethod: formData.value.settlementMethod || undefined,

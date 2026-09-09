@@ -33,10 +33,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in DISTRIBUTION_LEVEL_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_distribution_level')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -50,10 +50,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in COOPERATION_MODE_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_cooperation_mode')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -67,10 +67,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in DIST_CATEGORY_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -84,10 +84,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in DISTRIBUTOR_STATUS_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_buyer_status')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -114,7 +114,7 @@
           type="warning"
           plain
           :disabled="pausableSelectedList.length === 0"
-          @click="handleBatchStatusChange(DistributorStatusEnum.PAUSED)"
+          @click="handleBatchStatusChange('SUSPENDED')"
         >
           <Icon icon="ep:video-pause" class="mr-5px" /> 批量暂停
         </el-button>
@@ -122,7 +122,7 @@
           type="success"
           plain
           :disabled="resumableSelectedList.length === 0"
-          @click="handleBatchStatusChange(DistributorStatusEnum.NORMAL)"
+          @click="handleBatchStatusChange('ACTIVE')"
         >
           <Icon icon="ep:video-play" class="mr-5px" /> 批量恢复
         </el-button>
@@ -154,14 +154,19 @@
       <el-table-column label="等级" align="center" prop="distributionLevel" min-width="110">
         <template #default="{ row }">
           <el-tag size="small" type="primary">
-            {{ getDistributionLevelLabel(row.distributionLevel ?? row.level) }}
+            {{
+              getDictLabel(
+                'supply_chain_distribution_level',
+                row.distributionLevel
+              ) || '-'
+            }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="合作模式" align="center" prop="cooperationModes" min-width="160">
         <template #default="{ row }">
           <el-tag v-for="mode in getCooperationModeValues(row)" :key="mode" class="m-2px" size="small">
-            {{ getCooperationModeLabel(mode) }}
+            {{ getDictLabel('supply_chain_cooperation_mode', mode) || mode }}
           </el-tag>
           <span v-if="!getCooperationModeValues(row).length">-</span>
         </template>
@@ -170,21 +175,20 @@
       <el-table-column label="分销品类" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.categories, row.category)"
+            v-for="tag in row.sellableCategories"
             :key="tag"
             class="m-2px"
             size="small"
             type="info"
           >
-            {{ getDistCategoryLabel(tag) }}
+            {{ getDictLabel('supply_chain_sellable_category', tag) || tag }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.categories, row.category).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getNamedRefNames(row.productTypes, row.productType)"
+            v-for="tag in row.productTypes"
             :key="tag"
             class="m-2px"
             size="small"
@@ -192,14 +196,13 @@
           >
             {{ getDistProductTypeLabel(tag) }}
           </el-tag>
-          <span v-if="!getNamedRefNames(row.productTypes, row.productType).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="分销SKU商品数" align="center" prop="skuCount" min-width="130" />
       <el-table-column label="合作状态" align="center" prop="status" min-width="110">
         <template #default="{ row }">
-          <el-tag :type="getDistributorStatusType(row.status)" size="small">
-            {{ getDistributorStatusLabel(row.status) }}
+          <el-tag :type="getBuyerStatusType(row.status)" size="small">
+            {{ getDictLabel('supply_chain_buyer_status', row.status) || '-' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -221,35 +224,39 @@
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row)">详情</el-button>
           <el-button link type="primary" @click="openForm(row)">编辑</el-button>
+          <!-- 正常：暂停 -->
           <el-button
-            v-if="row.status === DistributorStatusEnum.NORMAL"
+            v-if="row.status === 'ACTIVE'"
             link
             type="warning"
-            @click="handleStatusChange(row, DistributorStatusEnum.PAUSED)"
+            @click="handleStatusChange(row, 'SUSPENDED')"
           >
             暂停
           </el-button>
+          <!-- 暂停分销：恢复 -->
           <el-button
-            v-if="row.status === DistributorStatusEnum.PAUSED"
+            v-if="row.status === 'SUSPENDED'"
             link
             type="success"
-            @click="handleStatusChange(row, DistributorStatusEnum.NORMAL)"
+            @click="handleStatusChange(row, 'ACTIVE')"
           >
             恢复
           </el-button>
+          <!-- 正常 / 暂停分销：移入黑名单 -->
           <el-button
-            v-if="row.status !== DistributorStatusEnum.BLACKLIST"
+            v-if="row.status !== 'BLACKLIST'"
             link
             type="danger"
-            @click="handleStatusChange(row, DistributorStatusEnum.BLACKLIST)"
+            @click="handleStatusChange(row, 'BLACKLIST')"
           >
             移入黑名单
           </el-button>
+          <!-- 黑名单：移出黑名单 -->
           <el-button
-            v-if="row.status === DistributorStatusEnum.BLACKLIST"
+            v-if="row.status === 'BLACKLIST'"
             link
             type="success"
-            @click="handleStatusChange(row, DistributorStatusEnum.NORMAL)"
+            @click="handleStatusChange(row, 'ACTIVE')"
           >
             移出黑名单
           </el-button>
@@ -281,23 +288,12 @@
 </template>
 
 <script lang="ts" setup>
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'
-import {
-  COOPERATION_MODE_OPTIONS,
-  DIST_CATEGORY_OPTIONS,
-  DISTRIBUTION_LEVEL_OPTIONS,
-  DISTRIBUTOR_STATUS_OPTIONS,
-  DistributorStatusEnum,
-  getCooperationModeLabel,
-  getDistCategoryLabel,
-  getDistProductTypeLabel,
-  getDistributionLevelLabel,
-  getDistributorStatusLabel,
-  getDistributorStatusType
-} from '@/views/supplier/utils/constants'
+import { getDistProductTypeLabel } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierDistributor' })
 
@@ -349,13 +345,20 @@ const getNamedRefNames = (refs?: NamedRef[] | null, fallback?: string[]) => {
 }
 
 const getCooperationModeValues = (row: DistributorVO) => {
-  const modes = row.cooperationModes?.length ? row.cooperationModes : row.cooperationMode || []
+  const modes = row.cooperationModes || []
   return [...new Set(modes.filter(Boolean))]
 }
 
-const getDistributorDisplayName = (row: DistributorVO) => row.buyerName || row.name || ''
+const getDistributorDisplayName = (row: DistributorVO) => row.buyerName || ''
 
-const getDistributorBizCode = (row?: DistributorVO) => row?.buyerCode || row?.code || ''
+const getDistributorBizCode = (row?: DistributorVO) => row?.buyerCode || ''
+
+const getBuyerStatusType = (status?: string) => {
+  if (status === 'ACTIVE') return 'success'
+  if (status === 'SUSPENDED') return 'warning'
+  if (status === 'BLACKLIST') return 'danger'
+  return 'info'
+}
 
 const getList = async () => {
   loading.value = true
@@ -420,9 +423,9 @@ const handleFormSuccess = () => {
 }
 
 const getStatusActionText = (row: DistributorVO, targetStatus: string) => {
-  if (targetStatus === DistributorStatusEnum.PAUSED) return '暂停分销'
-  if (targetStatus === DistributorStatusEnum.BLACKLIST) return '移入黑名单'
-  if (row.status === DistributorStatusEnum.BLACKLIST) return '移出黑名单'
+  if (targetStatus === 'SUSPENDED') return '暂停分销'
+  if (targetStatus === 'BLACKLIST') return '移入黑名单'
+  if (row.status === 'BLACKLIST') return '移出黑名单'
   return '恢复合作'
 }
 
@@ -449,15 +452,15 @@ const handleSelectionChange = (rows: DistributorVO[]) => {
 }
 
 const pausableSelectedList = computed(() =>
-  selectedList.value.filter((row) => row.status === DistributorStatusEnum.NORMAL)
+  selectedList.value.filter((row) => row.status === 'ACTIVE')
 )
 
 const resumableSelectedList = computed(() =>
-  selectedList.value.filter((row) => row.status === DistributorStatusEnum.PAUSED)
+  selectedList.value.filter((row) => row.status === 'SUSPENDED')
 )
 
 const handleBatchStatusChange = async (status: string) => {
-  const isPause = status === DistributorStatusEnum.PAUSED
+  const isPause = status === 'SUSPENDED'
   const targetList = isPause ? pausableSelectedList.value : resumableSelectedList.value
   const actionText = isPause ? '暂停分销' : '恢复合作'
   if (targetList.length === 0) {

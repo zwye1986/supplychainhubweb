@@ -12,8 +12,8 @@ export interface BuyerSaveReqVO {
   contacts?: DistributorContactVO[]
   /** 上级分销商编码，一级为空 */
   parentBuyerCode?: string
-  /** 组织等级：1一级 2二级 3三级，默认1 */
-  distributionLevel?: number
+  /** 组织等级，字典 supply_chain_distribution_level */
+  distributionLevel?: string
   /** ENTERPRISE / PERSONAL / PLATFORM */
   distributorType?: string
   supplyPreference?: string

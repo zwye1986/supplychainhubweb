@@ -87,7 +87,7 @@ export const DistributorApi = {
   },
 
   /** 上级下拉：GET /buyers?view=parent-options */
-  getParentOptions: async (params?: { excludeBuyerCode?: string; forLevel?: number }) => {
+  getParentOptions: async (params?: { excludeBuyerCode?: string; forLevel?: string }) => {
     const data = await request.get({
       url: '/supply-chain/buyers',
       params: {
