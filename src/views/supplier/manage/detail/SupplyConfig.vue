@@ -17,10 +17,10 @@
             @change="() => handleCategoryL1Change(row)"
           >
             <el-option
-              v-for="item in getCategoryL1Options(row)"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </template>
@@ -131,8 +131,8 @@ import {
   SupplierSupplyScopeDO,
   SupplyScopeView
 } from '@/api/supplier/manage'
+import { getStrDictOptions } from '@/utils/dict'
 import {
-  SUPPLIER_CATEGORY_OPTIONS,
   SUPPLIER_PRODUCT_CATEGORY_OPTIONS,
   SUPPLIER_PRODUCT_TYPE_OPTIONS,
   SUPPLIER_SUPPLY_MODE_OPTIONS,
@@ -183,9 +183,6 @@ const mergeOption = (
   if (options.some((item) => String(item.value) === String(value))) return options
   return [...options, { value, label: label || String(value) }]
 }
-
-const getCategoryL1Options = (row: SupplyScopeRow) =>
-  mergeOption(SUPPLIER_CATEGORY_OPTIONS, row.categoryL1Id, row.categoryL1Name)
 
 const getCategoryL2Options = (row: SupplyScopeRow) =>
   mergeOption(SUPPLIER_PRODUCT_TYPE_OPTIONS, row.categoryL2Id, row.categoryL2Name)

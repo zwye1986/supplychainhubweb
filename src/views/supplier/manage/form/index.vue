@@ -633,7 +633,7 @@ const mapDetailToForm = (data: SupplierVO): SupplierFormModel => {
       data.aftersalesSupported ?? data.supportAfterSale ?? true,
     legalEntityName: data.legalEntityName || data.companyName || '',
     creditCode: data.creditCode || data.socialCreditCode || '',
-    licenseFileKeys: toFileArray(data.licenseFileKeys || data.businessLicenseUrls),
+    licenseFileKeys: toFileArray(data.licenseFileKeys),
     idFrontFileKey: data.idFrontFileKey || toFileArray(data.legalIdUrls)[0] || '',
     idBackFileKey: data.idBackFileKey || toFileArray(data.legalIdUrls)[1] || '',
     legalPersonName: data.legalPersonName || '',

@@ -334,7 +334,6 @@ export interface SupplierVO {
   supportAfterSale?: boolean
   companyName?: string
   socialCreditCode?: string
-  businessLicenseUrls?: string[]
   legalIdUrls?: string[]
   legalPersonMobile?: string
   settlementType?: string

@@ -15,7 +15,7 @@
               {{ supplier.supplierName || supplier.name || '供应商详情' }}
             </span>
             <el-tag :type="getSupplierStatusType(supplier.status)" size="small">
-              {{ getSupplierStatusLabel(supplier.status) }}
+              {{ getDictLabel('supply_chain_supplier_status', supplier.status) || '-' }}
             </el-tag>
           </div>
           <div class="text-13px text-gray-500">
@@ -25,34 +25,34 @@
         <div>
           <el-button type="primary" @click="openEdit">编辑</el-button>
           <el-button
-            v-if="supplier.status === SupplierStatusEnum.NORMAL"
+            v-if="supplier.status === 'ACTIVE'"
             type="warning"
             plain
-            @click="handleStatusChange(SupplierStatusEnum.PAUSED)"
+            @click="handleStatusChange('SUSPENDED')"
           >
             暂停
           </el-button>
           <el-button
-            v-if="supplier.status === SupplierStatusEnum.PAUSED"
+            v-if="supplier.status === 'SUSPENDED'"
             type="success"
             plain
-            @click="handleStatusChange(SupplierStatusEnum.NORMAL)"
+            @click="handleStatusChange('ACTIVE')"
           >
             恢复
           </el-button>
           <el-button
-            v-if="supplier.status !== SupplierStatusEnum.BLACKLIST"
+            v-if="supplier.status !== 'BLACKLIST'"
             type="danger"
             plain
-            @click="handleStatusChange(SupplierStatusEnum.BLACKLIST)"
+            @click="handleStatusChange('BLACKLIST')"
           >
             移入黑名单
           </el-button>
           <el-button
-            v-if="supplier.status === SupplierStatusEnum.BLACKLIST"
+            v-if="supplier.status === 'BLACKLIST'"
             type="success"
             plain
-            @click="handleStatusChange(SupplierStatusEnum.NORMAL)"
+            @click="handleStatusChange('ACTIVE')"
           >
             移出黑名单
           </el-button>
@@ -86,13 +86,10 @@
           {{ supplier.productCount ?? 0 }}
         </el-descriptions-item>
         <el-descriptions-item label="供货配置">
-          <template v-if="supplier.scopes?.length">
-           {{ supplier.scopes?.length }}组
-          </template>
-          <span v-else>-</span>
+          {{ supplier.scopes?.length }}组
         </el-descriptions-item>
         <el-descriptions-item label="接入时间">
-          {{ formatNullableDate(supplier.onboardAt || supplier.onboardedAt) }}
+          {{ formatNullableDate(supplier.onboardAt) }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -108,7 +105,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="供应商编号">
-                  {{ displayText(supplier.supplierCode || supplier.code) }}
+                  {{ displayText(supplier.supplierCode) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -134,17 +131,12 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="发货时效">
-                  {{
-                    getShippingTimelinessLabel(
-                      supplier.shippingSlaCode || supplier.shippingTimeliness,
-                      supplier.shippingSlaCustom || supplier.shippingTimelinessCustom
-                    )
-                  }}
+                  {{ shippingSlaText }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="是否支持售后">
-                  {{ afterSaleText }}
+                  {{ getDictLabel('supply_chain_aftersales_supported', supplier.aftersalesSupported) || '-' }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -153,17 +145,22 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="结算方式">
-                  {{ getSettlementLabel(supplier.settlementMethod) }}
+                  {{ getDictLabel('supply_chain_settlement_method', supplier.settlementMethod) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算周期（天）">
-                  {{ displayText(supplier.settlementCycleDays) }}
+                  {{ `${supplier.settlementCycleDays}天` }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="对接方式">
-                  {{ integrationText }}
+                  {{
+                    (supplier.integrationModes || [])
+                      .map((item) => getDictLabel('supply_chain_integration_mode', item))
+                      .filter(Boolean)
+                      .join('、') || '-'
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -173,12 +170,12 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="合作状态">
-                  {{ getSupplierStatusLabel(supplier.status) }}
+                  {{ getDictLabel('supply_chain_supplier_status', supplier.status) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
                 <el-form-item label="合作说明">
-                  {{ displayText(supplier.cooperationNote || supplier.cooperationRemark) }}
+                  {{ displayText(supplier.cooperationNote) }}
                 </el-form-item>
               </el-col>
             </el-row>
@@ -187,19 +184,19 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="公司名称">
-                  {{ displayText(supplier.legalEntityName || supplier.companyName) }}
+                  {{ displayText(supplier.legalEntityName) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="社会统一信用代码">
-                  {{ displayText(supplier.creditCode || supplier.socialCreditCode) }}
+                  {{ displayText(supplier.creditCode) }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
                 <el-form-item label="营业执照">
-                  <template v-if="(supplier.licenseFileKeys || supplier.businessLicenseUrls)?.length">
+                  <template v-if="supplier.licenseFileKeys?.length">
                     <el-link
-                      v-for="(url, index) in supplier.licenseFileKeys || supplier.businessLicenseUrls"
+                      v-for="(url, index) in supplier.licenseFileKeys"
                       :key="url"
                       :href="url"
                       type="primary"
@@ -219,23 +216,32 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="法人手机号">
-                  {{ displayText(supplier.legalPersonMobileMasked) }}
+                  {{ displayText(supplier.legalPersonMobile) }}
                 </el-form-item>
               </el-col>
-              <el-col :span="24">
-                <el-form-item label="法人身份证">
-                  <template v-if="supplier.legalIdUrls?.length">
-                    <el-link
-                      v-for="(url, index) in supplier.legalIdUrls"
-                      :key="url"
-                      :href="url"
-                      type="primary"
-                      target="_blank"
-                      class="mr-12px"
-                    >
-                      附件{{ index + 1 }}
-                    </el-link>
-                  </template>
+              <el-col :span="12">
+                <el-form-item label="身份证正面">
+                  <el-link
+                    v-if="supplier.idFrontFileKey"
+                    :href="supplier.idFrontFileKey"
+                    type="primary"
+                    target="_blank"
+                  >
+                    查看正面
+                  </el-link>
+                  <span v-else>-</span>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="身份证反面">
+                  <el-link
+                    v-if="supplier.idBackFileKey"
+                    :href="supplier.idBackFileKey"
+                    type="primary"
+                    target="_blank"
+                  >
+                    查看反面
+                  </el-link>
                   <span v-else>-</span>
                 </el-form-item>
               </el-col>
@@ -255,7 +261,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="开户账号">
-                  {{ displayText(supplier.bankAccountMasked) }}
+                  {{ displayText(supplier.bankAccount) }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -269,9 +275,9 @@
             <el-row :gutter="20">
               <el-col :span="24">
                 <el-form-item label="资质文件">
-                  <template v-if="supplier.otherCertUrls?.length">
+                  <template v-if="supplier.qualificationFileKeys?.length">
                     <el-link
-                      v-for="(url, index) in supplier.otherCertUrls"
+                      v-for="(url, index) in supplier.qualificationFileKeys"
                       :key="url"
                       :href="url"
                       type="primary"
@@ -309,22 +315,10 @@
 </template>
 
 <script lang="ts" setup>
-import * as AreaApi from '@/api/system/area'
 import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import { getDictLabel } from '@/utils/dict'
 import { formatNullableDate } from '@/utils/formatTime'
-import {
-  DeliveryAreaTypeEnum,
-  SupplierStatusEnum,
-  getCategoryLabel,
-  getDeliveryAreaTypeLabel,
-  getIntegrationLabel,
-  getSettlementLabel,
-  getShippingTimelinessLabel,
-  getSupplierStatusLabel,
-  getSupplierStatusType,
-  getSupplyModeLabel
-} from '@/views/supplier/utils/constants'
+import {getSupplierStatusType} from '@/views/supplier/utils/constants'
 import InvoiceInfo from './InvoiceInfo.vue'
 import SupplyConfig from './SupplyConfig.vue'
 import ProductList from './ProductList.vue'
@@ -347,65 +341,36 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const supplier = ref<SupplierVO>({} as SupplierVO)
-const deliveryAreaName = ref('')
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
 }
 
-const afterSaleText = computed(() => {
-  const value = supplier.value.aftersalesSupported ?? supplier.value.supportAfterSale
-  if (value === true) return '是'
-  if (value === false) return '否'
-  return '-'
-})
-
-const integrationText = computed(() => {
-  const methods = supplier.value.integrationModes || supplier.value.integrationMethods || []
-  if (!methods.length) return '-'
-  return methods.map((method) => getIntegrationLabel(method)).join('、')
+const shippingSlaText = computed(() => {
+  const code = supplier.value.shippingSlaCode
+  const label = getDictLabel('supply_chain_shipping_sla_code', code)
+  if (code === 'CUSTOM') {
+    const custom = supplier.value.shippingSlaCustom?.trim()
+    if (custom) return `${label} / ${custom}`
+    return label
+  }
+  return label || '-'
 })
 
 const accountBalanceText = computed(() => {
-  if (supplier.value.settlementBalanceCents != null) {
-    return (Number(supplier.value.settlementBalanceCents) / 100).toFixed(2)
-  }
-  if (supplier.value.accountBalance === undefined || supplier.value.accountBalance === null) {
-    return '-'
-  }
-  return Number(supplier.value.accountBalance).toFixed(2)
+  const cents = supplier.value.settlementBalanceCents
+  if (cents === undefined || cents === null || cents === '') return '-'
+  return (Number(cents) / 100).toFixed(2)
 })
 
 const deliveryAreaText = computed(() => {
-  const regionType = supplier.value.deliveryRegionType || supplier.value.deliveryAreaType
-  const typeLabel = getDeliveryAreaTypeLabel(regionType)
-  if (regionType !== DeliveryAreaTypeEnum.DESIGNATED) return typeLabel
-  if (deliveryAreaName.value) return `${typeLabel} / ${deliveryAreaName.value}`
-  const adcode = supplier.value.deliveryRegionAdcodes?.[0] || supplier.value.deliveryAreaId
-  if (adcode) return `${typeLabel}（${adcode}）`
-  return typeLabel
+  const regionType = supplier.value.deliveryRegionType
+  const typeLabel = getDictLabel('supply_chain_delivery_region_type', regionType) || '-'
+  const address = ''
+  // const address = supplier.value.contactAddress?.trim()
+  return address ? `${typeLabel} / ${address}` : typeLabel
 })
-
-const findAreaName = (nodes: any[] = [], id: number): string => {
-  for (const node of nodes) {
-    if (Number(node.id) === Number(id)) return node.name || ''
-    const childName = findAreaName(node.children || [], id)
-    if (childName) return childName
-  }
-  return ''
-}
-
-const resolveDeliveryAreaName = async (areaId?: number) => {
-  deliveryAreaName.value = ''
-  if (!areaId) return
-  try {
-    const tree = await AreaApi.getAreaTree()
-    deliveryAreaName.value = findAreaName(tree, areaId)
-  } catch {
-    deliveryAreaName.value = ''
-  }
-}
 
 const getDetail = async () => {
   if (!props.supplierCode) return
@@ -415,18 +380,10 @@ const getDetail = async () => {
     supplier.value = {
       ...data,
       integrationMethods: data.integrationModes || data.integrationMethods || [],
-      licenseFileKeys: data.licenseFileKeys || data.businessLicenseUrls || [],
-      businessLicenseUrls: data.licenseFileKeys || data.businessLicenseUrls || [],
+      licenseFileKeys: data.licenseFileKeys || [],
       qualificationFileKeys: data.qualificationFileKeys || data.otherCertUrls || [],
-      otherCertUrls: data.qualificationFileKeys || data.otherCertUrls || [],
-      legalIdUrls: [
-        data.idFrontFileKey,
-        data.idBackFileKey,
-        ...(data.legalIdUrls || [])
-      ].filter(Boolean) as string[]
+      otherCertUrls: data.qualificationFileKeys || data.otherCertUrls || []
     }
-    const areaId = Number(data.deliveryRegionAdcodes?.[0] || data.deliveryAreaId)
-    await resolveDeliveryAreaName(Number.isNaN(areaId) ? undefined : areaId)
   } finally {
     loading.value = false
   }
@@ -449,9 +406,9 @@ const openEdit = () => {
 }
 
 const getStatusActionText = (targetStatus: string) => {
-  if (targetStatus === SupplierStatusEnum.PAUSED) return '暂停供货'
-  if (targetStatus === SupplierStatusEnum.BLACKLIST) return '移入黑名单'
-  if (supplier.value.status === SupplierStatusEnum.BLACKLIST) return '移出黑名单'
+  if (targetStatus === 'SUSPENDED') return '暂停供货'
+  if (targetStatus === 'BLACKLIST') return '移入黑名单'
+  if (supplier.value.status === 'BLACKLIST') return '移出黑名单'
   return '恢复合作'
 }
 
@@ -475,7 +432,6 @@ const handleStatusChange = async (status: string) => {
 /** 抽屉完全关闭后重置内容 */
 const handleClosed = () => {
   supplier.value = {} as SupplierVO
-  deliveryAreaName.value = ''
   activeTab.value = 'basic'
 }
 
