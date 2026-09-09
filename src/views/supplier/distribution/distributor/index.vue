@@ -194,7 +194,7 @@
             size="small"
             type="success"
           >
-            {{ getDistProductTypeLabel(tag) }}
+            {{ getDictLabel('supply_chain_product_type', tag) || tag }}
           </el-tag>
         </template>
       </el-table-column>
@@ -290,10 +290,9 @@
 <script lang="ts" setup>
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
-import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
+import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'
-import { getDistProductTypeLabel } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierDistributor' })
 
@@ -334,15 +333,6 @@ const updatedRange = computed<string[]>({
     queryParams.updatedTo = val?.[1]
   }
 })
-
-/** 从 { id, name }[] 或 string[] 提取展示名称 */
-const getNamedRefNames = (refs?: NamedRef[] | null, fallback?: string[]) => {
-  const fromRefs = (refs || [])
-    .map((item) => item?.name)
-    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-  const names = fromRefs.length ? fromRefs : fallback || []
-  return [...new Set(names)]
-}
 
 const getCooperationModeValues = (row: DistributorVO) => {
   const modes = row.cooperationModes || []
