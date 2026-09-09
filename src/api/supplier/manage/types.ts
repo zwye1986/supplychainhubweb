@@ -291,6 +291,8 @@ export interface SupplierVO {
   settlementBalanceCents?: number
   deliveryRegionType?: string
   deliveryRegionAdcodes?: string[]
+  /** 指定配送区域（省/市/区对象，展示用 name） */
+  deliveryRegions?: NamedRef[]
   aftersalesSupported?: boolean
   shippingSlaCode?: string
   shippingSlaCustom?: string

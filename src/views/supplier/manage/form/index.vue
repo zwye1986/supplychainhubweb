@@ -117,9 +117,10 @@
               </el-select>
               <AreaSelect
                 v-if="formData.deliveryRegionType === 'DESIGNATED'"
-                v-model="selectedDeliveryAdcode"
+                v-model="selectedDeliveryAdcodes"
                 :disabled="isView"
                 check-strictly
+                emit-path
                 class="!w-full"
                 placeholder="请选择省市区"
               />
@@ -505,16 +506,16 @@ const licenseFileKeysModel = computed<string[]>({
   }
 })
 
-/** AreaSelect 单选 <-> deliveryRegionAdcodes[] */
-const selectedDeliveryAdcode = computed<number | undefined>({
+/** AreaSelect 完整路径（省/市/区） <-> deliveryRegionAdcodes[] */
+const selectedDeliveryAdcodes = computed<number[] | undefined>({
   get: () => {
-    const first = formData.value.deliveryRegionAdcodes?.[0]
-    if (first === undefined || first === null || first === '') return undefined
-    const num = Number(first)
-    return Number.isNaN(num) ? undefined : num
+    const codes = formData.value.deliveryRegionAdcodes
+    if (!codes?.length) return undefined
+    const nums = codes.map(Number).filter((n) => !Number.isNaN(n))
+    return nums.length ? nums : undefined
   },
   set: (val) => {
-    formData.value.deliveryRegionAdcodes = val != null ? [String(val)] : []
+    formData.value.deliveryRegionAdcodes = Array.isArray(val) ? val.map(String) : []
   }
 })
 

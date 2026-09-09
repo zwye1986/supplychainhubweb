@@ -373,8 +373,11 @@ const accountBalanceText = computed(() => {
 const deliveryAreaText = computed(() => {
   const regionType = supplier.value.deliveryRegionType
   const typeLabel = getDictLabel('supply_chain_delivery_region_type', regionType) || '-'
-  const address = ''
-  // const address = supplier.value.contactAddress?.trim()
+
+  const address = (supplier.value.deliveryRegions || [])
+    .map((item) => item?.name?.trim())
+    .filter(Boolean)
+    .join(' / ')
   return address ? `${typeLabel} / ${address}` : typeLabel
 })
 
