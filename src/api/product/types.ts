@@ -87,71 +87,40 @@ export interface SkuItemSaveReqVO {
   faceValue: number
   marketPrice?: number
   suggestedSalePrice?: number
-  taxIncluded?: boolean
-  taxRate?: number
-  minQuantity?: number
-  maxQuantity?: number
   userLimitEnabled?: boolean
   userLimitPeriod?: string
   userLimitQuantity?: number
-  orderLimitEnabled?: boolean
   phoneBindLimitEnabled?: boolean
   phoneBindLimitPeriod?: string
   phoneBindLimitQuantity?: number
-  status?: number
 }
 
 /** 复合保存 SPU */
 export interface SpuSaveReqVO {
   spuCode?: string
   spuName: string
-  subtitle?: string
   brandId: number
-  primaryCategoryId?: number
-  secondaryCategoryIds?: number[]
   sellableCategory: string
   productType: string
   productClassification: string
-  coverUrl?: string
-  sliderImageUrls?: string[]
-  useInstruction?: string
-  description?: string
   deliveryType?: string
-  minQuantity?: number
-  maxQuantity?: number
   status?: number
   skus: SkuItemSaveReqVO[]
 }
 
 /** 详情 SKU */
-export interface SkuDetail extends SkuItemSaveReqVO {
-  targetSchemaCode?: string
-  targetSchemaVersion?: number
-  resultSchemaCode?: string
-  resultSchemaVersion?: number
-  effectiveSellable?: boolean
-}
+export interface SkuDetail extends SkuItemSaveReqVO {}
 
 /** 平台 SPU 详情 */
 export interface SpuDetail {
   spuCode?: string
   spuName?: string
-  subtitle?: string
   brandId?: number
   brandName?: string
-  primaryCategoryId?: number
-  primaryCategoryName?: string
-  secondaryCategoryIds?: number[]
   sellableCategory?: string
   productType?: string
   productClassification?: string
-  coverUrl?: string
-  sliderImageUrls?: string[]
-  useInstruction?: string
-  description?: string
   deliveryType?: string
-  minQuantity?: number
-  maxQuantity?: number
   status?: number
   skus?: SkuDetail[]
   createdAt?: string

@@ -18,35 +18,24 @@
         <el-descriptions-item label="商品类型">
           {{ getDictLabel('supply_chain_product_type', detail.productType) || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="可售品类">
-          {{ getDictLabel('supply_chain_sellable_category', detail.sellableCategory) || '-' }}
-        </el-descriptions-item>
         <el-descriptions-item label="商品分类">
           {{ getDictLabel('supply_chain_product_classification', detail.productClassification) || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="主分类">{{ detail.primaryCategoryName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送方式">
-          {{ getDictLabel('supply_chain_delivery_type', detail.deliveryType) || '-' }}
+          {{
+            detail.deliveryType === 'VIRTUAL'
+              ? '无需物流'
+              : getDictLabel('supply_chain_delivery_type', detail.deliveryType) || '-'
+          }}
         </el-descriptions-item>
-        <el-descriptions-item label="起购量">{{ detail.minQuantity ?? '-' }}</el-descriptions-item>
-        <el-descriptions-item label="限购量">{{ detail.maxQuantity ?? '-' }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ detail.updatedAt || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="使用说明" :span="3">
-          {{ detail.useInstruction || '-' }}
-        </el-descriptions-item>
       </el-descriptions>
 
       <div class="mb-8px font-600">SKU规格</div>
       <el-table :data="detail.skus || []">
         <el-table-column label="SKU名称" prop="skuName" min-width="140" />
         <el-table-column label="SKU编码" prop="skuCode" min-width="140" />
-        <el-table-column label="履约方式" min-width="110">
-          <template #default="{ row }">{{ getDictLabel('supply_chain_fulfillment_type', row.fulfillmentType) || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="面值" min-width="100" align="right">
-          <template #default="{ row }">{{ formatCentsYuan(row.faceValue) }}</template>
-        </el-table-column>
         <el-table-column label="市场价" min-width="100" align="right">
           <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
         </el-table-column>
@@ -62,8 +51,14 @@
             }}
           </template>
         </el-table-column>
-        <el-table-column label="订单限购" min-width="90">
-          <template #default="{ row }">{{ row.orderLimitEnabled ? '开启' : '未开启' }}</template>
+        <el-table-column label="每个订单限购" min-width="160">
+          <template #default="{ row }">
+            {{
+              row.phoneBindLimitEnabled
+                ? `${getDictLabel('supply_chain_limit_period', row.phoneBindLimitPeriod) || '-'} ${row.phoneBindLimitQuantity} 件`
+                : '未开启'
+            }}
+          </template>
         </el-table-column>
       </el-table>
     </div>

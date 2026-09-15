@@ -181,7 +181,7 @@
       <el-table-column label="供应价（元）" min-width="110" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
       </el-table-column>
-      <el-table-column label="不含税供应价" min-width="120" align="right">
+      <el-table-column label="不含税供应价（元）" min-width="140" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.supplyPriceExclusive) }}</template>
       </el-table-column>
       <el-table-column label="税率" min-width="110" align="right">

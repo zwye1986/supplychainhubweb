@@ -105,20 +105,11 @@ export const ProductBrandApi = {
 export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
   spuCode: detail.spuCode,
   spuName: detail.spuName || '',
-  subtitle: detail.subtitle,
   brandId: detail.brandId as number,
-  primaryCategoryId: detail.primaryCategoryId,
-  secondaryCategoryIds: detail.secondaryCategoryIds,
   sellableCategory: detail.sellableCategory || '',
   productType: detail.productType || '',
   productClassification: detail.productClassification || '',
-  coverUrl: detail.coverUrl,
-  sliderImageUrls: detail.sliderImageUrls,
-  useInstruction: detail.useInstruction,
-  description: detail.description,
   deliveryType: detail.deliveryType,
-  minQuantity: detail.minQuantity,
-  maxQuantity: detail.maxQuantity,
   status: detail.status,
   skus: (detail.skus || []).map((sku) => ({
     skuCode: sku.skuCode,
@@ -127,18 +118,12 @@ export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
     faceValue: sku.faceValue ?? 0,
     marketPrice: sku.marketPrice,
     suggestedSalePrice: sku.suggestedSalePrice,
-    taxIncluded: sku.taxIncluded,
-    taxRate: sku.taxRate,
-    minQuantity: sku.minQuantity,
-    maxQuantity: sku.maxQuantity,
     userLimitEnabled: sku.userLimitEnabled,
     userLimitPeriod: sku.userLimitPeriod,
     userLimitQuantity: sku.userLimitQuantity,
-    orderLimitEnabled: sku.orderLimitEnabled,
     phoneBindLimitEnabled: sku.phoneBindLimitEnabled,
     phoneBindLimitPeriod: sku.phoneBindLimitPeriod,
-    phoneBindLimitQuantity: sku.phoneBindLimitQuantity,
-    status: sku.status
+    phoneBindLimitQuantity: sku.phoneBindLimitQuantity
   }))
 })
 
