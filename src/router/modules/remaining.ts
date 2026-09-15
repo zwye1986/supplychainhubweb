@@ -984,6 +984,66 @@ const remainingRouter: AppRouteRecordRaw[] = [
       }
     ]
   },
+  // {
+  //   path: '/pricing',
+  //   component: Layout,
+  //   name: 'PricingManage',
+  //   meta: {
+  //     title: '定价策略',
+  //     icon: 'ep:price-tag',
+  //     alwaysShow: true
+  //   },
+  //   children: [
+  //     {
+  //       path: 'movie',
+  //       name: 'PricingMovie',
+  //       component: () => import('@/views/supplier/pricing/movie/index.vue'),
+  //       meta: { title: '电影场景', icon: 'ep:film' }
+  //     },
+  //     {
+  //       path: 'dining',
+  //       name: 'PricingDining',
+  //       component: () => import('@/views/supplier/pricing/dining/index.vue'),
+  //       meta: { title: '点餐场景', icon: 'ep:food' }
+  //     },
+  //     {
+  //       path: 'h5',
+  //       name: 'PricingH5',
+  //       component: () => import('@/views/supplier/pricing/h5/index.vue'),
+  //       meta: { title: 'H5场景', icon: 'ep:iphone' }
+  //     }
+  //   ]
+  // },
+  {
+    path: '/order',
+    component: Layout,
+    name: 'OrderManage',
+    meta: {
+      title: '订单管理',
+      icon: 'ep:document',
+      alwaysShow: true
+    },
+    children: [
+      {
+        path: 'platform',
+        name: 'OrderPlatform',
+        component: () => import('@/views/supplier/order/platform/index.vue'),
+        meta: { title: '平台订单', icon: 'ep:tickets' }
+      },
+      {
+        path: 'aftersale',
+        name: 'OrderAftersale',
+        component: () => import('@/views/supplier/order/aftersale/index.vue'),
+        meta: { title: '平台售后处理', icon: 'ep:refresh-left' }
+      },
+      {
+        path: 'supplier',
+        name: 'OrderSupplier',
+        component: () => import('@/views/supplier/order/supplier/index.vue'),
+        meta: { title: '供应商订单', icon: 'ep:box' }
+      }
+    ]
+  },
   {
     path: '/im',
     name: 'Im',
