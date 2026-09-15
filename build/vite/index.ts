@@ -44,7 +44,7 @@ export function createVitePlugins(isBuild = false, env: Record<string, string> =
           '@/hooks/web/useTable': ['useTable'],
           '@/hooks/web/useCrudSchemas': ['useCrudSchemas'],
           '@/utils/formRules': ['required'],
-          '@/utils/dict': ['DICT_TYPE', 'getStrDictOptions', 'getDictLabel']
+          '@/utils/dict': ['DICT_TYPE']
         }
       ],
       dts: !isBuild && 'src/types/auto-imports.d.ts',

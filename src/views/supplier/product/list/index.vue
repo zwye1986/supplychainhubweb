@@ -3,7 +3,7 @@
     <el-tabs v-model="queryParams.tabCode" class="mb-12px" @tab-change="handleQuery">
       <el-tab-pane label="全部" name="ALL" />
       <el-tab-pane
-        v-for="dict in getStrDictOptions(PRODUCT_TYPE_DICT)"
+        v-for="dict in getStrDictOptions('supply_chain_product_type')"
         :key="dict.value"
         :label="dict.label"
         :name="dict.value"
@@ -28,7 +28,7 @@
       <el-form-item label="商品类型" prop="productType">
         <el-select v-model="queryParams.productType" clearable>
           <el-option
-            v-for="dict in getStrDictOptions(PRODUCT_TYPE_DICT)"
+            v-for="dict in getStrDictOptions('supply_chain_product_type')"
             :key="dict.value"
             :label="dict.label"
             :value="dict.value"
@@ -73,20 +73,20 @@
       <el-form-item label="兑换方式" prop="fulfillmentType">
         <el-select v-model="queryParams.fulfillmentType" clearable>
           <el-option
-            v-for="item in FULFILLMENT_TYPE_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
       <el-form-item label="商品状态" prop="status">
         <el-select v-model="queryParams.status" clearable>
           <el-option
-            v-for="item in PRODUCT_STATUS_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_product_status')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="Number(dict.value)"
           />
         </el-select>
       </el-form-item>
@@ -167,7 +167,7 @@
       </el-table-column>
       <el-table-column label="商品类型" min-width="110">
         <template #default="{ row }">
-          {{ row.productTypeName || getDictLabel(PRODUCT_TYPE_DICT, row.productType) || '-' }}
+          {{ row.productTypeName || getDictLabel('supply_chain_product_type', row.productType) || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="商品分类" prop="primaryCategoryName" min-width="120" />
@@ -199,21 +199,21 @@
       <el-table-column label="兑换方式" min-width="110">
         <template #default="{ row }">
           <el-tag size="small">
-            {{ row.fulfillmentTypeDisplay || getFulfillmentTypeLabel(row.fulfillmentType) }}
+            {{ row.fulfillmentTypeDisplay || getDictLabel('supply_chain_fulfillment_type', row.fulfillmentType) || '-' }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="商品状态" min-width="90">
         <template #default="{ row }">
-          <el-tag :type="getProductStatusType(row.status)" size="small">
-            {{ getProductStatusLabel(row.status) }}
+          <el-tag size="small">
+            {{ getDictLabel('supply_chain_product_status', row.status) || '-' }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="下架方式" min-width="100">
         <template #default="{ row }">
           <el-tag v-if="row.status === PRODUCT_STATUS.OFF_SHELF" size="small" type="warning">
-            {{ row.unshelveModeDisplay || getOffShelfLabel(row.unshelveMode) }}
+            {{ row.unshelveModeDisplay || getDictLabel('supply_chain_unshelve_mode', row.unshelveMode) || '-' }}
           </el-tag>
           <span v-else>—</span>
         </template>
@@ -276,21 +276,12 @@ import {
   PRODUCT_STATUS,
   SupplierSimpleInfo
 } from '@/api/product'
-import { SupplierApi } from '@/api/supplier/manage'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+import { SupplierApi } from '@/api/supplier/manage'
 import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
 import ProductPriceDialog from './components/PriceDialog.vue'
 import ProductForm from './form/index.vue'
 import ProductDetail from './detail/index.vue'
-import {
-  FULFILLMENT_TYPE_OPTIONS,
-  PRODUCT_STATUS_OPTIONS,
-  PRODUCT_TYPE_DICT,
-  getFulfillmentTypeLabel,
-  getOffShelfLabel,
-  getProductStatusLabel,
-  getProductStatusType
-} from '@/views/supplier/product/utils/constants'
 
 defineOptions({ name: 'supplierProductList' })
 

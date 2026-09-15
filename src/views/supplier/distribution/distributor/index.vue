@@ -288,8 +288,8 @@
 </template>
 
 <script lang="ts" setup>
-import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'

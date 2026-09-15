@@ -187,6 +187,10 @@ defineExpose({ open })
   </ContentWrap>
   <XxxForm ref="formRef" @success="getList" />
 </template>
+
+<script lang="ts" setup>
+import { getStrDictOptions, getDictLabel } from '@/utils/dict'
+</script>
 ```
 
 ## remaining.ts 隐藏路由

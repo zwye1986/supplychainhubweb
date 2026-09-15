@@ -29,7 +29,7 @@
           <el-form-item label="商品类型" prop="productType">
             <el-select v-model="formData.productType" placeholder="请选择商品类型">
               <el-option
-                v-for="dict in getStrDictOptions(PRODUCT_TYPE_DICT)"
+                v-for="dict in getStrDictOptions('supply_chain_product_type')"
                 :key="dict.value"
                 :label="dict.label"
                 :value="dict.value"
@@ -41,7 +41,7 @@
           <el-form-item label="可售品类" prop="sellableCategory">
             <el-select v-model="formData.sellableCategory" placeholder="请选择可售品类">
               <el-option
-                v-for="dict in getStrDictOptions(SELLABLE_CATEGORY_DICT)"
+                v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
                 :key="dict.value"
                 :label="dict.label"
                 :value="dict.value"
@@ -53,7 +53,7 @@
           <el-form-item label="商品分类" prop="productClassification">
             <el-select v-model="formData.productClassification" placeholder="请选择商品分类">
               <el-option
-                v-for="dict in getStrDictOptions(PRODUCT_CLASSIFICATION_DICT)"
+                v-for="dict in getStrDictOptions('supply_chain_product_classification')"
                 :key="dict.value"
                 :label="dict.label"
                 :value="dict.value"
@@ -84,10 +84,10 @@
           <el-form-item label="配送方式" prop="deliveryType">
             <el-select v-model="formData.deliveryType" placeholder="请选择配送方式">
               <el-option
-                v-for="item in DELIVERY_TYPE_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+                v-for="dict in getStrDictOptions('supply_chain_delivery_type')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
               />
             </el-select>
           </el-form-item>
@@ -160,10 +160,10 @@
             >
               <el-select v-model="sku.fulfillmentType" placeholder="请选择履约方式">
                 <el-option
-                  v-for="item in FULFILLMENT_TYPE_OPTIONS"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
+                  v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')"
+                  :key="dict.value"
+                  :label="dict.label"
+                  :value="dict.value"
                 />
               </el-select>
             </el-form-item>
@@ -218,10 +218,10 @@
                   class="!w-120px"
                 >
                   <el-option
-                    v-for="item in LIMIT_PERIOD_OPTIONS"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
+                    v-for="dict in getStrDictOptions('supply_chain_limit_period')"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
                   />
                 </el-select>
                 <el-input-number
@@ -248,10 +248,10 @@
                   class="!w-120px"
                 >
                   <el-option
-                    v-for="item in LIMIT_PERIOD_OPTIONS"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
+                    v-for="dict in getStrDictOptions('supply_chain_limit_period')"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
                   />
                 </el-select>
                 <el-input-number
@@ -285,14 +285,6 @@ import {
 } from '@/api/product'
 import { getStrDictOptions } from '@/utils/dict'
 import { centsToYuan, yuanToCents } from '@/views/supplier/utils/constants'
-import {
-  DELIVERY_TYPE_OPTIONS,
-  FULFILLMENT_TYPE_OPTIONS,
-  LIMIT_PERIOD_OPTIONS,
-  PRODUCT_CLASSIFICATION_DICT,
-  PRODUCT_TYPE_DICT,
-  SELLABLE_CATEGORY_DICT
-} from '@/views/supplier/product/utils/constants'
 
 defineOptions({ name: 'ProductListForm' })
 

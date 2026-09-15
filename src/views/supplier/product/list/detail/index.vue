@@ -5,8 +5,8 @@
         <div class="min-w-0">
           <div class="mb-8px flex items-center gap-10px">
             <span class="truncate text-20px font-700">{{ detail.spuName || '商品详情' }}</span>
-            <el-tag :type="getProductStatusType(detail.status)" size="small">
-              {{ getProductStatusLabel(detail.status) }}
+            <el-tag size="small">
+              {{ getDictLabel('supply_chain_product_status', detail.status) || '-' }}
             </el-tag>
           </div>
           <div class="text-13px text-gray-500">SPU：{{ detail.spuCode || '-' }}</div>
@@ -16,18 +16,18 @@
 
       <el-descriptions :column="3" border class="mb-16px">
         <el-descriptions-item label="商品类型">
-          {{ getDictLabel(PRODUCT_TYPE_DICT, detail.productType) || '-' }}
+          {{ getDictLabel('supply_chain_product_type', detail.productType) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="可售品类">
-          {{ getDictLabel(SELLABLE_CATEGORY_DICT, detail.sellableCategory) || '-' }}
+          {{ getDictLabel('supply_chain_sellable_category', detail.sellableCategory) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="商品分类">
-          {{ getDictLabel(PRODUCT_CLASSIFICATION_DICT, detail.productClassification) || '-' }}
+          {{ getDictLabel('supply_chain_product_classification', detail.productClassification) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="主分类">{{ detail.primaryCategoryName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送方式">
-          {{ getDeliveryTypeLabel(detail.deliveryType) }}
+          {{ getDictLabel('supply_chain_delivery_type', detail.deliveryType) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="起购量">{{ detail.minQuantity ?? '-' }}</el-descriptions-item>
         <el-descriptions-item label="限购量">{{ detail.maxQuantity ?? '-' }}</el-descriptions-item>
@@ -42,7 +42,7 @@
         <el-table-column label="SKU名称" prop="skuName" min-width="140" />
         <el-table-column label="SKU编码" prop="skuCode" min-width="140" />
         <el-table-column label="履约方式" min-width="110">
-          <template #default="{ row }">{{ getFulfillmentTypeLabel(row.fulfillmentType) }}</template>
+          <template #default="{ row }">{{ getDictLabel('supply_chain_fulfillment_type', row.fulfillmentType) || '-' }}</template>
         </el-table-column>
         <el-table-column label="面值" min-width="100" align="right">
           <template #default="{ row }">{{ formatCentsYuan(row.faceValue) }}</template>
@@ -57,7 +57,7 @@
           <template #default="{ row }">
             {{
               row.userLimitEnabled
-                ? `${getLimitPeriodLabel(row.userLimitPeriod)} ${row.userLimitQuantity} 件`
+                ? `${getDictLabel('supply_chain_limit_period', row.userLimitPeriod) || '-'} ${row.userLimitQuantity} 件`
                 : '未开启'
             }}
           </template>
@@ -74,16 +74,6 @@
 import { ProductApi, SpuDetail } from '@/api/product'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
-import {
-  PRODUCT_CLASSIFICATION_DICT,
-  PRODUCT_TYPE_DICT,
-  SELLABLE_CATEGORY_DICT,
-  getDeliveryTypeLabel,
-  getFulfillmentTypeLabel,
-  getLimitPeriodLabel,
-  getProductStatusLabel,
-  getProductStatusType
-} from '@/views/supplier/product/utils/constants'
 
 defineOptions({ name: 'ProductListDetail' })
 

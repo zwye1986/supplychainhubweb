@@ -31,10 +31,10 @@ Node >= 20.19。改完页面后按用户规则在浏览器走通主路径再结�
 
 - Vue：`ref` `reactive` `computed` `watch` `onMounted` `nextTick` `defineOptions` `defineProps` `defineEmits` `defineExpose` `unref`
 - Router：`useRouter` `useRoute`
-- 项目：`useI18n` `useMessage` `useTable` `useCrudSchemas` `required` `DICT_TYPE` `getStrDictOptions` `getDictLabel`
+- 项目：`useI18n` `useMessage` `useTable` `useCrudSchemas` `required` `DICT_TYPE`
 - 组件：所有 `el-*`；`src/components/` 下组件（DiyEditor 移动端子组件除外）
 
-需要**显式 import** 的：`@/config/axios`、`@/api/...`、`@/utils/formatTime`、`@/utils/permission`、同目录表单/详情组件。
+需要**显式 import** 的：`@/config/axios`、`@/api/...`、`@/utils/dict`（`getStrDictOptions` / `getDictLabel`）、`@/utils/formatTime`、`@/utils/permission`、同目录表单/详情组件。
 
 ## 目录对照
 
@@ -149,6 +149,7 @@ export const XxxApi = {
 ```vue
 <script lang="ts" setup>
 import { XxxApi, XxxVO } from '@/api/<domain>'
+import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 import XxxForm from './XxxForm.vue'
 
 defineOptions({ name: 'XxxList' })
@@ -183,7 +184,11 @@ onMounted(getList)
 
 ## 四、字典
 
-`getStrDictOptions`、`getDictLabel` **自动导入，禁止手写 import**。参数直接传字典类型字符串。
+`getStrDictOptions`、`getDictLabel` **必须从 `@/utils/dict` 显式 import**，不能依赖自动导入。参数直接传字典类型字符串。
+
+```ts
+import { getStrDictOptions, getDictLabel } from '@/utils/dict'
+```
 
 有后端字典时必须走字典，**不要**再写 `utils/constants.ts` 里的 `XXX_OPTIONS` / `getXxxLabel`。
 
@@ -262,7 +267,8 @@ onMounted(getList)
 
 ## 九、禁止事项
 
-- 手写 import `ref`/`reactive`/`useRouter`/`useMessage`/`getStrDictOptions`/`getDictLabel`
+- 手写 import `ref`/`reactive`/`useRouter`/`useMessage`
+- 使用字典却不 `import { getStrDictOptions, getDictLabel } from '@/utils/dict'`
 - 已有后端字典时再写 `constants.ts` 选项数组或 `getXxxLabel`
 - 在页面里写死列表假数据，绕过 API/Mock
 - 新接口使用非 `/supply-chain/` 前缀（除非用户给出确切 URL）
