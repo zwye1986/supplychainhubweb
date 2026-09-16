@@ -6,7 +6,7 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" clearable placeholder="全部">
-          <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+          <el-option v-for="dict in getStrDictOptions('supply_chain_category_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -30,7 +30,7 @@
       <el-table-column label="状态" min-width="90">
         <template #default="{ row }">
           <el-switch v-model="row.status" :active-value="CATEGORY_STATUS.ENABLED" :inactive-value="CATEGORY_STATUS.DISABLED" @change="handleStatusChange(row)" />
-          {{ getDictLabel('supply_chain_sku_status', row.status) || '-' }}
+          {{ getDictLabel('supply_chain_category_status', row.status) || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="更新时间" prop="updatedAt" min-width="170" :formatter="dateFormatter" />

@@ -20,7 +20,7 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择" class="!w-full">
-          <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+          <el-option v-for="dict in getStrDictOptions('supply_chain_product_type_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="类型描述" prop="description">
@@ -54,7 +54,7 @@
     typeName: '',
     iconUrl: '',
     sort: undefined as number | undefined,
-    status: firstDictValue('supply_chain_sku_status'),
+    status: firstDictValue('supply_chain_product_type_status'),
     description: '',
     remark: ''
   })
@@ -78,7 +78,7 @@
     formData.typeName = ''
     formData.iconUrl = ''
     formData.sort = undefined
-    formData.status = firstDictValue('supply_chain_sku_status')
+    formData.status = firstDictValue('supply_chain_product_type_status')
     formData.description = ''
     formData.remark = ''
     nextTick(() => elFormRef.value?.clearValidate())
@@ -98,7 +98,7 @@
       formData.iconUrl = data.iconUrl || ''
       formData.sort = Number.isFinite(data.sort) ? data.sort : undefined
       formData.status =
-        data.status != null ? String(data.status) : firstDictValue('supply_chain_sku_status')
+        data.status != null ? String(data.status) : firstDictValue('supply_chain_product_type_status')
       formData.description = data.description || ''
       formData.remark = data.remark || ''
     } catch {

@@ -31,7 +31,7 @@
               </div>
             </div>
             <el-tag :type="getTypeStatusType(item.status)" size="small">
-              {{ getTypeStatusLabel(item.status) }}
+              {{ getDictLabel('supply_chain_product_type_status', item.status) || '-' }}
             </el-tag>
           </div>
           <div class="mb-12px min-h-40px text-13px text-gray-500">
@@ -59,7 +59,7 @@
 <script lang="ts" setup>
   import { PRODUCT_TYPE_STATUS, ProductTypeApi, ProductTypeVO } from '@/api/product'
   import TypeForm from './TypeForm.vue'
-
+  import { getDictLabel } from '@/utils/dict'
   defineOptions({ name: 'ProductType' })
 
   const router = useRouter()

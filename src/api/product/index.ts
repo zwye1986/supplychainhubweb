@@ -53,7 +53,7 @@ export const ProductTypeApi = {
     return await request.get({ url: '/supply-chain/product-types', params })
   },
   getTypeList: async (params?: Omit<ProductTypePageParam, 'pageNo' | 'pageSize'>) => {
-    const data = await ProductTypeApi.getTypePage({ pageNo: 1, pageSize: 200, ...params })
+    const data = await ProductTypeApi.getTypePage({ pageNo: 1, pageSize: 100, ...params })
     return ((data?.list || []) as ProductTypeVO[]).filter((item) => !!item.typeCode)
   },
   getType: async (typeCode: string) => {
