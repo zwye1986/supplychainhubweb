@@ -16,15 +16,23 @@
         <el-col :span="12">
           <el-form-item label="商品类型" prop="productType">
             <el-select v-model="formData.productType" placeholder="请选择商品类型">
-              <el-option v-for="dict in getStrDictOptions('supply_chain_product_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
+              <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品分类" prop="productClassification">
-            <el-select v-model="formData.productClassification" placeholder="请选择商品分类">
-              <el-option v-for="dict in getStrDictOptions('supply_chain_product_classification')" :key="dict.value" :label="dict.label" :value="dict.value" />
-            </el-select>
+            <el-tree-select
+              v-model="formData.productClassification"
+              :data="categoryTree"
+              clearable
+              check-strictly
+              filterable
+              node-key="categoryCode"
+              :props="{ label: 'categoryName', children: 'children' }"
+              placeholder="请选择商品分类"
+              class="!w-full"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -51,9 +59,11 @@
       </el-row>
 
       <el-divider content-position="left">SKU规格管理</el-divider>
-      <el-button class="mb-12px" type="primary" plain @click="addSku">
-        <Icon icon="ep:plus" class="mr-5px" /> 新增SKU
-      </el-button>
+      <div class="flex justify-end">
+        <el-button class="mb-12px" type="primary" plain @click="addSku">
+          <Icon icon="ep:plus" class="mr-5px" /> 新增SKU
+        </el-button>
+      </div>
       <el-table :data="formData.skus" border class="sku-spec-table" max-height="520" size="small">
         <el-table-column label="SKU主图" min-width="110" align="center">
           <template #default="{ row }">
@@ -77,9 +87,9 @@
             </el-form-item>
           </template>
         </el-table-column>
-        <el-table-column label="SKU编码" min-width="150">
+        <el-table-column label="SKU编码" min-width="120">
           <template #default="{ row }">
-            <el-input v-model="row.skuCode" placeholder="新增时可空，由系统生成" />
+            <el-input v-model="row.skuCode" disabled placeholder="由系统生成" />
           </template>
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
@@ -175,6 +185,10 @@
     ProductApi,
     ProductBrandApi,
     ProductBrandVO,
+    ProductCategoryApi,
+    ProductCategoryVO,
+    ProductTypeApi,
+    ProductTypeVO,
     SpuDetail,
     SpuSaveReqVO,
     SupplierSimpleInfo
@@ -237,6 +251,8 @@
   const formLoading = ref(false)
   const isEdit = ref(false)
   const brandList = ref<ProductBrandVO[]>([])
+  const typeList = ref<ProductTypeVO[]>([])
+  const categoryTree = ref<ProductCategoryVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
   const round2 = (value: number) => Math.round(value * 100) / 100
@@ -406,6 +422,8 @@
     isEdit.value = !!spuCode
     resetForm()
     brandList.value = await ProductBrandApi.getBrandList()
+    typeList.value = await ProductTypeApi.getTypeList()
+    categoryTree.value = await ProductCategoryApi.getCategoryList()
     if (!spuCode) return
     formLoading.value = true
     try {

@@ -177,12 +177,12 @@
           <el-form-item label="商品类型" prop="productTypes">
             <el-checkbox-group v-model="formData.productTypes">
               <el-checkbox
-                v-for="dict in getStrDictOptions('supply_chain_product_type')"
-                :key="dict.value"
-                :label="dict.value"
-                :value="dict.value"
+                v-for="item in typeList"
+                :key="item.typeCode"
+                :label="item.typeCode"
+                :value="item.typeCode"
               >
-                {{ dict.label }}
+                {{ item.typeName }}
               </el-checkbox>
             </el-checkbox-group>
           </el-form-item>
@@ -444,6 +444,7 @@ import {
   DistributorContactVO,
   DistributorVO
 } from '@/api/supplier/distribution'
+import { ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { DistributorStatusEnum, yuanToCents } from '@/views/supplier/utils/constants'
 
@@ -478,6 +479,7 @@ const dialogVisible = computed({
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
 const parentOptions = ref<{ buyerCode: string; buyerName: string; distributionLevel?: string | number }[]>([])
+const typeList = ref<ProductTypeVO[]>([])
 const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.buyerCode && props.mode !== 'view'))
 const openingBalanceYuan = ref<number | undefined>(undefined)
@@ -540,7 +542,7 @@ const applyMockForm = () => {
     cooperationModes: firstDictValues('supply_chain_cooperation_mode'),
     distributorType: firstDictValues('supply_chain_distributor_type', 1)[0],
     categoryL1Ids: firstDictValues('supply_chain_sellable_category'),
-    productTypes: firstDictValues('supply_chain_product_type'),
+    productTypes: typeList.value.slice(0, 2).map((item) => item.typeCode).filter(Boolean) as string[],
     supplyPreference: firstDictValues('supply_chain_supply_preference', 1)[0],
     legalEntityName: '上海华东福利科技有限公司',
     creditCode: '91310000MA1DIST001',
@@ -628,6 +630,7 @@ watch(
   async ([visible]) => {
     if (!visible) return
     resetForm()
+    typeList.value = await ProductTypeApi.getTypeList()
     if (props.buyerCode) {
       await loadDetail(props.buyerCode)
     } else if (USE_FORM_MOCK) {

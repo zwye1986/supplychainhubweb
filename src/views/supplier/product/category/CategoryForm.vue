@@ -7,7 +7,7 @@
       </el-form-item>
       <el-form-item label="商品类型" prop="typeCodes">
         <el-select v-model="formData.typeCodes" multiple collapse-tags placeholder="请选择商品类型">
-          <el-option v-for="dict in getStrDictOptions('supply_chain_product_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
+          <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
         </el-select>
       </el-form-item>
       <el-form-item label="分类名称" prop="categoryName">
@@ -31,8 +31,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO } from '@/api/product'
-  import { getStrDictOptions } from '@/utils/dict'
+  import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
 
   defineOptions({ name: 'ProductCategoryForm' })
 
@@ -47,6 +46,7 @@
   const isEdit = ref(false)
   const originalStatus = ref<number | undefined>()
   const categoryTree = ref<ProductCategoryVO[]>([])
+  const typeList = ref<ProductTypeVO[]>([])
   const formData = reactive({
     parentCategoryCode: undefined as string | undefined,
     categoryName: '',
@@ -131,6 +131,7 @@
     resetForm()
     formData.parentCategoryCode = parentCategoryCode
     categoryTree.value = await ProductCategoryApi.getCategoryList()
+    typeList.value = await ProductTypeApi.getTypeList()
     if (!categoryCode) return
     formLoading.value = true
     try {

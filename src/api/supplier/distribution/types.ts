@@ -39,7 +39,7 @@ export interface BuyerSaveReqVO {
   licenseFileKeys?: string[]
   qualificationFileKeys?: string[]
   categoryL1Ids?: Array<string | number>
-  /** 商品类型，字典 supply_chain_product_type */
+  /** 商品类型，接口 typeCode */
   productTypes?: string[]
   /** 期初余额，单位 CNY 分，仅创建可写（空视为 0）；编辑再带会拒绝 */
   openingBalanceCents?: number
@@ -322,7 +322,7 @@ export interface DistributorVO {
   categories?: NamedRef[]
   /** 可售品类（详情） */
   categoryL1s?: NamedRef[]
-  /** 商品类型，字典 supply_chain_product_type */
+  /** 商品类型，接口 typeCode */
   productTypes?: string[]
   /** 商品类型（详情） */
   categoryL2s?: NamedRef[]

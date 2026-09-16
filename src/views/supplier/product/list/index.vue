@@ -2,7 +2,7 @@
   <ContentWrap>
     <el-tabs v-model="queryParams.tabCode" class="mb-12px" @tab-change="handleQuery">
       <el-tab-pane label="全部" name="ALL" />
-      <el-tab-pane v-for="dict in getStrDictOptions('supply_chain_product_type')" :key="dict.value" :label="dict.label" :name="dict.value" />
+      <el-tab-pane v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :name="item.typeCode" />
     </el-tabs>
     <el-form ref="queryFormRef" class="-mb-15px search-form" :model="queryParams" :inline="true" label-width="96px">
       <el-form-item label="商品名称" prop="keyword">
@@ -10,7 +10,7 @@
       </el-form-item>
       <el-form-item label="商品类型" prop="productType">
         <el-select v-model="queryParams.productType" clearable>
-          <el-option v-for="dict in getStrDictOptions('supply_chain_product_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
+          <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
         </el-select>
       </el-form-item>
       <el-form-item label="商品分类" prop="categoryId">
@@ -97,7 +97,7 @@
       </el-table-column>
       <el-table-column label="商品类型" min-width="110">
         <template #default="{ row }">
-          {{ row.productTypeName || getDictLabel('supply_chain_product_type', row.productType) || '-' }}
+          {{ row.productTypeName || getTypeName(row.productType) }}
         </template>
       </el-table-column>
       <el-table-column label="商品分类" prop="primaryCategoryName" min-width="120" />
@@ -183,6 +183,8 @@
     ProductCategoryVO,
     ProductManagementSkuItem,
     ProductManagementSpuItem,
+    ProductTypeApi,
+    ProductTypeVO,
     PRODUCT_STATUS,
     SupplierSimpleInfo
   } from '@/api/product'
@@ -202,6 +204,7 @@
   const list = ref<ProductManagementSpuItem[]>([])
   const total = ref(0)
   const brandList = ref<ProductBrandVO[]>([])
+  const typeList = ref<ProductTypeVO[]>([])
   const categoryTree = ref<ProductCategoryVO[]>([])
   const supplierOptions = ref<SupplierSimpleInfo[]>([])
   const selectedList = ref<any[]>([])
@@ -275,6 +278,9 @@
       return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
     }
   }
+
+  const getTypeName = (code?: string) =>
+    typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
   const formatSuppliers = (suppliers?: SupplierSimpleInfo[]) => {
     if (!suppliers?.length) return '—'
@@ -392,6 +398,7 @@
     if (route.query.typeCode) queryParams.tabCode = String(route.query.typeCode)
     if (route.query.tabCode) queryParams.tabCode = String(route.query.tabCode)
     brandList.value = await ProductBrandApi.getBrandList()
+    typeList.value = await ProductTypeApi.getTypeList()
     categoryTree.value = await ProductCategoryApi.getCategoryList()
     try {
       const data = await SupplierApi.getSupplierNameList({ view: 'simple' })

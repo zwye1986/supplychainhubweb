@@ -194,7 +194,7 @@
             size="small"
             type="success"
           >
-            {{ getDictLabel('supply_chain_product_type', tag) || tag }}
+            {{ getTypeName(tag) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -290,6 +290,7 @@
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+import { ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'
@@ -300,6 +301,7 @@ const message = useMessage()
 
 const loading = ref(true)
 const list = ref<DistributorVO[]>([])
+const typeList = ref<ProductTypeVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const selectedList = ref<DistributorVO[]>([])
@@ -340,6 +342,9 @@ const getCooperationModeValues = (row: DistributorVO) => {
 }
 
 const getDistributorDisplayName = (row: DistributorVO) => row.buyerName || ''
+
+const getTypeName = (code?: string) =>
+  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
 const getDistributorBizCode = (row?: DistributorVO) => row?.buyerCode || ''
 
@@ -479,7 +484,8 @@ const handleBatchStatusChange = async (status: string) => {
   } catch {}
 }
 
-const loadPage = () => {
+const loadPage = async () => {
+  typeList.value = await ProductTypeApi.getTypeList()
   getList()
 }
 

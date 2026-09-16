@@ -16,10 +16,10 @@
 
       <el-descriptions :column="3" border class="mb-16px">
         <el-descriptions-item label="商品类型">
-          {{ getDictLabel('supply_chain_product_type', detail.productType) || '-' }}
+          {{ getTypeName(detail.productType) }}
         </el-descriptions-item>
         <el-descriptions-item label="商品分类">
-          {{ getDictLabel('supply_chain_product_classification', detail.productClassification) || '-' }}
+          {{ getCategoryName(detail.productClassification) }}
         </el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送方式">
@@ -64,7 +64,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductApi, SpuDetail } from '@/api/product'
+import {
+  ProductApi,
+  ProductCategoryApi,
+  ProductCategoryVO,
+  ProductTypeApi,
+  ProductTypeVO,
+  SpuDetail
+} from '@/api/product'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 
@@ -73,16 +80,42 @@ defineOptions({ name: 'ProductListDetail' })
 const emit = defineEmits(['edit'])
 const drawerVisible = ref(false)
 const loading = ref(false)
+const typeList = ref<ProductTypeVO[]>([])
+const categoryTree = ref<ProductCategoryVO[]>([])
 const detail = ref<SpuDetail>({
   spuName: '',
   skus: []
 })
 
+const getTypeName = (code?: string) =>
+  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
+
+const findCategory = (
+  nodes: ProductCategoryVO[],
+  code?: string
+): ProductCategoryVO | undefined => {
+  if (!code) return undefined
+  for (const node of nodes) {
+    if (node.categoryCode === code || String(node.id) === code) return node
+    const found = findCategory(node.children || [], code)
+    if (found) return found
+  }
+}
+
+const getCategoryName = (code?: string) => findCategory(categoryTree.value, code)?.categoryName || code || '-'
+
 const open = async (spuCode: string) => {
   drawerVisible.value = true
   loading.value = true
   try {
-    detail.value = await ProductApi.getProduct(spuCode)
+    const [types, categories, data] = await Promise.all([
+      ProductTypeApi.getTypeList(),
+      ProductCategoryApi.getCategoryList(),
+      ProductApi.getProduct(spuCode)
+    ])
+    typeList.value = types
+    categoryTree.value = categories
+    detail.value = data
   } finally {
     loading.value = false
   }

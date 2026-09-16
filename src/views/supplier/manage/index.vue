@@ -166,7 +166,7 @@
       <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getDictRefLabels(row.productTypes, 'scm_product_type')"
+            v-for="tag in getProductTypeLabels(row.productTypes)"
             :key="tag"
             class="m-2px"
             size="small"
@@ -174,13 +174,13 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getDictRefLabels(row.productTypes, 'scm_product_type').length">-</span>
+          <span v-if="!getProductTypeLabels(row.productTypes).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品分类" align="center" min-width="200">
         <template #default="{ row }">
           <el-tag
-            v-for="tag in getDictRefLabels(row.productCategories, 'scm_product_category')"
+            v-for="tag in getProductCategoryLabels(row.productCategories)"
             :key="tag"
             class="m-2px"
             size="small"
@@ -188,7 +188,7 @@
           >
             {{ tag }}
           </el-tag>
-          <span v-if="!getDictRefLabels(row.productCategories, 'scm_product_category').length">-</span>
+          <span v-if="!getProductCategoryLabels(row.productCategories).length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="供货模式" align="center" prop="supplyModes" min-width="180">
@@ -296,6 +296,7 @@
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+import { ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
@@ -307,6 +308,8 @@ const message = useMessage()
 
 const loading = ref(true)
 const list = ref<SupplierVO[]>([])
+const typeList = ref<ProductTypeVO[]>([])
+const categoryTree = ref<ProductCategoryVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const nameOptions = ref<Pick<SupplierVO, 'id' | 'supplierName'>[]>([])
@@ -340,6 +343,52 @@ const updatedRange = computed<string[]>({
     queryParams.updatedTo = val?.[1]
   }
 })
+
+const findCategory = (
+  nodes: ProductCategoryVO[],
+  code?: string | number,
+  name?: string
+): ProductCategoryVO | undefined => {
+  const key = code != null && code !== '' ? String(code) : ''
+  for (const node of nodes) {
+    if ((key && (node.categoryCode === key || String(node.id) === key)) || (name && node.categoryName === name)) {
+      return node
+    }
+    const found = findCategory(node.children || [], code, name)
+    if (found) return found
+  }
+}
+
+const getProductCategoryLabels = (refs: NamedRef[] | null | undefined) => {
+  if (!refs?.length) return []
+  return [
+    ...new Set(
+      refs
+        .map((item) => {
+          const matched = findCategory(categoryTree.value, item?.id, item?.name)
+          return (matched?.categoryName || item?.name || '').trim()
+        })
+        .filter((label) => label.length > 0)
+    )
+  ]
+}
+
+const getProductTypeLabels = (refs: NamedRef[] | null | undefined) => {
+  if (!refs?.length) return []
+  return [
+    ...new Set(
+      refs
+        .map((item) => {
+          const key = item?.id != null ? String(item.id) : String(item?.name || '')
+          const matched = typeList.value.find(
+            (type) => type.typeCode === key || type.typeName === item?.name
+          )
+          return (matched?.typeName || item?.name || '').trim()
+        })
+        .filter((label) => label.length > 0)
+    )
+  ]
+}
 
 /** 用字典把 { id, name }[] 转成展示文案 */
 const getDictRefLabels = (refs: NamedRef[] | null | undefined, dictType: string) => {
@@ -508,7 +557,9 @@ const handleBatchStatusChange = async (status: string) => {
   } catch {}
 }
 
-const loadPage = () => {
+const loadPage = async () => {
+  typeList.value = await ProductTypeApi.getTypeList()
+  categoryTree.value = await ProductCategoryApi.getCategoryList()
   getList()
   getFilterOptions()
 }

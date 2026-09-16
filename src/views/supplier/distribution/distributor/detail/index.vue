@@ -98,7 +98,7 @@
               size="small"
               type="success"
             >
-              {{ getDictLabel('supply_chain_product_type', tag) || tag }}
+              {{ getTypeName(tag) }}
             </el-tag>
           </template>
           <span v-else>-</span>
@@ -195,7 +195,7 @@
                 <el-form-item label="商品类型">
                   {{
                     productTypes
-                      .map((tag) => getDictLabel('supply_chain_product_type', tag) || tag)
+                      .map((tag) => getTypeName(tag))
                       .join('、') || '-'
                   }}
                 </el-form-item>
@@ -372,6 +372,7 @@
 </template>
 
 <script lang="ts" setup>
+import { ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
@@ -397,6 +398,7 @@ const drawerVisible = computed({
 
 const loading = ref(false)
 const activeTab = ref('basic')
+const typeList = ref<ProductTypeVO[]>([])
 const distributor = ref<DistributorVO>({} as DistributorVO)
 const distributorId = computed(() => distributor.value.id as number)
 const hasInternalId = computed(() => distributor.value.id != null)
@@ -410,6 +412,9 @@ const displayCode = computed(
 const distributionLevel = computed(
   () => distributor.value.distributionLevel ?? distributor.value.level
 )
+
+const getTypeName = (code?: string) =>
+  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
@@ -484,7 +489,11 @@ const getDetail = async () => {
   if (!props.buyerCode) return
   loading.value = true
   try {
-    const data = await DistributorApi.getDistributor(props.buyerCode)
+    const [data, types] = await Promise.all([
+      DistributorApi.getDistributor(props.buyerCode),
+      ProductTypeApi.getTypeList()
+    ])
+    typeList.value = types
     distributor.value = {
       ...data,
       contacts: data.contacts || [],

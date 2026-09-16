@@ -37,6 +37,7 @@ import type {
   ProductManagementPageParam,
   ProductTypePageParam,
   ProductTypeSaveReqVO,
+  ProductTypeVO,
   SpuDetail,
   SpuSaveReqVO
 } from './types'
@@ -50,6 +51,10 @@ const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategory
 export const ProductTypeApi = {
   getTypePage: async (params: ProductTypePageParam) => {
     return await request.get({ url: '/supply-chain/product-types', params })
+  },
+  getTypeList: async (params?: Omit<ProductTypePageParam, 'pageNo' | 'pageSize'>) => {
+    const data = await ProductTypeApi.getTypePage({ pageNo: 1, pageSize: 200, ...params })
+    return ((data?.list || []) as ProductTypeVO[]).filter((item) => !!item.typeCode)
   },
   getType: async (typeCode: string) => {
     return await request.get({ url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}` })
