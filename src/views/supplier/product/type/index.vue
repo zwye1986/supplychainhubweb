@@ -2,13 +2,7 @@
   <ContentWrap>
     <el-form class="-mb-15px search-form" :inline="true" @submit.prevent>
       <el-form-item label="类型名称">
-        <el-input
-          v-model="queryParams.keyword"
-          placeholder="请输入类型名称或类型编码"
-          maxlength="100"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+        <el-input v-model="queryParams.keyword" placeholder="请输入类型名称或类型编码" maxlength="100" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item>
         <el-button native-type="button" @click="handleQuery">
@@ -50,100 +44,90 @@
           <div class="flex flex-wrap gap-8px">
             <el-button link type="primary" @click="goProduct(item.typeCode)">查看商品</el-button>
             <el-button link type="primary" @click="openForm(item.typeCode)">编辑</el-button>
-            <el-button
-              v-if="!(item.spuCount || item.skuCount || item.productCount)"
-              link
-              type="danger"
-              @click="handleDelete(item)"
-            >
+            <el-button v-if="!(item.spuCount || item.skuCount || item.productCount)" link type="danger" @click="handleDelete(item)">
               删除
             </el-button>
           </div>
         </el-card>
       </el-col>
     </el-row>
-    <Pagination
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      :total="total"
-      @pagination="getList"
-    />
+    <Pagination v-model:page="queryParams.pageNo" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
   </ContentWrap>
   <TypeForm ref="typeFormRef" @success="getList" />
 </template>
 
 <script lang="ts" setup>
-import { PRODUCT_TYPE_STATUS, ProductTypeApi, ProductTypeVO } from '@/api/product'
-import TypeForm from './TypeForm.vue'
+  import { PRODUCT_TYPE_STATUS, ProductTypeApi, ProductTypeVO } from '@/api/product'
+  import TypeForm from './TypeForm.vue'
 
-defineOptions({ name: 'ProductType' })
+  defineOptions({ name: 'ProductType' })
 
-const router = useRouter()
-const message = useMessage()
-const loading = ref(false)
-const list = ref<ProductTypeVO[]>([])
-const total = ref(0)
-const typeFormRef = ref()
-const queryParams = reactive({
-  pageNo: 1,
-  pageSize: 20,
-  keyword: undefined as string | undefined
-})
+  const router = useRouter()
+  const message = useMessage()
+  const loading = ref(false)
+  const list = ref<ProductTypeVO[]>([])
+  const total = ref(0)
+  const typeFormRef = ref()
+  const queryParams = reactive({
+    pageNo: 1,
+    pageSize: 20,
+    keyword: undefined as string | undefined
+  })
 
-const getTypeStatusLabel = (status?: number) => {
-  if (status === PRODUCT_TYPE_STATUS.ENABLED) return '启用'
-  if (status === PRODUCT_TYPE_STATUS.DISABLED) return '停用'
-  if (status === PRODUCT_TYPE_STATUS.DRAFT) return '草稿'
-  if (status === PRODUCT_TYPE_STATUS.ARCHIVED) return '已归档'
-  return '-'
-}
-
-const getTypeStatusType = (status?: number) => {
-  if (status === PRODUCT_TYPE_STATUS.ENABLED) return 'success'
-  if (status === PRODUCT_TYPE_STATUS.DISABLED) return 'info'
-  if (status === PRODUCT_TYPE_STATUS.DRAFT) return 'warning'
-  return 'info'
-}
-
-const getList = async () => {
-  loading.value = true
-  try {
-    const data = await ProductTypeApi.getTypePage({
-      ...queryParams,
-      keyword: queryParams.keyword?.trim() || undefined
-    })
-    list.value = data.list || []
-    total.value = data.total || 0
-  } finally {
-    loading.value = false
+  const getTypeStatusLabel = (status?: number) => {
+    if (status === PRODUCT_TYPE_STATUS.ENABLED) return '启用'
+    if (status === PRODUCT_TYPE_STATUS.DISABLED) return '停用'
+    if (status === PRODUCT_TYPE_STATUS.DRAFT) return '草稿'
+    if (status === PRODUCT_TYPE_STATUS.ARCHIVED) return '已归档'
+    return '-'
   }
-}
 
-const handleQuery = () => {
-  queryParams.pageNo = 1
-  getList()
-}
+  const getTypeStatusType = (status?: number) => {
+    if (status === PRODUCT_TYPE_STATUS.ENABLED) return 'success'
+    if (status === PRODUCT_TYPE_STATUS.DISABLED) return 'info'
+    if (status === PRODUCT_TYPE_STATUS.DRAFT) return 'warning'
+    return 'info'
+  }
 
-const resetQuery = () => {
-  queryParams.keyword = undefined
-  handleQuery()
-}
+  const getList = async () => {
+    loading.value = true
+    try {
+      const data = await ProductTypeApi.getTypePage({
+        ...queryParams,
+        keyword: queryParams.keyword?.trim() || undefined
+      })
+      list.value = data.list || []
+      total.value = data.total || 0
+    } finally {
+      loading.value = false
+    }
+  }
 
-const openForm = (typeCode?: string) => typeFormRef.value?.open(typeCode)
-const goProduct = (typeCode?: string) => {
-  if (!typeCode) return
-  router.push({ path: '/product/list', query: { typeCode } })
-}
-
-const handleDelete = async (row: ProductTypeVO) => {
-  if (!row.typeCode || row.spuCount || row.skuCount || row.productCount) return
-  try {
-    await message.delConfirm()
-    await ProductTypeApi.deleteType(row.typeCode)
-    message.success('删除成功')
+  const handleQuery = () => {
+    queryParams.pageNo = 1
     getList()
-  } catch {}
-}
+  }
 
-onMounted(getList)
+  const resetQuery = () => {
+    queryParams.keyword = undefined
+    handleQuery()
+  }
+
+  const openForm = (typeCode?: string) => typeFormRef.value?.open(typeCode)
+  const goProduct = (typeCode?: string) => {
+    if (!typeCode) return
+    router.push({ path: '/product/list', query: { typeCode } })
+  }
+
+  const handleDelete = async (row: ProductTypeVO) => {
+    if (!row.typeCode || row.spuCount || row.skuCount || row.productCount) return
+    try {
+      await message.delConfirm()
+      await ProductTypeApi.deleteType(row.typeCode)
+      message.success('删除成功')
+      getList()
+    } catch {}
+  }
+
+  onMounted(getList)
 </script>

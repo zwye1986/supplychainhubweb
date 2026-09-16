@@ -7,14 +7,15 @@
       <el-form-item label="类型编码" prop="typeCode">
         <el-input
           v-model="formData.typeCode"
-          disabled
-          :placeholder="isEdit ? '' : '保存后自动生成'"
+          maxlength="30"
+          placeholder="字母/数字/下划线，可空自动生成"
+          :disabled="isEdit"
         />
       </el-form-item>
       <el-form-item label="类型Icon" prop="iconUrl" class="type-icon-item">
         <UploadImg v-model="formData.iconUrl" height="80px" width="80px" :drag="false">
           <template #tip>
-            <span class="text-11px text-gray-400">必填，支持 jpg/png/gif</span>
+            <span class="text-11px text-gray-400">支持 jpg/png/gif</span>
           </template>
         </UploadImg>
       </el-form-item>
@@ -30,8 +31,12 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择" class="!w-full">
-          <el-option label="启用" :value="PRODUCT_TYPE_STATUS.ENABLED" />
-          <el-option label="禁用" :value="PRODUCT_TYPE_STATUS.DISABLED" />
+          <el-option
+            v-for="dict in statusOptions"
+            :key="dict.value"
+            :label="dict.label"
+            :value="Number(dict.value)"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="类型描述" prop="description">
@@ -55,6 +60,7 @@
 <script lang="ts" setup>
 import { PRODUCT_TYPE_STATUS, ProductTypeApi } from '@/api/product'
 import type { ProductTypeSaveReqVO } from '@/api/product'
+import { getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'ProductTypeForm' })
 
@@ -74,9 +80,23 @@ const formData = reactive({
   description: '',
   remark: ''
 })
+const typeCodePattern = /^[A-Za-z0-9_]+$/
+const statusOptions = computed(() =>
+  getStrDictOptions('supply_chain_sku_status').filter((dict) =>
+    [String(PRODUCT_TYPE_STATUS.ENABLED), String(PRODUCT_TYPE_STATUS.DISABLED)].includes(dict.value)
+  )
+)
 const formRules = {
   typeName: [{ required: true, message: '请输入类型名称', trigger: 'blur' }],
-  iconUrl: [{ required: true, message: '请上传类型Icon', trigger: 'change' }],
+  typeCode: [
+    {
+      validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+        if (!value || typeCodePattern.test(value)) callback()
+        else callback(new Error('仅支持字母、数字、下划线'))
+      },
+      trigger: 'blur'
+    }
+  ],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
@@ -121,23 +141,18 @@ const open = async (typeCode?: string) => {
 const buildSavePayload = (): ProductTypeSaveReqVO => {
   const payload: ProductTypeSaveReqVO = {
     typeName: formData.typeName.trim(),
-    iconUrl: formData.iconUrl,
+    iconUrl: formData.iconUrl || undefined,
     description: formData.description || undefined,
     status: formData.status ?? PRODUCT_TYPE_STATUS.ENABLED
   }
-  if (isEdit.value && formData.typeCode) payload.typeCode = formData.typeCode
+  if (!isEdit.value && formData.typeCode) payload.typeCode = formData.typeCode
   if (isEdit.value && formData.remark) payload.remark = formData.remark
   if (Number.isFinite(formData.sort)) payload.sort = formData.sort
   return payload
 }
 
 const submitForm = async () => {
-  try {
-    await elFormRef.value?.validate()
-  } catch {
-    if (!formData.iconUrl) message.warning('请上传类型Icon')
-    return
-  }
+  await elFormRef.value?.validate()
   formLoading.value = true
   try {
     const payload = buildSavePayload()

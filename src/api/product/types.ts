@@ -87,6 +87,9 @@ export interface SkuItemSaveReqVO {
   faceValue: number
   marketPrice?: number
   suggestedSalePrice?: number
+  picUrl?: string
+  detailPics?: string[]
+  description?: string
   userLimitEnabled?: boolean
   userLimitPeriod?: string
   userLimitQuantity?: number
@@ -109,7 +112,11 @@ export interface SpuSaveReqVO {
 }
 
 /** 详情 SKU */
-export interface SkuDetail extends SkuItemSaveReqVO {}
+export interface SkuDetail extends SkuItemSaveReqVO {
+  supplyPrice?: number
+  suppliers?: SupplierSimpleInfo[]
+  totalInventory?: number
+}
 
 /** 平台 SPU 详情 */
 export interface SpuDetail {
@@ -239,7 +246,7 @@ export interface ProductTypePageParam {
 export interface ProductTypeSaveReqVO {
   typeCode?: string
   typeName: string
-  iconUrl: string
+  iconUrl?: string
   sort?: number
   status?: number
   description?: string
