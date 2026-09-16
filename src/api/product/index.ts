@@ -1,5 +1,4 @@
 import request from '@/config/axios'
-import { ProductMockApi } from './mock'
 
 export type {
   AdjustMode,
@@ -16,6 +15,9 @@ export type {
   ProductManagementSkuItem,
   ProductManagementSpuItem,
   ProductStatusValue,
+  ProductTypePageParam,
+  ProductTypeSaveReqVO,
+  ProductTypeStatusValue,
   ProductTypeVO,
   SkuDetail,
   SkuItemSaveReqVO,
@@ -24,7 +26,7 @@ export type {
   SupplierSimpleInfo
 } from './types'
 
-export { BRAND_STATUS, CATEGORY_STATUS, PRODUCT_STATUS } from './types'
+export { BRAND_STATUS, CATEGORY_STATUS, PRODUCT_STATUS, PRODUCT_TYPE_STATUS } from './types'
 
 import type {
   BrandPageParam,
@@ -33,13 +35,11 @@ import type {
   CategorySaveReqVO,
   ProductCategoryVO,
   ProductManagementPageParam,
-  ProductTypeVO,
+  ProductTypePageParam,
+  ProductTypeSaveReqVO,
   SpuDetail,
   SpuSaveReqVO
 } from './types'
-
-/** 商品类型接口未就绪时走前端 mock */
-export const USE_PRODUCT_MOCK = true
 
 const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategoryVO[] =>
   nodes.map((node) => {
@@ -48,25 +48,31 @@ const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategory
   })
 
 export const ProductTypeApi = {
-  getTypeList: async (params?: { keyword?: string }) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getTypeList(params)
+  getTypePage: async (params: ProductTypePageParam) => {
     return await request.get({ url: '/supply-chain/product-types', params })
   },
-  getType: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getType(id)
-    return await request.get({ url: `/supply-chain/product-types/${id}` })
+  getType: async (typeCode: string) => {
+    return await request.get({ url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}` })
   },
-  createType: async (data: ProductTypeVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.createType(data)
+  createType: async (data: ProductTypeSaveReqVO) => {
     return await request.post({ url: '/supply-chain/product-types', data })
   },
-  updateType: async (data: ProductTypeVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.updateType(data)
-    return await request.put({ url: `/supply-chain/product-types/${data.id}`, data })
+  updateType: async (typeCode: string, data: ProductTypeSaveReqVO) => {
+    return await request.put({
+      url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}`,
+      data
+    })
   },
-  deleteType: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.deleteType(id)
-    return await request.delete({ url: `/supply-chain/product-types/${id}` })
+  deleteType: async (typeCode: string) => {
+    return await request.delete({
+      url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}`
+    })
+  },
+  changeTypeStatus: async (typeCode: string, targetStatus: number) => {
+    return await request.put({
+      url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}/status`,
+      data: { targetStatus }
+    })
   }
 }
 

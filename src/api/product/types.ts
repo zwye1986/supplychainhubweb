@@ -217,14 +217,47 @@ export interface ProductBrandVO {
   updatedAt?: string
 }
 
-export interface ProductTypeVO {
-  id?: number
-  name: string
-  code: string
-  icon?: string
-  status: number
+/** 商品类型管理状态：0草稿，10启用，20停用，90已归档 */
+export const PRODUCT_TYPE_STATUS = {
+  DRAFT: 0,
+  ENABLED: 10,
+  DISABLED: 20,
+  ARCHIVED: 90
+} as const
+
+export type ProductTypeStatusValue = (typeof PRODUCT_TYPE_STATUS)[keyof typeof PRODUCT_TYPE_STATUS]
+
+/** 分页查询（GET /supply-chain/product-types） */
+export interface ProductTypePageParam {
+  keyword?: string
+  status?: number
+  pageNo?: number
+  pageSize?: number
+}
+
+/** 商品类型保存请求（POST /supply-chain/product-types） */
+export interface ProductTypeSaveReqVO {
+  typeCode?: string
+  typeName: string
+  iconUrl: string
+  sort?: number
+  status?: number
+  description?: string
   remark?: string
+}
+
+/** 商品类型视图（GET /supply-chain/product-types） */
+export interface ProductTypeVO {
+  typeCode?: string
+  typeName: string
+  iconUrl?: string
+  sort?: number
+  status?: number
+  description?: string
+  remark?: string
+  productCount?: number
   spuCount?: number
   skuCount?: number
-  updateTime?: string
+  createdAt?: string
+  updatedAt?: string
 }

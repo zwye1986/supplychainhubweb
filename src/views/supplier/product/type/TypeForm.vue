@@ -1,28 +1,48 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    :title="formData.id ? '编辑商品类型' : '新增商品类型'"
-    width="600px"
-    append-to-body
-  >
-    <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
-      <el-form-item label="类型名称" prop="name">
-        <el-input v-model="formData.name" maxlength="50" placeholder="请输入类型名称" />
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
+    <el-form ref="elFormRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
+      <el-form-item label="类型名称" prop="typeName">
+        <el-input v-model="formData.typeName" maxlength="50" placeholder="请输入类型名称" />
       </el-form-item>
-      <el-form-item label="类型编码" prop="code">
-        <el-input v-model="formData.code" maxlength="30" placeholder="字母/数字/下划线" />
+      <el-form-item label="类型编码" prop="typeCode">
+        <el-input
+          v-model="formData.typeCode"
+          disabled
+          :placeholder="isEdit ? '' : '保存后自动生成'"
+        />
       </el-form-item>
-      <el-form-item label="类型Icon" prop="icon">
-        <UploadImg v-model="formData.icon" height="80px" width="80px" />
+      <el-form-item label="类型Icon" prop="iconUrl" class="type-icon-item">
+        <UploadImg v-model="formData.iconUrl" height="80px" width="80px" :drag="false">
+          <template #tip>
+            <span class="text-11px text-gray-400">必填，支持 jpg/png/gif</span>
+          </template>
+        </UploadImg>
+      </el-form-item>
+      <el-form-item label="排序" prop="sort">
+        <el-input-number
+          v-model="formData.sort"
+          :min="0"
+          :value-on-clear="undefined"
+          controls-position="right"
+          class="!w-180px"
+        />
+        <span class="ml-8px text-12px text-gray-400">越小越靠前</span>
       </el-form-item>
       <el-form-item label="状态" prop="status">
-        <el-select v-model="formData.status">
-          <el-option label="启用" :value="1" />
-          <el-option label="禁用" :value="0" />
+        <el-select v-model="formData.status" placeholder="请选择" class="!w-full">
+          <el-option label="启用" :value="PRODUCT_TYPE_STATUS.ENABLED" />
+          <el-option label="禁用" :value="PRODUCT_TYPE_STATUS.DISABLED" />
         </el-select>
       </el-form-item>
-      <el-form-item label="类型描述" prop="remark">
-        <el-input v-model="formData.remark" type="textarea" maxlength="200" show-word-limit :rows="3" />
+      <el-form-item label="类型描述" prop="description">
+        <el-input
+          v-model="formData.description"
+          type="textarea"
+          maxlength="200"
+          show-word-limit
+          :rows="3"
+          placeholder="请输入类型描述"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -33,56 +53,100 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductTypeApi, ProductTypeVO } from '@/api/product'
+import { PRODUCT_TYPE_STATUS, ProductTypeApi } from '@/api/product'
+import type { ProductTypeSaveReqVO } from '@/api/product'
 
 defineOptions({ name: 'ProductTypeForm' })
 
 const message = useMessage()
 const emit = defineEmits(['success'])
 const dialogVisible = ref(false)
+const dialogTitle = ref('新增商品类型')
 const formLoading = ref(false)
-const formRef = ref()
-const formData = reactive<ProductTypeVO>({
-  name: '',
-  code: '',
-  icon: '',
-  status: 1,
+const isEdit = ref(false)
+const elFormRef = ref()
+const formData = reactive({
+  typeCode: '',
+  typeName: '',
+  iconUrl: '',
+  sort: undefined as number | undefined,
+  status: PRODUCT_TYPE_STATUS.ENABLED as number,
+  description: '',
   remark: ''
 })
 const formRules = {
-  name: [{ required: true, message: '请输入类型名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入类型编码', trigger: 'blur' }],
+  typeName: [{ required: true, message: '请输入类型名称', trigger: 'blur' }],
+  iconUrl: [{ required: true, message: '请上传类型Icon', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
-const open = async (id?: number) => {
-  dialogVisible.value = true
-  formData.id = undefined
-  formData.name = ''
-  formData.code = ''
-  formData.icon = ''
-  formData.status = 1
+const resetForm = () => {
+  formData.typeCode = ''
+  formData.typeName = ''
+  formData.iconUrl = ''
+  formData.sort = undefined
+  formData.status = PRODUCT_TYPE_STATUS.ENABLED
+  formData.description = ''
   formData.remark = ''
-  if (!id) return
+  nextTick(() => elFormRef.value?.clearValidate())
+}
+
+const open = async (typeCode?: string) => {
+  dialogVisible.value = true
+  isEdit.value = !!typeCode
+  dialogTitle.value = isEdit.value ? '编辑商品类型' : '新增商品类型'
+  resetForm()
+  if (!typeCode) return
   formLoading.value = true
   try {
-    Object.assign(formData, await ProductTypeApi.getType(id))
+    const data = await ProductTypeApi.getType(typeCode)
+    formData.typeCode = data.typeCode || typeCode
+    formData.typeName = data.typeName || ''
+    formData.iconUrl = data.iconUrl || ''
+    formData.sort = Number.isFinite(data.sort) ? data.sort : undefined
+    const status = Number(data.status)
+    formData.status =
+      status === PRODUCT_TYPE_STATUS.ENABLED
+        ? PRODUCT_TYPE_STATUS.ENABLED
+        : PRODUCT_TYPE_STATUS.DISABLED
+    formData.description = data.description || ''
+    formData.remark = data.remark || ''
+  } catch {
+    dialogVisible.value = false
   } finally {
     formLoading.value = false
   }
 }
 
+const buildSavePayload = (): ProductTypeSaveReqVO => {
+  const payload: ProductTypeSaveReqVO = {
+    typeName: formData.typeName.trim(),
+    iconUrl: formData.iconUrl,
+    description: formData.description || undefined,
+    status: formData.status ?? PRODUCT_TYPE_STATUS.ENABLED
+  }
+  if (isEdit.value && formData.typeCode) payload.typeCode = formData.typeCode
+  if (isEdit.value && formData.remark) payload.remark = formData.remark
+  if (Number.isFinite(formData.sort)) payload.sort = formData.sort
+  return payload
+}
+
 const submitForm = async () => {
-  await formRef.value?.validate()
+  try {
+    await elFormRef.value?.validate()
+  } catch {
+    if (!formData.iconUrl) message.warning('请上传类型Icon')
+    return
+  }
   formLoading.value = true
   try {
-    if (formData.id) await ProductTypeApi.updateType(formData)
-    else await ProductTypeApi.createType(formData)
+    const payload = buildSavePayload()
+    if (isEdit.value) await ProductTypeApi.updateType(formData.typeCode, payload)
+    else await ProductTypeApi.createType(payload)
     message.success('保存成功')
     dialogVisible.value = false
     emit('success')
-  } catch (error: any) {
-    if (error?.message) message.error(error.message)
+  } catch {
   } finally {
     formLoading.value = false
   }
@@ -90,3 +154,11 @@ const submitForm = async () => {
 
 defineExpose({ open })
 </script>
+
+<style scoped>
+.type-icon-item :deep(.el-upload__tip) {
+  margin-top: 2px;
+  line-height: 16px;
+  text-align: left;
+}
+</style>
