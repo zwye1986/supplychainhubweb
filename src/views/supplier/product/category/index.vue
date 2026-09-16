@@ -1,30 +1,21 @@
 <template>
   <ContentWrap>
-    <el-form
-      ref="queryFormRef"
-      class="-mb-15px search-form"
-      :model="queryParams"
-      :inline="true"
-      label-width="80px"
-    >
+    <el-form ref="queryFormRef" class="-mb-15px search-form" :model="queryParams" :inline="true" label-width="80px">
       <el-form-item label="分类名称" prop="categoryName">
-        <el-input
-          v-model="queryParams.categoryName"
-          placeholder="分类名称或编码"
-          maxlength="50"
-          clearable
-          @keyup.enter="getList"
-        />
+        <el-input v-model="queryParams.categoryName" placeholder="分类名称或编码" maxlength="50" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" clearable placeholder="全部">
-          <el-option label="启用" :value="CATEGORY_STATUS.ENABLED" />
-          <el-option label="停用" :value="CATEGORY_STATUS.DISABLED" />
+          <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button @click="getList"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+        <el-button @click="handleQuery">
+          <Icon icon="ep:search" class="mr-5px" /> 搜索
+        </el-button>
+        <el-button @click="resetQuery">
+          <Icon icon="ep:refresh" class="mr-5px" /> 重置
+        </el-button>
         <el-button type="primary" plain @click="openForm('create')">
           <Icon icon="ep:plus" class="mr-5px" /> 新增分类
         </el-button>
@@ -32,20 +23,13 @@
     </el-form>
   </ContentWrap>
   <ContentWrap>
-    <el-table
-      v-loading="loading"
-      :data="list"
-      row-key="categoryCode"
-      default-expand-all
-    >
+    <el-table v-loading="loading" :data="list" row-key="categoryCode" default-expand-all>
       <el-table-column label="分类名称" prop="categoryName" min-width="200" />
       <el-table-column label="分类编码" prop="categoryCode" min-width="140" />
       <el-table-column label="SPU数" prop="productCount" min-width="90" />
       <el-table-column label="状态" min-width="90">
         <template #default="{ row }">
-          <el-tag :type="getCategoryStatusType(row.status)" size="small">
-            {{ getCategoryStatusLabel(row.status) }}
-          </el-tag>
+          {{ getDictLabel('supply_chain_sku_status', row.status) || '-' }}
         </template>
       </el-table-column>
       <el-table-column label="更新时间" prop="updatedAt" min-width="170" :formatter="dateFormatter" />
@@ -65,87 +49,57 @@
 </template>
 
 <script lang="ts" setup>
-import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO } from '@/api/product'
-import { dateFormatter } from '@/utils/formatTime'
-import CategoryForm from './CategoryForm.vue'
+  import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
+  import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+  import { dateFormatter } from '@/utils/formatTime'
+  import CategoryForm from './CategoryForm.vue'
 
-defineOptions({ name: 'ProductCategory' })
+  defineOptions({ name: 'ProductCategory' })
 
-const message = useMessage()
-const loading = ref(false)
-const treeData = ref<ProductCategoryVO[]>([])
-const list = ref<ProductCategoryVO[]>([])
-const queryFormRef = ref()
-const formRef = ref()
-const queryParams = reactive({
-  categoryName: undefined as string | undefined,
-  status: undefined as number | undefined
-})
-
-const getCategoryStatusLabel = (status?: number) => {
-  if (status === CATEGORY_STATUS.ENABLED) return '启用'
-  if (status === CATEGORY_STATUS.DISABLED) return '停用'
-  if (status === CATEGORY_STATUS.DRAFT) return '草稿'
-  if (status === CATEGORY_STATUS.ARCHIVED) return '已归档'
-  return '-'
-}
-
-const getCategoryStatusType = (status?: number) => {
-  if (status === CATEGORY_STATUS.ENABLED) return 'success'
-  if (status === CATEGORY_STATUS.DISABLED) return 'info'
-  if (status === CATEGORY_STATUS.DRAFT) return 'warning'
-  return 'info'
-}
-
-const matchesNode = (node: ProductCategoryVO) => {
-  const keyword = queryParams.categoryName?.trim().toLowerCase()
-  const nameOk =
-    !keyword ||
-    (node.categoryName || '').toLowerCase().includes(keyword) ||
-    (node.categoryCode || '').toLowerCase().includes(keyword)
-  const statusOk = queryParams.status == null || node.status === queryParams.status
-  return nameOk && statusOk
-}
-
-const filterTree = (nodes: ProductCategoryVO[]): ProductCategoryVO[] => {
-  const result: ProductCategoryVO[] = []
-  nodes.forEach((node) => {
-    const children = node.children?.length ? filterTree(node.children) : []
-    if (matchesNode(node) || children.length) {
-      result.push({ ...node, children: children.length ? children : undefined })
-    }
+  const message = useMessage()
+  const loading = ref(false)
+  const list = ref<ProductCategoryVO[]>([])
+  const queryFormRef = ref()
+  const formRef = ref()
+  const queryParams = reactive({
+    categoryName: undefined as string | undefined,
+    status: undefined as number | undefined
   })
-  return result
-}
 
-const getList = async () => {
-  loading.value = true
-  try {
-    treeData.value = await ProductCategoryApi.getCategoryList()
-    list.value = filterTree(treeData.value)
-  } finally {
-    loading.value = false
+  const getList = async () => {
+    loading.value = true
+    try {
+      list.value = await ProductCategoryApi.getCategoryList({
+        categoryName: queryParams.categoryName?.trim() || undefined,
+        status: queryParams.status
+      })
+    } finally {
+      loading.value = false
+    }
   }
-}
 
-const resetQuery = () => {
-  queryFormRef.value?.resetFields()
-  getList()
-}
-
-const openForm = (type: string, categoryCode?: string, parentCategoryCode?: string) => {
-  formRef.value.open(type, categoryCode, parentCategoryCode)
-}
-
-const handleDelete = async (row: ProductCategoryVO) => {
-  if (!row.categoryCode) return
-  try {
-    await message.delConfirm()
-    await ProductCategoryApi.deleteCategory(row.categoryCode)
-    message.success('删除成功')
+  const handleQuery = () => {
     getList()
-  } catch {}
-}
+  }
 
-onMounted(getList)
+  const resetQuery = () => {
+    queryFormRef.value?.resetFields()
+    getList()
+  }
+
+  const openForm = (type: string, categoryCode?: string, parentCategoryCode?: string) => {
+    formRef.value.open(type, categoryCode, parentCategoryCode)
+  }
+
+  const handleDelete = async (row: ProductCategoryVO) => {
+    if (!row.categoryCode) return
+    try {
+      await message.delConfirm()
+      await ProductCategoryApi.deleteCategory(row.categoryCode)
+      message.success('删除成功')
+      getList()
+    } catch {}
+  }
+
+  onMounted(getList)
 </script>

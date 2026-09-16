@@ -137,6 +137,12 @@ export const CATEGORY_STATUS = {
 
 export type CategoryStatusValue = (typeof CATEGORY_STATUS)[keyof typeof CATEGORY_STATUS]
 
+/** 管理树查询（GET /supply-chain/categories/management-tree） */
+export interface CategoryListParam {
+  categoryName?: string
+  status?: number
+}
+
 /** 管理树 / 详情节点（GET /supply-chain/categories/management-tree、/{categoryCode}） */
 export interface ProductCategoryVO {
   id?: number

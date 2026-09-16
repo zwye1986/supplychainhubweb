@@ -6,6 +6,7 @@ export type {
   BrandPageParam,
   BrandSaveReqVO,
   BrandStatusValue,
+  CategoryListParam,
   CategorySaveReqVO,
   CategoryStatusValue,
   FormulaVO,
@@ -28,6 +29,7 @@ export { BRAND_STATUS, CATEGORY_STATUS, PRODUCT_STATUS } from './types'
 import type {
   BrandPageParam,
   BrandSaveReqVO,
+  CategoryListParam,
   CategorySaveReqVO,
   ProductCategoryVO,
   ProductManagementPageParam,
@@ -69,8 +71,8 @@ export const ProductTypeApi = {
 }
 
 export const ProductCategoryApi = {
-  getCategoryList: async () => {
-    const data = await request.get({ url: '/supply-chain/categories/management-tree' })
+  getCategoryList: async (params?: CategoryListParam) => {
+    const data = await request.get({ url: '/supply-chain/categories/management-tree', params })
     return normalizeCategoryTree(Array.isArray(data) ? data : [])
   },
   getCategory: async (categoryCode: string) => {
