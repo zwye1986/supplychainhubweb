@@ -55,26 +55,19 @@
         <Icon icon="ep:plus" class="mr-5px" /> 新增SKU
       </el-button>
       <el-table :data="formData.skus" border class="sku-spec-table" max-height="520" size="small">
-        <el-table-column label="SKU主图" min-width="90" align="center">
+        <el-table-column label="SKU主图" min-width="110" align="center">
           <template #default="{ row }">
-            <UploadImg v-model="row.picUrl" height="50px" width="50px" :drag="false" />
+            <UploadImg v-model="row.picUrl" height="100px" width="100px" :drag="false" />
           </template>
         </el-table-column>
         <el-table-column label="SKU详情图" min-width="160" align="center">
           <template #default="{ row }">
-            <UploadImgs v-model="row.detailPics" :limit="5" height="50px" width="50px" :drag="false" />
+            <UploadImgs v-model="row.detailPics" :limit="5" height="100px" width="100px" :drag="false" />
           </template>
         </el-table-column>
         <el-table-column label="商品描述" min-width="180">
           <template #default="{ row }">
-            <el-input
-              v-model="row.description"
-              type="textarea"
-              :rows="2"
-              maxlength="200"
-              show-word-limit
-              placeholder="商品详情信息"
-            />
+            <el-input v-model="row.description" type="textarea" :rows="2" maxlength="200" show-word-limit placeholder="商品详情信息" />
           </template>
         </el-table-column>
         <el-table-column label="SKU名称" min-width="140">
@@ -91,13 +84,7 @@
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
           <template #default="{ row }">
-            <el-input-number
-              v-model="row.marketPriceYuan"
-              :min="0"
-              :precision="2"
-              class="!w-full"
-              @change="syncSuggestedPrice(row)"
-            />
+            <el-input-number :controls="false" v-model="row.marketPriceYuan" :min="0" :precision="2" class="!w-full" @change="syncSuggestedPrice(row)" />
           </template>
         </el-table-column>
         <el-table-column label="销售建议价（元）" min-width="360">
@@ -114,7 +101,7 @@
                   <el-option label="销售建议价" value="SUGGEST" />
                 </el-select>
                 <span>*</span>
-                <el-input-number v-model="row.percent" :min="0.01" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" v-model="row.percent" :min="0.01" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
                 <span>%</span>
                 <el-select v-model="row.op" class="!w-72px" @change="syncSuggestedPrice(row)">
                   <el-option label="+" value="+" />
@@ -122,18 +109,12 @@
                   <el-option label="*" value="*" />
                   <el-option label="/" value="/" />
                 </el-select>
-                <el-input-number v-model="row.amount" :min="0" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" v-model="row.amount" :min="0" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
                 <span>元</span>
               </div>
               <div v-if="row.adjustMode === 'FIXED'" class="flex items-center gap-8px">
                 <span>固定售价</span>
-                <el-input-number
-                  v-model="row.fixedPriceYuan"
-                  :min="0.01"
-                  :precision="2"
-                  class="!w-140px"
-                  @change="syncSuggestedPrice(row)"
-                />
+                <el-input-number :controls="false" v-model="row.fixedPriceYuan" :min="0.01" :precision="2" class="!w-140px" @change="syncSuggestedPrice(row)" />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
@@ -161,19 +142,18 @@
       <el-form-item label="每人限购">
         <div class="flex flex-wrap items-center gap-8px">
           <el-checkbox v-model="formData.userLimitEnabled">开启</el-checkbox>
-          <el-select v-if="formData.userLimitEnabled" v-model="formData.userLimitPeriod" class="!w-120px">
+          <el-select v-if="formData.userLimitEnabled" v-model="formData.userLimitPeriod" class="!w-120px" placeholder="请选择" clearable>
             <el-option v-for="dict in getStrDictOptions('supply_chain_limit_period')" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
-          <el-input-number v-if="formData.userLimitEnabled" v-model="formData.userLimitQuantity" :min="1" :precision="0" />
+          <span v-if="formData.userLimitEnabled">限购</span>
+          <el-input-number :controls="false" v-if="formData.userLimitEnabled" v-model="formData.userLimitQuantity" :min="1" :precision="0" />
         </div>
       </el-form-item>
       <el-form-item label="每个订单限购">
         <div class="flex flex-wrap items-center gap-8px">
           <el-checkbox v-model="formData.phoneBindLimitEnabled">开启</el-checkbox>
-          <el-select v-if="formData.phoneBindLimitEnabled" v-model="formData.phoneBindLimitPeriod" class="!w-120px">
-            <el-option v-for="dict in getStrDictOptions('supply_chain_limit_period')" :key="dict.value" :label="dict.label" :value="dict.value" />
-          </el-select>
-          <el-input-number v-if="formData.phoneBindLimitEnabled" v-model="formData.phoneBindLimitQuantity" :min="1" :precision="0" />
+          <span v-if="formData.phoneBindLimitEnabled">限购绑定手机号数量</span>
+          <el-input-number :controls="false" v-if="formData.phoneBindLimitEnabled" v-model="formData.phoneBindLimitQuantity" :min="1" :precision="0" />
           <span class="text-12px text-red-500">权益商品专用</span>
         </div>
       </el-form-item>
@@ -244,7 +224,6 @@
     userLimitPeriod?: string
     userLimitQuantity?: number
     phoneBindLimitEnabled?: boolean
-    phoneBindLimitPeriod?: string
     phoneBindLimitQuantity?: number
     skus: SkuFormItem[]
   }
@@ -286,10 +265,9 @@
 
   const defaultLimit = () => ({
     userLimitEnabled: false,
-    userLimitPeriod: firstDictValue('supply_chain_limit_period') || 'DAY',
+    userLimitPeriod: undefined as string | undefined,
     userLimitQuantity: 1,
     phoneBindLimitEnabled: false,
-    phoneBindLimitPeriod: firstDictValue('supply_chain_limit_period') || 'DAY',
     phoneBindLimitQuantity: 1
   })
 
@@ -444,14 +422,9 @@
         fulfillmentType:
           data.skus?.[0]?.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
         userLimitEnabled: data.skus?.[0]?.userLimitEnabled ?? false,
-        userLimitPeriod:
-          data.skus?.[0]?.userLimitPeriod || firstDictValue('supply_chain_limit_period') || 'DAY',
+        userLimitPeriod: data.skus?.[0]?.userLimitPeriod || undefined,
         userLimitQuantity: data.skus?.[0]?.userLimitQuantity ?? 1,
         phoneBindLimitEnabled: data.skus?.[0]?.phoneBindLimitEnabled ?? false,
-        phoneBindLimitPeriod:
-          data.skus?.[0]?.phoneBindLimitPeriod ||
-          firstDictValue('supply_chain_limit_period') ||
-          'DAY',
         phoneBindLimitQuantity: data.skus?.[0]?.phoneBindLimitQuantity ?? 1,
         skus: (data.skus || []).map(mapSku)
       })
@@ -484,9 +457,6 @@
       userLimitPeriod: formData.userLimitEnabled ? formData.userLimitPeriod : undefined,
       userLimitQuantity: formData.userLimitEnabled ? formData.userLimitQuantity : undefined,
       phoneBindLimitEnabled: formData.phoneBindLimitEnabled,
-      phoneBindLimitPeriod: formData.phoneBindLimitEnabled
-        ? formData.phoneBindLimitPeriod
-        : undefined,
       phoneBindLimitQuantity: formData.phoneBindLimitEnabled
         ? formData.phoneBindLimitQuantity
         : undefined
@@ -516,15 +486,15 @@
 </script>
 
 <style scoped>
-.sku-spec-table :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-.sku-spec-table :deep(.el-form-item__content) {
-  margin-left: 0 !important;
-}
-.sku-spec-table :deep(.el-upload-list--picture-card .el-upload-list__item),
-.sku-spec-table :deep(.el-upload--picture-card) {
-  width: var(--upload-width);
-  height: var(--upload-height);
-}
+  .sku-spec-table :deep(.el-form-item) {
+    margin-bottom: 0;
+  }
+  .sku-spec-table :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+  .sku-spec-table :deep(.el-upload-list--picture-card .el-upload-list__item),
+  .sku-spec-table :deep(.el-upload--picture-card) {
+    width: var(--upload-width);
+    height: var(--upload-height);
+  }
 </style>

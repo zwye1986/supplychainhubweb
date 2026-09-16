@@ -139,12 +139,12 @@
           <div class="flex w-full flex-wrap items-center gap-6px">
             <span class="whitespace-nowrap text-12px">销售建议价</span>
             <el-form-item prop="percent" class="!mb-0">
-              <el-input-number v-model="adjustForm.percent" :min="1" :precision="0" class="!w-110px" />
+              <el-input-number :controls="false" v-model="adjustForm.percent" :min="1" :precision="0" class="!w-110px" />
             </el-form-item>
             <span>%</span>
             <span>+</span>
             <el-form-item prop="amountYuan" class="!mb-0">
-              <el-input-number v-model="adjustForm.amountYuan" :precision="2" class="!w-110px" />
+              <el-input-number :controls="false" v-model="adjustForm.amountYuan" :precision="2" class="!w-110px" />
             </el-form-item>
             <span>元</span>
           </div>

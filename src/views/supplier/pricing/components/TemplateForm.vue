@@ -125,7 +125,7 @@
           <el-form-item label="隐藏规则">
             <div class="flex items-center gap-8px">
               <span>总利润空间低于</span>
-              <el-input-number v-model="channel.hideThreshold" :min="0" :max="100" :precision="0" />
+              <el-input-number :controls="false" v-model="channel.hideThreshold" :min="0" :max="100" :precision="0" />
               <span>% 用户端自动隐藏该商品</span>
             </div>
           </el-form-item>
@@ -136,7 +136,7 @@
       <el-form-item label="利润空间阈值" prop="hideThreshold">
         <div class="flex items-center gap-8px">
           <span>商品展示：总利润空间低于</span>
-          <el-input-number v-model="formData.hideThreshold" :min="0" :max="100" :precision="0" />
+          <el-input-number :controls="false" v-model="formData.hideThreshold" :min="0" :max="100" :precision="0" />
           <span>% 用户端自动隐藏该商品</span>
         </div>
         <div class="mt-8px text-12px text-gray-500">

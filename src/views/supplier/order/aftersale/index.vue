@@ -139,7 +139,7 @@
         <el-input v-model="auditForm.reason" type="textarea" maxlength="200" />
       </el-form-item>
       <el-form-item v-else label="退款金额">
-        <el-input-number v-model="auditForm.refundAmount" :min="0" :precision="2" />
+        <el-input-number :controls="false" v-model="auditForm.refundAmount" :min="0" :precision="2" />
       </el-form-item>
       <el-form-item label="处理备注">
         <el-input v-model="auditForm.remark" type="textarea" maxlength="200" />

@@ -18,7 +18,7 @@
         </el-select>
       </el-form-item>
       <el-form-item label="退货数量" prop="qty">
-        <el-input-number v-model="form.qty" :min="1" :max="maxQty" />
+        <el-input-number :controls="false" v-model="form.qty" :min="1" :max="maxQty" />
       </el-form-item>
       <el-form-item label="问题描述" prop="description">
         <el-input v-model="form.description" type="textarea" maxlength="500" show-word-limit :rows="3" />

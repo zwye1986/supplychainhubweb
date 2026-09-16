@@ -54,9 +54,7 @@
         <el-table-column label="每个订单限购" min-width="160">
           <template #default="{ row }">
             {{
-              row.phoneBindLimitEnabled
-                ? `${getDictLabel('supply_chain_limit_period', row.phoneBindLimitPeriod) || '-'} ${row.phoneBindLimitQuantity} 件`
-                : '未开启'
+              row.phoneBindLimitEnabled ? `${row.phoneBindLimitQuantity} 件` : '未开启'
             }}
           </template>
         </el-table-column>

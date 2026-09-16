@@ -73,6 +73,7 @@
               <div class="flex w-full items-center gap-6px">
                 <span class="whitespace-nowrap text-12px">销售建议价</span>
                 <el-input-number
+                  :controls="false"
                   v-model="batchConfig.percent"
                   :min="1"
                   :precision="0"
@@ -81,6 +82,7 @@
                 <span>%</span>
                 <span>+</span>
                 <el-input-number
+                  :controls="false"
                   v-model="batchConfig.amountYuan"
                   :precision="2"
                   class="!w-90px"
@@ -129,13 +131,14 @@
                 >
                   <div class="flex w-full items-center gap-4px">
                     <el-input-number
+                      :controls="false"
                       v-model="item.percent"
                       :min="1"
                       :precision="0"
                       class="!w-80px"
                     />
                     <span>%</span>
-                    <el-input-number v-model="item.amountYuan" :precision="2" class="!w-80px" />
+                    <el-input-number :controls="false" v-model="item.amountYuan" :precision="2" class="!w-80px" />
                     <span>元</span>
                   </div>
                 </el-form-item>

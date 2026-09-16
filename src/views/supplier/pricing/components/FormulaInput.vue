@@ -11,7 +11,7 @@
     <template v-else>
       <span>{{ prefix }}*</span>
     </template>
-    <el-input-number v-model="model.percent" :min="0" :precision="2" />
+    <el-input-number :controls="false" v-model="model.percent" :min="0" :precision="2" />
     <span>%</span>
     <el-select v-model="model.op" class="!w-80px">
       <el-option label="+" value="+" />
@@ -19,7 +19,7 @@
       <el-option label="*" value="*" />
       <el-option label="/" value="/" />
     </el-select>
-    <el-input-number v-model="model.amount" :min="0" :precision="2" />
+    <el-input-number :controls="false" v-model="model.amount" :min="0" :precision="2" />
     <span>元</span>
   </div>
 </template>

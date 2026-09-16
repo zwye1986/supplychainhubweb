@@ -21,7 +21,7 @@
             <el-option label="销售建议价" value="SUGGEST" />
           </el-select>
           <span>*</span>
-          <el-input-number v-model="formData.percent" :min="0.01" :precision="2" />
+          <el-input-number :controls="false" v-model="formData.percent" :min="0.01" :precision="2" />
           <span>%</span>
           <el-select v-model="formData.op" class="!w-80px">
             <el-option label="+" value="+" />
@@ -29,12 +29,12 @@
             <el-option label="*" value="*" />
             <el-option label="/" value="/" />
           </el-select>
-          <el-input-number v-model="formData.amount" :min="0" :precision="2" />
+          <el-input-number :controls="false" v-model="formData.amount" :min="0" :precision="2" />
           <span>元</span>
         </div>
       </el-form-item>
       <el-form-item v-if="formData.adjustMode === 'FIXED'" label="固定售价" prop="fixedPrice">
-        <el-input-number v-model="formData.fixedPrice" :min="0.01" :precision="2" />
+        <el-input-number :controls="false" v-model="formData.fixedPrice" :min="0.01" :precision="2" />
       </el-form-item>
     </el-form>
     <template #footer>

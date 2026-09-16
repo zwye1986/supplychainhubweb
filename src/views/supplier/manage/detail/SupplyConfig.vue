@@ -88,6 +88,7 @@
       <el-table-column label="供货上限" min-width="140">
         <template #default="{ row }">
           <el-input-number
+            :controls="false"
             v-model="row.maxQuantity"
             :min="1"
             :precision="0"
@@ -100,6 +101,7 @@
       <el-table-column label="最低起订量" min-width="140">
         <template #default="{ row }">
           <el-input-number
+            :controls="false"
             v-model="row.minQuantity"
             :min="1"
             :precision="0"

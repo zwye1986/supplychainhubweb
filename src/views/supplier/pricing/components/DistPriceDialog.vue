@@ -33,7 +33,7 @@
       <el-form-item label="商品展示阈值">
         <div class="flex items-center gap-8px">
           <span>利润空间低于</span>
-          <el-input-number v-model="form.hideThreshold" :min="0" :max="100" :precision="0" />
+          <el-input-number :controls="false" v-model="form.hideThreshold" :min="0" :max="100" :precision="0" />
           <span>% 时自动隐藏</span>
         </div>
       </el-form-item>

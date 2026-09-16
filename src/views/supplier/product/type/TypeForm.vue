@@ -21,6 +21,7 @@
       </el-form-item>
       <el-form-item label="排序" prop="sort">
         <el-input-number
+          :controls="false"
           v-model="formData.sort"
           :min="0"
           :value-on-clear="undefined"

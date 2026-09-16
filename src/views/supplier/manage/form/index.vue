@@ -192,6 +192,7 @@
         <el-col :span="12">
           <el-form-item label="结算周期（天）" prop="settlementCycleDays">
             <el-input-number
+              :controls="false"
               v-model="formData.settlementCycleDays"
               :min="1"
               :precision="0"
@@ -372,6 +373,7 @@
         <el-col v-if="!isEdit" :span="12">
           <el-form-item label="当前账户余额" prop="openingBalanceYuan">
             <el-input-number
+              :controls="false"
               v-model="openingBalanceYuan"
               :min="0"
               :precision="2"

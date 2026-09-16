@@ -125,6 +125,7 @@
                   label="供应价"
                 >
                   <el-input-number
+                    :controls="false"
                     v-model="batchConfig.priceOrDiscount"
                     :min="0"
                     :precision="2"
@@ -136,6 +137,7 @@
                   label="折扣(%)"
                 >
                   <el-input-number
+                    :controls="false"
                     v-model="batchConfig.priceOrDiscount"
                     :min="0.01"
                     :max="100"
@@ -155,6 +157,7 @@
                 </el-form-item>
                 <el-form-item label="供货上限">
                   <el-input-number
+                    :controls="false"
                     v-model="batchConfig.maxQuantity"
                     :min="1"
                     :precision="0"
@@ -163,6 +166,7 @@
                 </el-form-item>
                 <el-form-item label="最低起购量">
                   <el-input-number
+                    :controls="false"
                     v-model="batchConfig.minQuantity"
                     :min="1"
                     :precision="0"
@@ -213,6 +217,7 @@
                   label="供应价"
                 >
                   <el-input-number
+                    :controls="false"
                     :model-value="centsToYuan(item.unitPriceCents)"
                     :min="0"
                     :precision="2"
@@ -225,6 +230,7 @@
                   label="折扣(%)"
                 >
                   <el-input-number
+                    :controls="false"
                     :model-value="bpToPercent(item.discountBp)"
                     :min="0.01"
                     :max="100"
@@ -245,6 +251,7 @@
                 </el-form-item>
                 <el-form-item label="供货上限">
                   <el-input-number
+                    :controls="false"
                     v-model="item.maxQuantity"
                     :min="1"
                     :precision="0"
@@ -253,6 +260,7 @@
                 </el-form-item>
                 <el-form-item label="最低起购量">
                   <el-input-number
+                    :controls="false"
                     v-model="item.minQuantity"
                     :min="1"
                     :precision="0"

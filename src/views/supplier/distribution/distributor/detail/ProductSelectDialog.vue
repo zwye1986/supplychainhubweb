@@ -93,6 +93,7 @@
               <div class="flex w-full items-center gap-6px">
                 <span class="whitespace-nowrap text-12px">销售建议价</span>
                 <el-input-number
+                  :controls="false"
                   v-model="batchConfig.adjustPercent"
                   :min="1"
                   :precision="0"
@@ -101,6 +102,7 @@
                 <span>%</span>
                 <span>×</span>
                 <el-input-number
+                  :controls="false"
                   v-model="batchConfig.adjustAmount"
                   :min="0"
                   :precision="2"
@@ -113,6 +115,7 @@
               <div class="flex w-full items-center gap-6px">
                 <span class="whitespace-nowrap text-12px">利润空间低于</span>
                 <el-input-number
+                  :controls="false"
                   v-model="batchConfig.displayThreshold"
                   :min="0"
                   :max="100"
@@ -162,6 +165,7 @@
                 >
                   <div class="flex w-full items-center gap-4px">
                     <el-input-number
+                      :controls="false"
                       v-model="item.adjustPercent"
                       :min="1"
                       :precision="0"
@@ -170,6 +174,7 @@
                     />
                     <span>%</span>
                     <el-input-number
+                      :controls="false"
                       v-model="item.adjustAmount"
                       :min="0"
                       :precision="2"
@@ -181,6 +186,7 @@
                 </el-form-item>
                 <el-form-item label="分销价">
                   <el-input-number
+                    :controls="false"
                     v-model="item.distPrice"
                     :min="0"
                     :precision="2"
@@ -190,6 +196,7 @@
                 </el-form-item>
                 <el-form-item label="展示阈值">
                   <el-input-number
+                    :controls="false"
                     v-model="item.displayThreshold"
                     :min="0"
                     :max="100"
