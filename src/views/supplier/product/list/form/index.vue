@@ -20,17 +20,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品分类" prop="productClassification">
-            <el-tree-select
-              v-model="formData.productClassification"
-              :data="categoryTree"
-              clearable
-              check-strictly
-              filterable
-              node-key="categoryCode"
-              :props="{ label: 'categoryName', children: 'children' }"
-              placeholder="请选择商品分类"
-              class="!w-full"
-            />
+            <ProductCategory v-model="formData.productClassification" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -183,8 +173,6 @@
     ProductApi,
     ProductBrandApi,
     ProductBrandVO,
-    ProductCategoryApi,
-    ProductCategoryVO,
     SpuDetail,
     SpuSaveReqVO,
     SupplierSimpleInfo
@@ -247,7 +235,6 @@
   const formLoading = ref(false)
   const isEdit = ref(false)
   const brandList = ref<ProductBrandVO[]>([])
-  const categoryTree = ref<ProductCategoryVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
   const round2 = (value: number) => Math.round(value * 100) / 100
@@ -417,7 +404,6 @@
     isEdit.value = !!spuCode
     resetForm()
     brandList.value = await ProductBrandApi.getBrandList()
-    categoryTree.value = await ProductCategoryApi.getCategoryList()
     if (!spuCode) return
     formLoading.value = true
     try {

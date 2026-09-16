@@ -12,7 +12,7 @@
         <ProductType v-model="queryParams.productType" :multiple="false" />
       </el-form-item>
       <el-form-item label="商品分类" prop="categoryId">
-        <el-tree-select v-model="queryParams.categoryId" :data="categoryTree" clearable check-strictly node-key="id" :props="{ label: 'categoryName', children: 'children' }" />
+        <ProductCategory v-model="queryParams.categoryId" node-key="id" />
       </el-form-item>
       <el-form-item label="品牌" prop="brandId">
         <el-select v-model="queryParams.brandId" clearable>
@@ -177,8 +177,6 @@
     ProductApi,
     ProductBrandApi,
     ProductBrandVO,
-    ProductCategoryApi,
-    ProductCategoryVO,
     ProductManagementSkuItem,
     ProductManagementSpuItem,
     ProductTypeApi,
@@ -203,7 +201,6 @@
   const total = ref(0)
   const brandList = ref<ProductBrandVO[]>([])
   const typeList = ref<ProductTypeVO[]>([])
-  const categoryTree = ref<ProductCategoryVO[]>([])
   const supplierOptions = ref<SupplierSimpleInfo[]>([])
   const selectedList = ref<any[]>([])
   const queryFormRef = ref()
@@ -394,7 +391,6 @@
     if (route.query.tabCode) queryParams.tabCode = String(route.query.tabCode)
     brandList.value = await ProductBrandApi.getBrandList()
     typeList.value = await ProductTypeApi.getTypeList()
-    categoryTree.value = await ProductCategoryApi.getCategoryList()
     try {
       const data = await SupplierApi.getSupplierNameList({ view: 'simple' })
       supplierOptions.value = (Array.isArray(data) ? data : data?.list || []).filter(

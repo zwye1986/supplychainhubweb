@@ -170,16 +170,7 @@
       </el-table-column>
       <el-table-column label="商品分类" align="center" min-width="200">
         <template #default="{ row }">
-          <el-tag
-            v-for="tag in getProductCategoryLabels(row.productCategories)"
-            :key="tag"
-            class="m-2px"
-            size="small"
-            type="warning"
-          >
-            {{ tag }}
-          </el-tag>
-          <span v-if="!getProductCategoryLabels(row.productCategories).length">-</span>
+          <ProductCategory :model-value="namedRefCodes(row.productCategories)" text />
         </template>
       </el-table-column>
       <el-table-column label="供货模式" align="center" prop="supplyModes" min-width="180">
@@ -287,7 +278,6 @@
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
 import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
@@ -299,7 +289,6 @@ const message = useMessage()
 
 const loading = ref(true)
 const list = ref<SupplierVO[]>([])
-const categoryTree = ref<ProductCategoryVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const nameOptions = ref<Pick<SupplierVO, 'id' | 'supplierName'>[]>([])
@@ -333,35 +322,6 @@ const updatedRange = computed<string[]>({
     queryParams.updatedTo = val?.[1]
   }
 })
-
-const findCategory = (
-  nodes: ProductCategoryVO[],
-  code?: string | number,
-  name?: string
-): ProductCategoryVO | undefined => {
-  const key = code != null && code !== '' ? String(code) : ''
-  for (const node of nodes) {
-    if ((key && (node.categoryCode === key || String(node.id) === key)) || (name && node.categoryName === name)) {
-      return node
-    }
-    const found = findCategory(node.children || [], code, name)
-    if (found) return found
-  }
-}
-
-const getProductCategoryLabels = (refs: NamedRef[] | null | undefined) => {
-  if (!refs?.length) return []
-  return [
-    ...new Set(
-      refs
-        .map((item) => {
-          const matched = findCategory(categoryTree.value, item?.id, item?.name)
-          return (matched?.categoryName || item?.name || '').trim()
-        })
-        .filter((label) => label.length > 0)
-    )
-  ]
-}
 
 const namedRefCodes = (refs: NamedRef[] | null | undefined) => {
   if (!refs?.length) return []
@@ -543,7 +503,6 @@ const handleBatchStatusChange = async (status: string) => {
 }
 
 const loadPage = async () => {
-  categoryTree.value = await ProductCategoryApi.getCategoryList()
   getList()
   getFilterOptions()
 }

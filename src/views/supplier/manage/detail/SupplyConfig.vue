@@ -39,17 +39,10 @@
       </el-table-column>
       <el-table-column label="商品分类" min-width="150">
         <template #default="{ row }">
-          <el-tree-select
+          <ProductCategory
             v-model="row.categoryL3Id"
-            :data="categoryTree"
-            placeholder="请选择商品分类"
-            filterable
-            clearable
-            check-strictly
             class="!w-full"
             :disabled="!row.categoryL2Id"
-            node-key="categoryCode"
-            :props="{ label: 'categoryName', children: 'children' }"
             @change="() => handleCategoryL3Change(row)"
           />
         </template>
@@ -122,7 +115,6 @@ import {
   SupplierSupplyScopeDO,
   SupplyScopeView
 } from '@/api/supplier/manage'
-import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
 import { getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'SupplierSupplyConfig' })
@@ -145,7 +137,6 @@ type SupplyScopeRow = Partial<Pick<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' |
   Pick<SupplyScopeView, 'id' | 'categoryL1Name' | 'categoryL2Name' | 'categoryL3Name'>
 
 const list = ref<SupplyScopeRow[]>([])
-const categoryTree = ref<ProductCategoryVO[]>([])
 
 const DEFAULT_MAX_QUANTITY = 9999999
 const DEFAULT_MIN_QUANTITY = 1
@@ -290,7 +281,6 @@ const loadData = async () => {
   if (!props.supplierCode) return
   loading.value = true
   try {
-    categoryTree.value = await ProductCategoryApi.getCategoryList()
     const data = await SupplierApi.getSupplyScopes(props.supplierCode)
     const rows = Array.isArray(data) ? data : []
     list.value = rows.map((item) => normalizeRow(item))

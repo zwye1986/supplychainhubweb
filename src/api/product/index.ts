@@ -49,6 +49,7 @@ const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategory
   })
 
 let productTypeListInflight: Promise<ProductTypeVO[]> | null = null
+let categoryListInflight: Promise<ProductCategoryVO[]> | null = null
 
 export const ProductTypeApi = {
   getTypePage: async (params: ProductTypePageParam) => {
@@ -95,26 +96,45 @@ export const ProductTypeApi = {
 
 export const ProductCategoryApi = {
   getCategoryList: async (params?: CategoryListParam) => {
-    const data = await request.get({ url: '/supply-chain/categories/management-tree', params })
-    return normalizeCategoryTree(Array.isArray(data) ? data : [])
+    const requestList = async () => {
+      const data = await request.get({ url: '/supply-chain/categories/management-tree', params })
+      return normalizeCategoryTree(Array.isArray(data) ? data : [])
+    }
+    const hasParams =
+      params && Object.values(params).some((value) => value !== undefined && value !== '')
+    if (hasParams) return await requestList()
+    if (!categoryListInflight) {
+      categoryListInflight = requestList().finally(() => {
+        categoryListInflight = null
+      })
+    }
+    return await categoryListInflight
   },
   getCategory: async (categoryCode: string) => {
     return await request.get({ url: `/supply-chain/categories/${categoryCode}` })
   },
   createCategory: async (data: CategorySaveReqVO) => {
-    return await request.post({ url: '/supply-chain/categories', data })
+    const result = await request.post({ url: '/supply-chain/categories', data })
+    categoryListInflight = null
+    return result
   },
   updateCategory: async (categoryCode: string, data: CategorySaveReqVO) => {
-    return await request.put({ url: `/supply-chain/categories/${categoryCode}`, data })
+    const result = await request.put({ url: `/supply-chain/categories/${categoryCode}`, data })
+    categoryListInflight = null
+    return result
   },
   deleteCategory: async (categoryCode: string) => {
-    return await request.delete({ url: `/supply-chain/categories/${categoryCode}` })
+    const result = await request.delete({ url: `/supply-chain/categories/${categoryCode}` })
+    categoryListInflight = null
+    return result
   },
   changeCategoryStatus: async (categoryCode: string, targetStatus: number) => {
-    return await request.put({
+    const result = await request.put({
       url: `/supply-chain/categories/${categoryCode}/status`,
       data: { targetStatus }
     })
+    categoryListInflight = null
+    return result
   }
 }
 

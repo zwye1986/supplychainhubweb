@@ -19,7 +19,7 @@
           <ProductType :model-value="detail.productType" :multiple="false" text />
         </el-descriptions-item>
         <el-descriptions-item label="商品分类">
-          {{ getCategoryName(detail.productClassification) }}
+          <ProductCategory :model-value="detail.productClassification" text />
         </el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送方式">
@@ -64,12 +64,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  ProductApi,
-  ProductCategoryApi,
-  ProductCategoryVO,
-  SpuDetail
-} from '@/api/product'
+import { ProductApi, SpuDetail } from '@/api/product'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 
@@ -78,36 +73,16 @@ defineOptions({ name: 'ProductListDetail' })
 const emit = defineEmits(['edit'])
 const drawerVisible = ref(false)
 const loading = ref(false)
-const categoryTree = ref<ProductCategoryVO[]>([])
 const detail = ref<SpuDetail>({
   spuName: '',
   skus: []
 })
 
-const findCategory = (
-  nodes: ProductCategoryVO[],
-  code?: string
-): ProductCategoryVO | undefined => {
-  if (!code) return undefined
-  for (const node of nodes) {
-    if (node.categoryCode === code || String(node.id) === code) return node
-    const found = findCategory(node.children || [], code)
-    if (found) return found
-  }
-}
-
-const getCategoryName = (code?: string) => findCategory(categoryTree.value, code)?.categoryName || code || '-'
-
 const open = async (spuCode: string) => {
   drawerVisible.value = true
   loading.value = true
   try {
-    const [categories, data] = await Promise.all([
-      ProductCategoryApi.getCategoryList(),
-      ProductApi.getProduct(spuCode)
-    ])
-    categoryTree.value = categories
-    detail.value = data
+    detail.value = await ProductApi.getProduct(spuCode)
   } finally {
     loading.value = false
   }

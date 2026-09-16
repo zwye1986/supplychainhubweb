@@ -31,19 +31,7 @@
               />
             </el-form-item>
             <el-form-item label="商品分类">
-              <el-select
-                v-model="queryParams.categoryCode"
-                placeholder="全部分类"
-                clearable
-                class="!w-140px"
-              >
-                <el-option
-                  v-for="item in categoryTags"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
+              <ProductCategory v-model="queryParams.categoryCode" placeholder="全部分类" class="!w-140px" />
             </el-form-item>
             <el-form-item>
               <el-button @click="handleQuery">搜索</el-button>
@@ -310,7 +298,6 @@ import {
   OFFER_STATUS_OPTIONS,
   OfferPriceModeEnum,
   OfferStatusEnum,
-  SUPPLIER_PRODUCT_FILTER_TAGS,
   SUPPLIER_SUPPLY_MODE_OPTIONS,
   bpToPercent,
   centsToYuan,
@@ -375,8 +362,6 @@ const batchConfig = reactive({
   maxQuantity: 9999999,
   minQuantity: 1
 })
-
-const categoryTags = SUPPLIER_PRODUCT_FILTER_TAGS
 
 const loadSupplyScopes = async () => {
   try {

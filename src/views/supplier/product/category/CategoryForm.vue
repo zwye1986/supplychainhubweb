@@ -2,8 +2,11 @@
   <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px" append-to-body>
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="120px">
       <el-form-item label="所属父分类" prop="parentCategoryCode">
-        <el-tree-select v-model="formData.parentCategoryCode" :data="parentTree" check-strictly clearable node-key="categoryCode"
-          :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }" placeholder="请选择父分类，不选则为一级分类" />
+        <ProductCategory
+          v-model="formData.parentCategoryCode"
+          :exclude-code="isEdit ? formData.categoryCode : undefined"
+          placeholder="请选择父分类，不选则为一级分类"
+        />
       </el-form-item>
       <el-form-item label="商品类型" prop="typeCodes">
         <ProductType v-model="formData.typeCodes" />
@@ -33,8 +36,6 @@
 
   defineOptions({ name: 'ProductCategoryForm' })
 
-  type CategoryTreeNode = ProductCategoryVO & { disabled?: boolean }
-
   const message = useMessage()
   const emit = defineEmits(['success'])
   const dialogVisible = ref(false)
@@ -43,7 +44,6 @@
   const formRef = ref()
   const isEdit = ref(false)
   const originalStatus = ref<number | undefined>()
-  const categoryTree = ref<ProductCategoryVO[]>([])
   const formData = reactive({
     parentCategoryCode: undefined as string | undefined,
     categoryName: '',
@@ -60,18 +60,6 @@
     status: [{ required: true, message: '请选择状态', trigger: 'change' }]
   }
 
-  const findNodeByCode = (
-    nodes: ProductCategoryVO[],
-    categoryCode?: string
-  ): ProductCategoryVO | undefined => {
-    if (!categoryCode) return undefined
-    for (const node of nodes) {
-      if (node.categoryCode === categoryCode) return node
-      const found = findNodeByCode(node.children || [], categoryCode)
-      if (found) return found
-    }
-  }
-
   const findCodeById = (nodes: ProductCategoryVO[], id?: number): string | undefined => {
     if (id == null || id === 0) return undefined
     for (const node of nodes) {
@@ -80,34 +68,6 @@
       if (found) return found
     }
   }
-
-  const collectDescendantCodes = (node?: ProductCategoryVO): string[] => {
-    if (!node) return []
-    const codes: string[] = []
-    ;(node.children || []).forEach((child) => {
-      if (child.categoryCode) codes.push(child.categoryCode)
-      codes.push(...collectDescendantCodes(child))
-    })
-    return codes
-  }
-
-  const markDisabled = (nodes: ProductCategoryVO[], disabledCodes: Set<string>): CategoryTreeNode[] =>
-    nodes.map((node) => ({
-      ...node,
-      disabled: !!node.categoryCode && disabledCodes.has(node.categoryCode),
-      children: node.children?.length ? markDisabled(node.children, disabledCodes) : undefined
-    }))
-
-  const parentTree = computed(() => {
-    const disabledCodes = new Set<string>()
-    if (isEdit.value && formData.categoryCode) {
-      disabledCodes.add(formData.categoryCode)
-      collectDescendantCodes(findNodeByCode(categoryTree.value, formData.categoryCode)).forEach(
-        (code) => disabledCodes.add(code)
-      )
-    }
-    return markDisabled(categoryTree.value, disabledCodes)
-  })
 
   const resetForm = () => {
     formData.parentCategoryCode = undefined
@@ -127,11 +87,13 @@
     dialogTitle.value = isEdit.value ? '编辑分类' : '新增分类'
     resetForm()
     formData.parentCategoryCode = parentCategoryCode
-    categoryTree.value = await ProductCategoryApi.getCategoryList()
     if (!categoryCode) return
     formLoading.value = true
     try {
-      const data = await ProductCategoryApi.getCategory(categoryCode)
+      const [data, tree] = await Promise.all([
+        ProductCategoryApi.getCategory(categoryCode),
+        ProductCategoryApi.getCategoryList()
+      ])
       formData.categoryCode = data.categoryCode || categoryCode
       formData.categoryName = data.categoryName || ''
       formData.sort = data.sort
@@ -139,7 +101,7 @@
       formData.status =
         data.status === CATEGORY_STATUS.ENABLED ? CATEGORY_STATUS.ENABLED : CATEGORY_STATUS.DISABLED
       originalStatus.value = data.status
-      formData.parentCategoryCode = findCodeById(categoryTree.value, data.parentId)
+      formData.parentCategoryCode = data.parentCategoryCode || findCodeById(tree, data.parentId)
     } finally {
       formLoading.value = false
     }
