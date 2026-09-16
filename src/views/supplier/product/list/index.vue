@@ -42,12 +42,17 @@
           clearable
           check-strictly
           node-key="id"
-          :props="{ label: 'name', children: 'children' }"
+          :props="{ label: 'categoryName', children: 'children' }"
         />
       </el-form-item>
       <el-form-item label="品牌" prop="brandId">
         <el-select v-model="queryParams.brandId" clearable>
-          <el-option v-for="item in brandList" :key="item.id" :label="item.name" :value="item.id!" />
+          <el-option
+            v-for="item in brandList"
+            :key="item.brandCode"
+            :label="item.brandName"
+            :value="item.brandCode!"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="市场价">
@@ -306,7 +311,7 @@ const queryParams = reactive({
   tabCode: 'ALL',
   productType: undefined as string | undefined,
   categoryId: undefined as number | undefined,
-  brandId: undefined as number | undefined,
+  brandId: undefined as number | string | undefined,
   marketPriceMin: undefined as string | undefined,
   marketPriceMax: undefined as string | undefined,
   supplyPriceMin: undefined as string | undefined,

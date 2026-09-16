@@ -3,6 +3,11 @@ import { ProductMockApi } from './mock'
 
 export type {
   AdjustMode,
+  BrandPageParam,
+  BrandSaveReqVO,
+  BrandStatusValue,
+  CategorySaveReqVO,
+  CategoryStatusValue,
   FormulaVO,
   ProductBrandVO,
   ProductCategoryVO,
@@ -18,10 +23,12 @@ export type {
   SupplierSimpleInfo
 } from './types'
 
-export { PRODUCT_STATUS } from './types'
+export { BRAND_STATUS, CATEGORY_STATUS, PRODUCT_STATUS } from './types'
 
 import type {
-  ProductBrandVO,
+  BrandPageParam,
+  BrandSaveReqVO,
+  CategorySaveReqVO,
   ProductCategoryVO,
   ProductManagementPageParam,
   ProductTypeVO,
@@ -29,8 +36,14 @@ import type {
   SpuSaveReqVO
 } from './types'
 
-/** 类型 / 分类 / 品牌接口未就绪时走前端 mock */
+/** 商品类型接口未就绪时走前端 mock */
 export const USE_PRODUCT_MOCK = true
+
+const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategoryVO[] =>
+  nodes.map((node) => {
+    const children = node.children?.length ? normalizeCategoryTree(node.children) : undefined
+    return { ...node, children }
+  })
 
 export const ProductTypeApi = {
   getTypeList: async (params?: { keyword?: string }) => {
@@ -56,48 +69,52 @@ export const ProductTypeApi = {
 }
 
 export const ProductCategoryApi = {
-  getCategoryList: async (params?: { name?: string; status?: number }) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getCategoryList(params)
-    return await request.get({ url: '/supply-chain/product-categories', params })
+  getCategoryList: async () => {
+    const data = await request.get({ url: '/supply-chain/categories/management-tree' })
+    return normalizeCategoryTree(Array.isArray(data) ? data : [])
   },
-  getCategory: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getCategory(id)
-    return await request.get({ url: `/supply-chain/product-categories/${id}` })
+  getCategory: async (categoryCode: string) => {
+    return await request.get({ url: `/supply-chain/categories/${categoryCode}` })
   },
-  createCategory: async (data: ProductCategoryVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.createCategory(data)
-    return await request.post({ url: '/supply-chain/product-categories', data })
+  createCategory: async (data: CategorySaveReqVO) => {
+    return await request.post({ url: '/supply-chain/categories', data })
   },
-  updateCategory: async (data: ProductCategoryVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.updateCategory(data)
-    return await request.put({ url: `/supply-chain/product-categories/${data.id}`, data })
+  updateCategory: async (categoryCode: string, data: CategorySaveReqVO) => {
+    return await request.put({ url: `/supply-chain/categories/${categoryCode}`, data })
   },
-  deleteCategory: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.deleteCategory(id)
-    return await request.delete({ url: `/supply-chain/product-categories/${id}` })
+  deleteCategory: async (categoryCode: string) => {
+    return await request.delete({ url: `/supply-chain/categories/${categoryCode}` })
+  },
+  changeCategoryStatus: async (categoryCode: string, targetStatus: number) => {
+    return await request.put({
+      url: `/supply-chain/categories/${categoryCode}/status`,
+      data: { targetStatus }
+    })
   }
 }
 
 export const ProductBrandApi = {
-  getBrandList: async (params?: { keyword?: string }) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getBrandList(params)
-    return await request.get({ url: '/supply-chain/product-brands', params })
+  getBrandPage: async (params: BrandPageParam) => {
+    return await request.get({ url: '/supply-chain/brands', params })
   },
-  getBrand: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.getBrand(id)
-    return await request.get({ url: `/supply-chain/product-brands/${id}` })
+  getBrandList: async (params?: { keyword?: string; status?: number }) => {
+    const data = await request.get({
+      url: '/supply-chain/brands',
+      params: { pageNo: 1, pageSize: 100, ...params }
+    })
+    return data?.list || []
   },
-  createBrand: async (data: ProductBrandVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.createBrand(data)
-    return await request.post({ url: '/supply-chain/product-brands', data })
+  getBrand: async (brandCode: string) => {
+    return await request.get({ url: `/supply-chain/brands/${brandCode}` })
   },
-  updateBrand: async (data: ProductBrandVO) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.updateBrand(data)
-    return await request.put({ url: `/supply-chain/product-brands/${data.id}`, data })
+  createBrand: async (data: BrandSaveReqVO) => {
+    return await request.post({ url: '/supply-chain/brands', data })
   },
-  deleteBrand: async (id: number) => {
-    if (USE_PRODUCT_MOCK) return ProductMockApi.deleteBrand(id)
-    return await request.delete({ url: `/supply-chain/product-brands/${id}` })
+  updateBrand: async (brandCode: string, data: BrandSaveReqVO) => {
+    return await request.put({ url: `/supply-chain/brands/${brandCode}`, data })
+  },
+  deleteBrand: async (brandCode: string) => {
+    return await request.delete({ url: `/supply-chain/brands/${brandCode}` })
   }
 }
 

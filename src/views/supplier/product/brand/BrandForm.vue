@@ -1,25 +1,39 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    :title="formData.id ? '编辑品牌' : '新增品牌'"
-    width="600px"
-    append-to-body
-  >
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
-      <el-form-item label="品牌名称" prop="name">
-        <el-input v-model="formData.name" maxlength="50" placeholder="请输入品牌名称" />
+      <el-form-item label="品牌名称" prop="brandName">
+        <el-input v-model="formData.brandName" maxlength="50" placeholder="请输入品牌名称" />
       </el-form-item>
       <el-form-item label="品牌简称" prop="shortName">
         <el-input v-model="formData.shortName" maxlength="20" placeholder="请输入品牌简称" />
       </el-form-item>
-      <el-form-item label="品牌编码" prop="code">
-        <el-input v-model="formData.code" maxlength="30" placeholder="字母/数字/下划线" />
+      <el-form-item label="品牌编码" prop="brandCode">
+        <el-input
+          v-model="formData.brandCode"
+          maxlength="30"
+          placeholder="字母/数字/下划线，可空自动生成"
+          :disabled="isEdit"
+        />
       </el-form-item>
-      <el-form-item label="品牌Logo" prop="logo">
-        <UploadImg v-model="formData.logo" height="80px" width="80px" :file-size="0.2" />
+      <el-form-item label="品牌Logo" prop="logoUrl">
+        <UploadImg
+          v-model="formData.logoUrl"
+          height="80px"
+          width="80px"
+          :file-size="0.2"
+          :file-type="['image/jpeg', 'image/png']"
+        />
+        <div class="mt-4px text-12px text-gray-400">支持 jpg/png，建议 1:1，不超过 200KB，仅 1 张</div>
       </el-form-item>
-      <el-form-item label="品牌介绍" prop="intro">
-        <el-input v-model="formData.intro" type="textarea" maxlength="200" show-word-limit :rows="3" />
+      <el-form-item label="品牌介绍" prop="description">
+        <el-input
+          v-model="formData.description"
+          type="textarea"
+          maxlength="200"
+          show-word-limit
+          :rows="3"
+          placeholder="请输入品牌介绍"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -30,55 +44,104 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductBrandApi, ProductBrandVO } from '@/api/product'
+import { BRAND_STATUS, BrandSaveReqVO, ProductBrandApi } from '@/api/product'
 
 defineOptions({ name: 'ProductBrandForm' })
 
 const message = useMessage()
 const emit = defineEmits(['success'])
 const dialogVisible = ref(false)
+const dialogTitle = ref('新增品牌')
 const formLoading = ref(false)
 const formRef = ref()
-const formData = reactive<ProductBrandVO>({
-  name: '',
+const isEdit = ref(false)
+const formData = reactive({
+  brandCode: '',
+  brandName: '',
   shortName: '',
-  code: '',
-  logo: '',
-  intro: ''
+  englishName: '',
+  logoUrl: '',
+  description: '',
+  sort: undefined as number | undefined,
+  status: BRAND_STATUS.ENABLED
 })
+const brandCodePattern = /^[A-Za-z0-9_]+$/
 const formRules = {
-  name: [{ required: true, message: '请输入品牌名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入品牌编码', trigger: 'blur' }]
+  brandName: [{ required: true, message: '请输入品牌名称', trigger: 'blur' }],
+  brandCode: [
+    {
+      validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+        if (!value || brandCodePattern.test(value)) callback()
+        else callback(new Error('仅支持字母、数字、下划线'))
+      },
+      trigger: 'blur'
+    }
+  ],
+  logoUrl: [{ required: true, message: '请上传品牌Logo', trigger: 'change' }]
 }
 
-const open = async (id?: number) => {
-  dialogVisible.value = true
-  formData.id = undefined
-  formData.name = ''
+const resetForm = () => {
+  formData.brandCode = ''
+  formData.brandName = ''
   formData.shortName = ''
-  formData.code = ''
-  formData.logo = ''
-  formData.intro = ''
-  if (!id) return
+  formData.englishName = ''
+  formData.logoUrl = ''
+  formData.description = ''
+  formData.sort = undefined
+  formData.status = BRAND_STATUS.ENABLED
+}
+
+const open = async (brandCode?: string) => {
+  dialogVisible.value = true
+  isEdit.value = !!brandCode
+  dialogTitle.value = isEdit.value ? '编辑品牌' : '新增品牌'
+  resetForm()
+  if (!brandCode) return
   formLoading.value = true
   try {
-    Object.assign(formData, await ProductBrandApi.getBrand(id))
+    const data = await ProductBrandApi.getBrand(brandCode)
+    formData.brandCode = data.brandCode || brandCode
+    formData.brandName = data.brandName || ''
+    formData.shortName = data.shortName || ''
+    formData.englishName = data.englishName || ''
+    formData.logoUrl = data.logoUrl || ''
+    formData.description = data.description || ''
+    formData.sort = data.sort
+    formData.status = data.status ?? BRAND_STATUS.ENABLED
   } finally {
     formLoading.value = false
   }
+}
+
+const buildSavePayload = (): BrandSaveReqVO => {
+  const payload: BrandSaveReqVO = {
+    brandName: formData.brandName,
+    shortName: formData.shortName || undefined,
+    logoUrl: formData.logoUrl,
+    description: formData.description || undefined
+  }
+  if (!isEdit.value && formData.brandCode) payload.brandCode = formData.brandCode
+  if (isEdit.value) {
+    payload.englishName = formData.englishName || undefined
+    payload.sort = formData.sort
+    payload.status = formData.status
+  } else {
+    payload.status = BRAND_STATUS.ENABLED
+  }
+  return payload
 }
 
 const submitForm = async () => {
   await formRef.value?.validate()
   formLoading.value = true
   try {
-    if (formData.id) await ProductBrandApi.updateBrand(formData)
-    else await ProductBrandApi.createBrand(formData)
+    const payload = buildSavePayload()
+    if (isEdit.value) await ProductBrandApi.updateBrand(formData.brandCode, payload)
+    else await ProductBrandApi.createBrand(payload)
     message.success('保存成功')
     dialogVisible.value = false
     emit('success')
-  } catch (error: any) {
-    if (error?.message) message.error(error.message)
+  } catch {
   } finally {
     formLoading.value = false
   }

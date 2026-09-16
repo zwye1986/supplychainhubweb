@@ -7,29 +7,43 @@
           <el-option label="二级分类（子分类）" value="CHILD" />
         </el-select>
       </el-form-item>
-      <el-form-item v-if="formData.levelType === 'CHILD'" label="所属父分类" prop="parentId">
+      <el-form-item v-if="formData.levelType === 'CHILD'" label="所属父分类" prop="parentCategoryCode">
         <el-tree-select
-          v-model="formData.parentId"
-          :data="categoryTree"
+          v-model="formData.parentCategoryCode"
+          :data="parentTree"
           check-strictly
-          node-key="id"
-          :props="{ label: 'name', children: 'children' }"
+          node-key="categoryCode"
+          :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }"
           placeholder="请选择父分类"
         />
       </el-form-item>
       <el-form-item label="商品类型" prop="typeCodes">
-        <el-select v-model="formData.typeCodes" multiple collapse-tags>
-          <el-option v-for="item in typeList" :key="item.code" :label="item.name" :value="item.code" />
+        <el-select v-model="formData.typeCodes" multiple collapse-tags placeholder="请选择商品类型">
+          <el-option
+            v-for="dict in getStrDictOptions('supply_chain_product_type')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
         </el-select>
       </el-form-item>
-      <el-form-item label="分类名称" prop="name">
-        <el-input v-model="formData.name" maxlength="50" placeholder="请输入分类名称" />
+      <el-form-item label="分类名称" prop="categoryName">
+        <el-input v-model="formData.categoryName" maxlength="50" placeholder="请输入分类名称" />
       </el-form-item>
-      <el-form-item label="分类编码" prop="code">
-        <el-input v-model="formData.code" maxlength="32" placeholder="字母/数字组合" />
+      <el-form-item label="分类编码" prop="categoryCode">
+        <el-input
+          v-model="formData.categoryCode"
+          maxlength="32"
+          placeholder="字母/数字组合，可空自动生成"
+          :disabled="isEdit"
+        />
       </el-form-item>
       <el-form-item label="状态" prop="status">
-        <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" />
+        <el-switch
+          v-model="formData.status"
+          :active-value="CATEGORY_STATUS.ENABLED"
+          :inactive-value="CATEGORY_STATUS.DISABLED"
+        />
       </el-form-item>
       <el-form-item label="分类描述" prop="remark">
         <el-input v-model="formData.remark" type="textarea" maxlength="200" show-word-limit />
@@ -43,9 +57,17 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
+import {
+  CATEGORY_STATUS,
+  CategorySaveReqVO,
+  ProductCategoryApi,
+  ProductCategoryVO
+} from '@/api/product'
+import { getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'ProductCategoryForm' })
+
+type CategoryTreeNode = ProductCategoryVO & { disabled?: boolean }
 
 const message = useMessage()
 const emit = defineEmits(['success'])
@@ -53,67 +75,159 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增分类')
 const formLoading = ref(false)
 const formRef = ref()
-const typeList = ref<ProductTypeVO[]>([])
+const isEdit = ref(false)
+const originalStatus = ref<number | undefined>()
 const categoryTree = ref<ProductCategoryVO[]>([])
 const formData = reactive({
-  id: undefined as number | undefined,
   levelType: 'ROOT',
-  parentId: 0,
-  name: '',
-  code: '',
+  parentCategoryCode: undefined as string | undefined,
+  categoryName: '',
+  categoryCode: '',
   typeCodes: [] as string[],
-  status: 1,
-  remark: ''
+  status: CATEGORY_STATUS.ENABLED,
+  remark: '',
+  sort: undefined as number | undefined,
+  visible: undefined as number | undefined
 })
 const formRules = {
   levelType: [{ required: true, message: '请选择分类层级', trigger: 'change' }],
   typeCodes: [{ required: true, message: '请选择商品类型', trigger: 'change' }],
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
+  categoryName: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
-const handleLevelChange = () => {
-  if (formData.levelType === 'ROOT') formData.parentId = 0
+const findNodeByCode = (
+  nodes: ProductCategoryVO[],
+  categoryCode?: string
+): ProductCategoryVO | undefined => {
+  if (!categoryCode) return undefined
+  for (const node of nodes) {
+    if (node.categoryCode === categoryCode) return node
+    const found = findNodeByCode(node.children || [], categoryCode)
+    if (found) return found
+  }
 }
 
-const open = async (type: string, id?: number, parentId?: number) => {
-  dialogVisible.value = true
-  dialogTitle.value = type === 'create' ? '新增分类' : '编辑分类'
-  formData.id = undefined
-  formData.levelType = parentId ? 'CHILD' : 'ROOT'
-  formData.parentId = parentId || 0
-  formData.name = ''
-  formData.code = ''
+const findCodeById = (nodes: ProductCategoryVO[], id?: number): string | undefined => {
+  if (id == null || id === 0) return undefined
+  for (const node of nodes) {
+    if (node.id === id) return node.categoryCode
+    const found = findCodeById(node.children || [], id)
+    if (found) return found
+  }
+}
+
+const collectDescendantCodes = (node?: ProductCategoryVO): string[] => {
+  if (!node) return []
+  const codes: string[] = []
+  ;(node.children || []).forEach((child) => {
+    if (child.categoryCode) codes.push(child.categoryCode)
+    codes.push(...collectDescendantCodes(child))
+  })
+  return codes
+}
+
+const markDisabled = (nodes: ProductCategoryVO[], disabledCodes: Set<string>): CategoryTreeNode[] =>
+  nodes.map((node) => ({
+    ...node,
+    disabled: !!node.categoryCode && disabledCodes.has(node.categoryCode),
+    children: node.children?.length ? markDisabled(node.children, disabledCodes) : undefined
+  }))
+
+const parentTree = computed(() => {
+  const disabledCodes = new Set<string>()
+  if (isEdit.value && formData.categoryCode) {
+    disabledCodes.add(formData.categoryCode)
+    collectDescendantCodes(findNodeByCode(categoryTree.value, formData.categoryCode)).forEach(
+      (code) => disabledCodes.add(code)
+    )
+  }
+  return markDisabled(categoryTree.value, disabledCodes)
+})
+
+const handleLevelChange = () => {
+  if (formData.levelType === 'ROOT') formData.parentCategoryCode = undefined
+}
+
+const resetForm = () => {
+  formData.levelType = 'ROOT'
+  formData.parentCategoryCode = undefined
+  formData.categoryName = ''
+  formData.categoryCode = ''
   formData.typeCodes = []
-  formData.status = 1
+  formData.status = CATEGORY_STATUS.ENABLED
   formData.remark = ''
-  typeList.value = await ProductTypeApi.getTypeList()
+  formData.sort = undefined
+  formData.visible = undefined
+  originalStatus.value = undefined
+}
+
+const open = async (type: string, categoryCode?: string, parentCategoryCode?: string) => {
+  dialogVisible.value = true
+  isEdit.value = type === 'update'
+  dialogTitle.value = isEdit.value ? '编辑分类' : '新增分类'
+  resetForm()
+  formData.levelType = parentCategoryCode ? 'CHILD' : 'ROOT'
+  formData.parentCategoryCode = parentCategoryCode
   categoryTree.value = await ProductCategoryApi.getCategoryList()
-  if (!id) return
+  if (!categoryCode) return
   formLoading.value = true
   try {
-    const data = await ProductCategoryApi.getCategory(id)
-    Object.assign(formData, data)
-    formData.levelType = data.parentId ? 'CHILD' : 'ROOT'
+    const data = await ProductCategoryApi.getCategory(categoryCode)
+    formData.categoryCode = data.categoryCode || categoryCode
+    formData.categoryName = data.categoryName || ''
+    formData.sort = data.sort
+    formData.visible = data.visible
+    formData.status =
+      data.status === CATEGORY_STATUS.ENABLED ? CATEGORY_STATUS.ENABLED : CATEGORY_STATUS.DISABLED
+    originalStatus.value = data.status
+    const resolvedParent = findCodeById(categoryTree.value, data.parentId)
+    formData.parentCategoryCode = resolvedParent
+    formData.levelType = resolvedParent ? 'CHILD' : 'ROOT'
   } finally {
     formLoading.value = false
   }
 }
 
+const buildSavePayload = (): CategorySaveReqVO => {
+  const payload: CategorySaveReqVO = {
+    categoryName: formData.categoryName,
+    parentCategoryCode: formData.levelType === 'ROOT' ? '' : formData.parentCategoryCode
+  }
+  if (!isEdit.value && formData.categoryCode) payload.categoryCode = formData.categoryCode
+  if (isEdit.value) {
+    payload.sort = formData.sort
+    payload.visible = formData.visible
+  } else {
+    payload.status = CATEGORY_STATUS.ENABLED
+  }
+  return payload
+}
+
 const submitForm = async () => {
   await formRef.value?.validate()
-  if (formData.levelType === 'CHILD' && !formData.parentId) {
+  if (formData.levelType === 'CHILD' && !formData.parentCategoryCode) {
     message.warning('请选择父分类')
     return
   }
   formLoading.value = true
   try {
-    const payload: ProductCategoryVO = {
-      ...formData,
-      parentId: formData.levelType === 'ROOT' ? 0 : formData.parentId
+    const payload = buildSavePayload()
+    const savedCode = isEdit.value
+      ? formData.categoryCode
+      : ((await ProductCategoryApi.createCategory(payload)) as string)
+    if (isEdit.value) {
+      await ProductCategoryApi.updateCategory(formData.categoryCode, payload)
     }
-    if (formData.id) await ProductCategoryApi.updateCategory(payload)
-    else await ProductCategoryApi.createCategory(payload)
+    const targetStatus = formData.status
+    if (
+      savedCode &&
+      (targetStatus === CATEGORY_STATUS.ENABLED || targetStatus === CATEGORY_STATUS.DISABLED) &&
+      originalStatus.value !== targetStatus
+    ) {
+      const needSwitch = isEdit.value || targetStatus === CATEGORY_STATUS.DISABLED
+      if (needSwitch) await ProductCategoryApi.changeCategoryStatus(savedCode, targetStatus)
+    }
     message.success('保存成功')
     dialogVisible.value = false
     emit('success')

@@ -64,7 +64,7 @@ export interface ProductManagementPageParam {
   keyword?: string
   productType?: string
   categoryId?: number
-  brandId?: number
+  brandId?: number | string
   status?: number
   unshelveMode?: string
   fulfillmentType?: string
@@ -127,29 +127,88 @@ export interface SpuDetail {
   updatedAt?: string
 }
 
+/** 分类管理状态：0草稿，10启用，20停用，90已归档 */
+export const CATEGORY_STATUS = {
+  DRAFT: 0,
+  ENABLED: 10,
+  DISABLED: 20,
+  ARCHIVED: 90
+} as const
+
+export type CategoryStatusValue = (typeof CATEGORY_STATUS)[keyof typeof CATEGORY_STATUS]
+
+/** 管理树 / 详情节点（GET /supply-chain/categories/management-tree、/{categoryCode}） */
 export interface ProductCategoryVO {
   id?: number
-  parentId: number
-  name: string
-  code?: string
-  typeCodes?: string[]
-  status: number
-  remark?: string
-  spuCount?: number
+  categoryCode?: string
+  categoryName: string
+  categoryLevel?: number
+  parentId?: number
+  parentCategoryCode?: string
+  sort?: number
+  visible?: number
+  status?: number
+  effectiveVisible?: boolean
+  productCount?: number
   children?: ProductCategoryVO[]
-  updateTime?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
-export interface ProductBrandVO {
-  id?: number
-  name: string
+/** 分类保存请求（POST/PUT /supply-chain/categories） */
+export interface CategorySaveReqVO {
+  categoryCode?: string
+  categoryName: string
+  parentCategoryCode?: string | null
+  sort?: number
+  visible?: number
+  status?: number
+}
+
+/** 品牌管理状态：0草稿，10启用，20停用，90已归档 */
+export const BRAND_STATUS = {
+  DRAFT: 0,
+  ENABLED: 10,
+  DISABLED: 20,
+  ARCHIVED: 90
+} as const
+
+export type BrandStatusValue = (typeof BRAND_STATUS)[keyof typeof BRAND_STATUS]
+
+/** 分页查询（GET /supply-chain/brands） */
+export interface BrandPageParam {
+  keyword?: string
+  status?: number
+  pageNo?: number
+  pageSize?: number
+}
+
+/** 品牌保存请求（POST/PUT /supply-chain/brands） */
+export interface BrandSaveReqVO {
+  brandCode?: string
+  brandName: string
   shortName?: string
-  code: string
-  logo?: string
-  intro?: string
+  englishName?: string
+  logoUrl: string
+  description?: string
+  sort?: number
+  status?: number
+}
+
+/** 品牌视图（GET /supply-chain/brands、/{brandCode}） */
+export interface ProductBrandVO {
+  brandCode?: string
+  brandName: string
+  shortName?: string
+  englishName?: string
+  logoUrl?: string
+  description?: string
+  sort?: number
+  status?: number
+  productCount?: number
   spuCount?: number
-  protectedBrand?: boolean
-  updateTime?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ProductTypeVO {

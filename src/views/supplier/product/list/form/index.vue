@@ -47,7 +47,12 @@
         <el-col :span="12">
           <el-form-item label="品牌" prop="brandId">
             <el-select v-model="formData.brandId" placeholder="请选择品牌">
-              <el-option v-for="item in brandList" :key="item.id" :label="item.name" :value="item.id!" />
+              <el-option
+                v-for="item in brandList"
+                :key="item.brandCode"
+                :label="item.brandName"
+                :value="item.brandCode!"
+              />
             </el-select>
           </el-form-item>
         </el-col>
@@ -194,7 +199,7 @@ interface SkuFormItem {
 interface SpuFormData {
   spuCode?: string
   spuName: string
-  brandId?: number
+  brandId?: number | string
   sellableCategory?: string
   productType?: string
   productClassification?: string
