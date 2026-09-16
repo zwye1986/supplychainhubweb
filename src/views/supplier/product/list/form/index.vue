@@ -15,9 +15,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品类型" prop="productType">
-            <el-select v-model="formData.productType" placeholder="请选择商品类型">
-              <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
-            </el-select>
+            <ProductType v-model="formData.productType" :multiple="false" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -187,8 +185,6 @@
     ProductBrandVO,
     ProductCategoryApi,
     ProductCategoryVO,
-    ProductTypeApi,
-    ProductTypeVO,
     SpuDetail,
     SpuSaveReqVO,
     SupplierSimpleInfo
@@ -251,7 +247,6 @@
   const formLoading = ref(false)
   const isEdit = ref(false)
   const brandList = ref<ProductBrandVO[]>([])
-  const typeList = ref<ProductTypeVO[]>([])
   const categoryTree = ref<ProductCategoryVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
@@ -422,7 +417,6 @@
     isEdit.value = !!spuCode
     resetForm()
     brandList.value = await ProductBrandApi.getBrandList()
-    typeList.value = await ProductTypeApi.getTypeList()
     categoryTree.value = await ProductCategoryApi.getCategoryList()
     if (!spuCode) return
     formLoading.value = true

@@ -27,22 +27,14 @@
       </el-table-column>
       <el-table-column label="商品类型" min-width="140">
         <template #default="{ row }">
-          <el-select
+          <ProductType
             v-model="row.categoryL2Id"
-            placeholder="请选择商品类型"
+            :multiple="false"
             filterable
-            clearable
             class="!w-full"
             :disabled="!row.categoryL1Id"
             @change="() => handleCategoryL2Change(row)"
-          >
-            <el-option
-              v-for="item in typeList"
-              :key="item.typeCode"
-              :label="item.typeName"
-              :value="item.typeCode!"
-            />
-          </el-select>
+          />
         </template>
       </el-table-column>
       <el-table-column label="商品分类" min-width="150">
@@ -130,7 +122,7 @@ import {
   SupplierSupplyScopeDO,
   SupplyScopeView
 } from '@/api/supplier/manage'
-import { ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
+import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
 import { getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'SupplierSupplyConfig' })
@@ -153,7 +145,6 @@ type SupplyScopeRow = Partial<Pick<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' |
   Pick<SupplyScopeView, 'id' | 'categoryL1Name' | 'categoryL2Name' | 'categoryL3Name'>
 
 const list = ref<SupplyScopeRow[]>([])
-const typeList = ref<ProductTypeVO[]>([])
 const categoryTree = ref<ProductCategoryVO[]>([])
 
 const DEFAULT_MAX_QUANTITY = 9999999
@@ -299,7 +290,6 @@ const loadData = async () => {
   if (!props.supplierCode) return
   loading.value = true
   try {
-    typeList.value = await ProductTypeApi.getTypeList()
     categoryTree.value = await ProductCategoryApi.getCategoryList()
     const data = await SupplierApi.getSupplyScopes(props.supplierCode)
     const rows = Array.isArray(data) ? data : []

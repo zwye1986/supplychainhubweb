@@ -29,7 +29,7 @@ import '@/plugins/animate.css'
 import router, { setupRouter } from '@/router'
 
 // 指令
-import { setupAuth, setupMountedFocus } from '@/directives'
+import { setupAuth, setupMountedFocus, setupSelectLoadMore } from '@/directives'
 
 import { createApp } from 'vue'
 
@@ -72,6 +72,7 @@ const setupAll = async () => {
   // directives 指令
   setupAuth(app)
   setupMountedFocus(app)
+  setupSelectLoadMore(app)
 
   // wangEditor 插件注册
   setupWangEditorPlugin()

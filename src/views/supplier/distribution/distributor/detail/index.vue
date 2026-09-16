@@ -90,18 +90,7 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="商品类型">
-          <template v-if="productTypes.length">
-            <el-tag
-              v-for="tag in productTypes"
-              :key="tag"
-              class="m-2px"
-              size="small"
-              type="success"
-            >
-              {{ getTypeName(tag) }}
-            </el-tag>
-          </template>
-          <span v-else>-</span>
+          <ProductType :model-value="productTypes" text />
         </el-descriptions-item>
         <el-descriptions-item label="主联系人">
           {{
@@ -193,11 +182,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="商品类型">
-                  {{
-                    productTypes
-                      .map((tag) => getTypeName(tag))
-                      .join('、') || '-'
-                  }}
+                  <ProductType :model-value="productTypes" text />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -372,7 +357,6 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
@@ -398,7 +382,6 @@ const drawerVisible = computed({
 
 const loading = ref(false)
 const activeTab = ref('basic')
-const typeList = ref<ProductTypeVO[]>([])
 const distributor = ref<DistributorVO>({} as DistributorVO)
 const distributorId = computed(() => distributor.value.id as number)
 const hasInternalId = computed(() => distributor.value.id != null)
@@ -412,9 +395,6 @@ const displayCode = computed(
 const distributionLevel = computed(
   () => distributor.value.distributionLevel ?? distributor.value.level
 )
-
-const getTypeName = (code?: string) =>
-  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
@@ -489,11 +469,7 @@ const getDetail = async () => {
   if (!props.buyerCode) return
   loading.value = true
   try {
-    const [data, types] = await Promise.all([
-      DistributorApi.getDistributor(props.buyerCode),
-      ProductTypeApi.getTypeList()
-    ])
-    typeList.value = types
+    const data = await DistributorApi.getDistributor(props.buyerCode)
     distributor.value = {
       ...data,
       contacts: data.contacts || [],

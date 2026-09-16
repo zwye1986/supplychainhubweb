@@ -187,15 +187,7 @@
       </el-table-column>
       <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
-          <el-tag
-            v-for="tag in row.productTypes"
-            :key="tag"
-            class="m-2px"
-            size="small"
-            type="success"
-          >
-            {{ getTypeName(tag) }}
-          </el-tag>
+          <ProductType :model-value="row.productTypes" text />
         </template>
       </el-table-column>
       <el-table-column label="分销SKU商品数" align="center" prop="skuCount" min-width="130" />
@@ -290,7 +282,6 @@
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { ProductTypeApi, ProductTypeVO } from '@/api/product'
 import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
 import DistributorFormDialog from './form/index.vue'
 import DistributorDetailDrawer from './detail/index.vue'
@@ -301,7 +292,6 @@ const message = useMessage()
 
 const loading = ref(true)
 const list = ref<DistributorVO[]>([])
-const typeList = ref<ProductTypeVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const selectedList = ref<DistributorVO[]>([])
@@ -342,9 +332,6 @@ const getCooperationModeValues = (row: DistributorVO) => {
 }
 
 const getDistributorDisplayName = (row: DistributorVO) => row.buyerName || ''
-
-const getTypeName = (code?: string) =>
-  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
 const getDistributorBizCode = (row?: DistributorVO) => row?.buyerCode || ''
 
@@ -485,7 +472,6 @@ const handleBatchStatusChange = async (status: string) => {
 }
 
 const loadPage = async () => {
-  typeList.value = await ProductTypeApi.getTypeList()
   getList()
 }
 

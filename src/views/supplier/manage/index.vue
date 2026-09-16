@@ -165,16 +165,7 @@
       </el-table-column>
       <el-table-column label="商品类型" align="center" min-width="160">
         <template #default="{ row }">
-          <el-tag
-            v-for="tag in getProductTypeLabels(row.productTypes)"
-            :key="tag"
-            class="m-2px"
-            size="small"
-            type="success"
-          >
-            {{ tag }}
-          </el-tag>
-          <span v-if="!getProductTypeLabels(row.productTypes).length">-</span>
+          <ProductType :model-value="namedRefCodes(row.productTypes)" text />
         </template>
       </el-table-column>
       <el-table-column label="商品分类" align="center" min-width="200">
@@ -296,7 +287,7 @@
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
+import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
 import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
@@ -308,7 +299,6 @@ const message = useMessage()
 
 const loading = ref(true)
 const list = ref<SupplierVO[]>([])
-const typeList = ref<ProductTypeVO[]>([])
 const categoryTree = ref<ProductCategoryVO[]>([])
 const total = ref(0)
 const queryFormRef = ref()
@@ -373,19 +363,14 @@ const getProductCategoryLabels = (refs: NamedRef[] | null | undefined) => {
   ]
 }
 
-const getProductTypeLabels = (refs: NamedRef[] | null | undefined) => {
+const namedRefCodes = (refs: NamedRef[] | null | undefined) => {
   if (!refs?.length) return []
   return [
     ...new Set(
       refs
-        .map((item) => {
-          const key = item?.id != null ? String(item.id) : String(item?.name || '')
-          const matched = typeList.value.find(
-            (type) => type.typeCode === key || type.typeName === item?.name
-          )
-          return (matched?.typeName || item?.name || '').trim()
-        })
-        .filter((label) => label.length > 0)
+        .map((item) => String(item?.id ?? item?.name ?? ''))
+        .map((value) => value.trim())
+        .filter(Boolean)
     )
   ]
 }
@@ -558,7 +543,6 @@ const handleBatchStatusChange = async (status: string) => {
 }
 
 const loadPage = async () => {
-  typeList.value = await ProductTypeApi.getTypeList()
   categoryTree.value = await ProductCategoryApi.getCategoryList()
   getList()
   getFilterOptions()

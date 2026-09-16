@@ -48,13 +48,25 @@ const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategory
     return { ...node, children }
   })
 
+let productTypeListInflight: Promise<ProductTypeVO[]> | null = null
+
 export const ProductTypeApi = {
   getTypePage: async (params: ProductTypePageParam) => {
     return await request.get({ url: '/supply-chain/product-types', params })
   },
   getTypeList: async (params?: Omit<ProductTypePageParam, 'pageNo' | 'pageSize'>) => {
-    const data = await ProductTypeApi.getTypePage({ pageNo: 1, pageSize: 100, ...params })
-    return ((data?.list || []) as ProductTypeVO[]).filter((item) => !!item.typeCode)
+    const requestList = async () => {
+      const data = await ProductTypeApi.getTypePage({ pageNo: 1, pageSize: 200, ...params })
+      return ((data?.list || []) as ProductTypeVO[]).filter((item) => !!item.typeCode)
+    }
+    if (params && Object.keys(params).length) return await requestList()
+    if (!productTypeListInflight) {
+      productTypeListInflight = requestList().catch((error) => {
+        productTypeListInflight = null
+        throw error
+      })
+    }
+    return await productTypeListInflight
   },
   getType: async (typeCode: string) => {
     return await request.get({ url: `/supply-chain/product-types/${encodeURIComponent(typeCode)}` })

@@ -9,9 +9,7 @@
         <el-input v-model="queryParams.keyword" placeholder="商品名称或SPU编号" maxlength="100" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="商品类型" prop="productType">
-        <el-select v-model="queryParams.productType" clearable>
-          <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
-        </el-select>
+        <ProductType v-model="queryParams.productType" :multiple="false" />
       </el-form-item>
       <el-form-item label="商品分类" prop="categoryId">
         <el-tree-select v-model="queryParams.categoryId" :data="categoryTree" clearable check-strictly node-key="id" :props="{ label: 'categoryName', children: 'children' }" />
@@ -97,7 +95,7 @@
       </el-table-column>
       <el-table-column label="商品类型" min-width="110">
         <template #default="{ row }">
-          {{ row.productTypeName || getTypeName(row.productType) }}
+          <ProductType :model-value="row.productType" :multiple="false" text />
         </template>
       </el-table-column>
       <el-table-column label="商品分类" prop="primaryCategoryName" min-width="120" />
@@ -278,9 +276,6 @@
       return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
     }
   }
-
-  const getTypeName = (code?: string) =>
-    typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
   const formatSuppliers = (suppliers?: SupplierSimpleInfo[]) => {
     if (!suppliers?.length) return '—'

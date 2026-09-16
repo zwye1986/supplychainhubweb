@@ -1,6 +1,7 @@
 import type { App } from 'vue'
 import { hasRole } from './permission/hasRole'
 import { hasPermi } from './permission/hasPermi'
+import { selectLoadMore } from '@/utils/directive'
 
 /**
  * 导出指令：v-xxx
@@ -21,4 +22,12 @@ export const setupMountedFocus = (app: App<Element>) => {
       el.focus()
     }
   })
+}
+
+/**
+ * 导出指令：v-selectLoadMore
+ * 下拉滚动到底部加载下一页，用法: v-select-load-more="loadMore"
+ */
+export const setupSelectLoadMore = (app: App<Element>) => {
+  app.directive('selectLoadMore', selectLoadMore)
 }

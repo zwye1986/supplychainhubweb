@@ -16,7 +16,7 @@
 
       <el-descriptions :column="3" border class="mb-16px">
         <el-descriptions-item label="商品类型">
-          {{ getTypeName(detail.productType) }}
+          <ProductType :model-value="detail.productType" :multiple="false" text />
         </el-descriptions-item>
         <el-descriptions-item label="商品分类">
           {{ getCategoryName(detail.productClassification) }}
@@ -68,8 +68,6 @@ import {
   ProductApi,
   ProductCategoryApi,
   ProductCategoryVO,
-  ProductTypeApi,
-  ProductTypeVO,
   SpuDetail
 } from '@/api/product'
 import { getDictLabel } from '@/utils/dict'
@@ -80,15 +78,11 @@ defineOptions({ name: 'ProductListDetail' })
 const emit = defineEmits(['edit'])
 const drawerVisible = ref(false)
 const loading = ref(false)
-const typeList = ref<ProductTypeVO[]>([])
 const categoryTree = ref<ProductCategoryVO[]>([])
 const detail = ref<SpuDetail>({
   spuName: '',
   skus: []
 })
-
-const getTypeName = (code?: string) =>
-  typeList.value.find((item) => item.typeCode === code)?.typeName || code || '-'
 
 const findCategory = (
   nodes: ProductCategoryVO[],
@@ -108,12 +102,10 @@ const open = async (spuCode: string) => {
   drawerVisible.value = true
   loading.value = true
   try {
-    const [types, categories, data] = await Promise.all([
-      ProductTypeApi.getTypeList(),
+    const [categories, data] = await Promise.all([
       ProductCategoryApi.getCategoryList(),
       ProductApi.getProduct(spuCode)
     ])
-    typeList.value = types
     categoryTree.value = categories
     detail.value = data
   } finally {

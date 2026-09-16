@@ -6,9 +6,7 @@
           :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }" placeholder="请选择父分类，不选则为一级分类" />
       </el-form-item>
       <el-form-item label="商品类型" prop="typeCodes">
-        <el-select v-model="formData.typeCodes" multiple collapse-tags placeholder="请选择商品类型">
-          <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode!" />
-        </el-select>
+        <ProductType v-model="formData.typeCodes" />
       </el-form-item>
       <el-form-item label="分类名称" prop="categoryName">
         <el-input v-model="formData.categoryName" maxlength="50" placeholder="请输入分类名称" />
@@ -31,7 +29,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO, ProductTypeApi, ProductTypeVO } from '@/api/product'
+  import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO } from '@/api/product'
 
   defineOptions({ name: 'ProductCategoryForm' })
 
@@ -46,7 +44,6 @@
   const isEdit = ref(false)
   const originalStatus = ref<number | undefined>()
   const categoryTree = ref<ProductCategoryVO[]>([])
-  const typeList = ref<ProductTypeVO[]>([])
   const formData = reactive({
     parentCategoryCode: undefined as string | undefined,
     categoryName: '',
@@ -131,7 +128,6 @@
     resetForm()
     formData.parentCategoryCode = parentCategoryCode
     categoryTree.value = await ProductCategoryApi.getCategoryList()
-    typeList.value = await ProductTypeApi.getTypeList()
     if (!categoryCode) return
     formLoading.value = true
     try {
