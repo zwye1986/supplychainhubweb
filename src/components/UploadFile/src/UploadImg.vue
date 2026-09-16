@@ -1,5 +1,5 @@
 <template>
-  <div class="upload-box" :style="uploadStyle">
+  <div class="upload-box" v-loading="uploading" :style="uploadStyle">
     <el-upload
       :id="uuid"
       :accept="fileType.join(',')"
@@ -108,6 +108,7 @@ const deleteImg = () => {
 }
 
 const { uploadUrl, httpRequest } = useUpload(props.directory)
+const uploading = ref(false)
 
 const editImg = () => {
   const dom = document.querySelector(`#${uuid.value} .el-upload__input`)
@@ -120,17 +121,21 @@ const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
   if (!imgType.includes(rawFile.type as FileTypes))
     message.notifyWarning('上传图片不符合所需的格式！')
   if (!imgSize) message.notifyWarning(`上传图片大小不能超过 ${props.fileSize}M！`)
-  return imgType.includes(rawFile.type as FileTypes) && imgSize
+  const valid = imgType.includes(rawFile.type as FileTypes) && imgSize
+  if (valid) uploading.value = true
+  return valid
 }
 
 // 图片上传成功提示
 const uploadSuccess: UploadProps['onSuccess'] = (res: any): void => {
+  uploading.value = false
   message.success('上传成功')
   emit('update:modelValue', res.data)
 }
 
 // 图片上传错误提示
 const uploadError = () => {
+  uploading.value = false
   message.notifyError('图片上传失败，请您重新上传！')
 }
 </script>

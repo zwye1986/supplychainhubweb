@@ -29,6 +29,7 @@
       <el-table-column label="SPU数" prop="productCount" min-width="90" />
       <el-table-column label="状态" min-width="90">
         <template #default="{ row }">
+          <el-switch v-model="row.status" :active-value="CATEGORY_STATUS.ENABLED" :inactive-value="CATEGORY_STATUS.DISABLED" @change="handleStatusChange(row)" />
           {{ getDictLabel('supply_chain_sku_status', row.status) || '-' }}
         </template>
       </el-table-column>
@@ -49,7 +50,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { ProductCategoryApi, ProductCategoryVO } from '@/api/product'
+  import { CATEGORY_STATUS, ProductCategoryApi, ProductCategoryVO } from '@/api/product'
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
   import { dateFormatter } from '@/utils/formatTime'
   import CategoryForm from './CategoryForm.vue'
@@ -89,6 +90,20 @@
 
   const openForm = (type: string, categoryCode?: string, parentCategoryCode?: string) => {
     formRef.value.open(type, categoryCode, parentCategoryCode)
+  }
+
+  const handleStatusChange = async (row: ProductCategoryVO) => {
+    if (!row.categoryCode) return
+    const targetStatus = row.status
+    const text = targetStatus === CATEGORY_STATUS.ENABLED ? '启用' : '停用'
+    try {
+      await message.confirm(`确认要${text}「${row.categoryName}」吗？`)
+      await ProductCategoryApi.changeCategoryStatus(row.categoryCode, targetStatus as number)
+      message.success(`${text}成功`)
+    } catch {
+      row.status =
+        targetStatus === CATEGORY_STATUS.ENABLED ? CATEGORY_STATUS.DISABLED : CATEGORY_STATUS.ENABLED
+    }
   }
 
   const handleDelete = async (row: ProductCategoryVO) => {
