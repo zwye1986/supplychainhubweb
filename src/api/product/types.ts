@@ -83,7 +83,6 @@ export interface ProductManagementPageParam {
 export interface SkuItemSaveReqVO {
   skuCode?: string
   skuName: string
-  fulfillmentType: string
   faceValue: number
   marketPrice?: number
   suggestedSalePrice?: number
@@ -106,6 +105,8 @@ export interface SpuSaveReqVO {
   sellableCategory: string
   productType: string
   primaryCategoryId: number
+  productClassification: string
+  fulfillmentType: string
   deliveryType?: string
   status?: number
   skus: SkuItemSaveReqVO[]
@@ -127,6 +128,8 @@ export interface SpuDetail {
   sellableCategory?: string
   productType?: string
   primaryCategoryId?: number
+  productClassification?: string
+  fulfillmentType?: string
   deliveryType?: string
   status?: number
   skus?: SkuDetail[]

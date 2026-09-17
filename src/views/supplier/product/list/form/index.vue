@@ -20,7 +20,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品分类" prop="primaryCategoryId">
-            <ProductCategory v-model="formData.primaryCategoryId" node-key="id" />
+            <ProductCategory v-model="formData.primaryCategoryId" v-model:category-code="formData.productClassification" node-key="id" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -167,8 +167,8 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" :loading="formLoading" @click="submitForm">保存</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="formLoading" @click="submitForm">保存</el-button>
     </template>
   </el-dialog>
 </template>
@@ -194,7 +194,6 @@
   interface SkuFormItem {
     skuCode?: string
     skuName: string
-    fulfillmentType: string
     faceValue?: number
     marketPriceYuan?: number
     suggestedSalePriceYuan?: number
@@ -220,6 +219,7 @@
     sellableCategory?: string
     productType?: string
     primaryCategoryId?: number
+    productClassification?: string
     deliveryType?: string
     status?: string
     fulfillmentType?: string
@@ -247,7 +247,6 @@
   const createSku = (): SkuFormItem => ({
     skuName: '',
     skuCode: '',
-    fulfillmentType: null,
     faceValue: 0,
     marketPriceYuan: 0,
     suggestedSalePriceYuan: 0,
@@ -278,6 +277,7 @@
     spuName: '',
     productType: '',
     primaryCategoryId: undefined,
+    productClassification: undefined,
     sellableCategory: '',
     deliveryType: 'VIRTUAL',
     status: firstDictValue('supply_chain_sku_status'),
@@ -360,6 +360,7 @@
       brandId: undefined,
       productType: '',
       primaryCategoryId: undefined,
+      productClassification: undefined,
       sellableCategory: firstDictValue('supply_chain_sellable_category'),
       deliveryType: 'VIRTUAL',
       status: firstDictValue('supply_chain_sku_status'),
@@ -371,9 +372,7 @@
   }
 
   const addSku = () => {
-    const sku = createSku()
-    sku.fulfillmentType = formData.fulfillmentType || sku.fulfillmentType
-    formData.skus.push(sku)
+    formData.skus.push(createSku())
   }
   const removeSku = (index: number) => formData.skus.splice(index, 1)
 
@@ -384,7 +383,6 @@
     return {
       skuCode: sku.skuCode,
       skuName: sku.skuName || '',
-      fulfillmentType: sku.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
       faceValue: centsToYuan(sku.faceValue) ?? 0,
       marketPriceYuan,
       suggestedSalePriceYuan,
@@ -413,25 +411,7 @@
     formLoading.value = true
     try {
       const data = await ProductApi.getProduct(spuCode)
-      Object.assign(formData, {
-        spuCode: data.spuCode,
-        spuName: data.spuName,
-        brandId: data.brandId,
-        productType: data.productType,
-        primaryCategoryId: data.primaryCategoryId,
-
-        sellableCategory: data.sellableCategory || firstDictValue('supply_chain_sellable_category'),
-        deliveryType: data.deliveryType || 'VIRTUAL',
-        status: data.status != null ? String(data.status) : firstDictValue('supply_chain_sku_status'),
-        fulfillmentType:
-          data.skus?.[0]?.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
-        userLimitEnabled: data.skus?.[0]?.userLimitEnabled ?? false,
-        userLimitPeriod: data.skus?.[0]?.userLimitPeriod || undefined,
-        userLimitQuantity: data.skus?.[0]?.userLimitQuantity ?? 1,
-        phoneBindLimitEnabled: data.skus?.[0]?.phoneBindLimitEnabled ?? false,
-        phoneBindLimitQuantity: data.skus?.[0]?.phoneBindLimitQuantity ?? 1,
-        skus: (data.skus || []).map(mapSku)
-      })
+      Object.assign(formData, { ...data })
       if (!formData.skus?.length) formData.skus = [createSku()]
     } finally {
       formLoading.value = false
@@ -445,12 +425,13 @@
     sellableCategory: formData.sellableCategory || firstDictValue('supply_chain_sellable_category'),
     productType: formData.productType || '',
     primaryCategoryId: formData.primaryCategoryId as number,
+    productClassification: formData.productClassification || '',
+    fulfillmentType: formData.fulfillmentType || '',
     deliveryType: formData.deliveryType,
     status: formData.status != null && formData.status !== '' ? Number(formData.status) : undefined,
     skus: formData.skus.map((sku) => ({
       skuCode: sku.skuCode,
       skuName: sku.skuName,
-      fulfillmentType: formData.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
       faceValue: yuanToCents(sku.faceValue) ?? 0,
       marketPrice: yuanToCents(sku.marketPriceYuan),
       suggestedSalePrice: yuanToCents(sku.suggestedSalePriceYuan),

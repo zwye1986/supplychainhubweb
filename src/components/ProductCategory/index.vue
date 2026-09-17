@@ -10,7 +10,7 @@
     <span v-else>-</span>
   </span>
   <el-tree-select v-else v-model="model" :data="displayTree" :clearable="clearable" :check-strictly="checkStrictly" :filterable="filterable" :disabled="disabled" :node-key="nodeKey"
-    :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }" :placeholder="placeholder" class="w-full" @change="emit('change', $event)" @visible-change="onVisibleChange" />
+    :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }" :placeholder="placeholder" class="w-full" @change="onChange" @visible-change="onVisibleChange" />
 </template>
 
 <script lang="ts" setup>
@@ -51,6 +51,7 @@
   type CategoryTreeNode = ProductCategoryVO & { disabled?: boolean }
 
   const model = defineModel<string | number | Array<string | number> | undefined>()
+  const categoryCode = defineModel<string | undefined>('categoryCode')
   const categoryTree = ref<ProductCategoryVO[]>([])
 
   const flattenCategories = (nodes: ProductCategoryVO[]): ProductCategoryVO[] =>
@@ -109,8 +110,26 @@
       })
   })
 
+  const syncCategoryCode = (value: string | number | Array<string | number> | undefined) => {
+    if (value == null || value === '' || (Array.isArray(value) && !value.length)) {
+      categoryCode.value = undefined
+      return
+    }
+    const key = String(Array.isArray(value) ? value[0] : value)
+    const found = flattenCategories(categoryTree.value).find(
+      (item) => item.categoryCode === key || String(item.id) === key
+    )
+    if (found?.categoryCode) categoryCode.value = found.categoryCode
+  }
+
+  const onChange = (value: string | number | Array<string | number> | undefined) => {
+    syncCategoryCode(value)
+    emit('change', value)
+  }
+
   const loadTree = async () => {
     categoryTree.value = await ProductCategoryApi.getCategoryList({ status: 10 })
+    syncCategoryCode(model.value)
   }
 
   const onVisibleChange = (visible: boolean) => {
