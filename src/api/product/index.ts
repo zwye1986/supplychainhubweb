@@ -170,7 +170,7 @@ export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
   brandId: detail.brandId as number,
   sellableCategory: detail.sellableCategory || '',
   productType: detail.productType || '',
-  productClassification: detail.productClassification || '',
+  primaryCategoryId: detail.primaryCategoryId as number,
   deliveryType: detail.deliveryType,
   status: detail.status,
   skus: (detail.skus || []).map((sku) => ({

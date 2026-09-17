@@ -105,7 +105,7 @@ export interface SpuSaveReqVO {
   brandId: number
   sellableCategory: string
   productType: string
-  productClassification: string
+  primaryCategoryId: number
   deliveryType?: string
   status?: number
   skus: SkuItemSaveReqVO[]
@@ -126,7 +126,7 @@ export interface SpuDetail {
   brandName?: string
   sellableCategory?: string
   productType?: string
-  productClassification?: string
+  primaryCategoryId?: number
   deliveryType?: string
   status?: number
   skus?: SkuDetail[]

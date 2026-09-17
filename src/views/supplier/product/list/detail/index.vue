@@ -19,7 +19,7 @@
           <ProductType :model-value="detail.productType" :multiple="false" text />
         </el-descriptions-item>
         <el-descriptions-item label="商品分类">
-          <ProductCategory :model-value="detail.productClassification" text />
+          <ProductCategory :model-value="detail.primaryCategoryId" text />
         </el-descriptions-item>
         <el-descriptions-item label="品牌">{{ detail.brandName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="配送方式">
@@ -64,29 +64,29 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductApi, SpuDetail } from '@/api/product'
-import { getDictLabel } from '@/utils/dict'
-import { formatCentsYuan } from '@/views/supplier/utils/constants'
+  import { ProductApi, SpuDetail } from '@/api/product'
+  import { getDictLabel } from '@/utils/dict'
+  import { formatCentsYuan } from '@/views/supplier/utils/constants'
 
-defineOptions({ name: 'ProductListDetail' })
+  defineOptions({ name: 'ProductListDetail' })
 
-const emit = defineEmits(['edit'])
-const drawerVisible = ref(false)
-const loading = ref(false)
-const detail = ref<SpuDetail>({
-  spuName: '',
-  skus: []
-})
+  const emit = defineEmits(['edit'])
+  const drawerVisible = ref(false)
+  const loading = ref(false)
+  const detail = ref<SpuDetail>({
+    spuName: '',
+    skus: []
+  })
 
-const open = async (spuCode: string) => {
-  drawerVisible.value = true
-  loading.value = true
-  try {
-    detail.value = await ProductApi.getProduct(spuCode)
-  } finally {
-    loading.value = false
+  const open = async (spuCode: string) => {
+    drawerVisible.value = true
+    loading.value = true
+    try {
+      detail.value = await ProductApi.getProduct(spuCode)
+    } finally {
+      loading.value = false
+    }
   }
-}
 
-defineExpose({ open })
+  defineExpose({ open })
 </script>

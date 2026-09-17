@@ -19,27 +19,27 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="商品分类" prop="productClassification">
-            <ProductCategory v-model="formData.productClassification" />
+          <el-form-item label="商品分类" prop="primaryCategoryId">
+            <ProductCategory v-model="formData.primaryCategoryId" node-key="id" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="品牌" prop="brandId">
-            <el-select v-model="formData.brandId" placeholder="请选择品牌">
+            <el-select v-model="formData.brandId" clearable placeholder="请选择品牌">
               <el-option v-for="item in brandList" :key="item.brandCode" :label="item.brandName" :value="item.brandCode" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品状态">
-            <el-select v-model="formData.status">
+            <el-select v-model="formData.status" clearable>
               <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="兑换方式" prop="">
-            <el-select v-model="formData.fulfillmentType" placeholder="请选择兑换方式">
+            <el-select v-model="formData.fulfillmentType" clearable placeholder="请选择兑换方式">
               <el-option v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
@@ -94,14 +94,14 @@
                 <el-radio value="FIXED">固定值</el-radio>
               </el-radio-group>
               <div v-if="row.adjustMode === 'CUSTOM'" class="flex flex-wrap items-center gap-8px">
-                <el-select v-model="row.formulaBase" class="!w-120px" @change="onFormulaBaseChange(row)">
+                <el-select v-model="row.formulaBase" clearable class="!w-120px" @change="onFormulaBaseChange(row)">
                   <el-option label="市场价" value="MARKET" />
                   <el-option label="销售建议价" value="SUGGEST" />
                 </el-select>
                 <span>*</span>
                 <el-input-number :controls="false" v-model="row.percent" :min="0.01" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
                 <span>%</span>
-                <el-select v-model="row.op" class="!w-72px" @change="syncSuggestedPrice(row)">
+                <el-select v-model="row.op" clearable class="!w-72px" @change="syncSuggestedPrice(row)">
                   <el-option label="+" value="+" />
                   <el-option label="-" value="-" />
                   <el-option label="*" value="*" />
@@ -116,6 +116,11 @@
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="面值（元）" min-width="110" align="right">
+          <template #default="{ row }">
+            <el-input-number :controls="false" v-model="row.faceValue" :min="0" :precision="2" class="!w-full" />
           </template>
         </el-table-column>
         <el-table-column label="供应价（元）" min-width="110" align="right">
@@ -190,7 +195,7 @@
     skuCode?: string
     skuName: string
     fulfillmentType: string
-    faceValueYuan?: number
+    faceValue?: number
     marketPriceYuan?: number
     suggestedSalePriceYuan?: number
     picUrl?: string
@@ -214,7 +219,7 @@
     brandId?: number | string
     sellableCategory?: string
     productType?: string
-    productClassification?: string
+    primaryCategoryId?: number
     deliveryType?: string
     status?: string
     fulfillmentType?: string
@@ -243,7 +248,7 @@
     skuName: '',
     skuCode: '',
     fulfillmentType: null,
-    faceValueYuan: 0,
+    faceValue: 0,
     marketPriceYuan: 0,
     suggestedSalePriceYuan: 0,
     picUrl: '',
@@ -272,7 +277,7 @@
   const formData = reactive<SpuFormData>({
     spuName: '',
     productType: '',
-    productClassification: '',
+    primaryCategoryId: undefined,
     sellableCategory: '',
     deliveryType: 'VIRTUAL',
     status: firstDictValue('supply_chain_sku_status'),
@@ -292,7 +297,7 @@
   const formRules = {
     spuName: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
     productType: [{ required: true, message: '请选择商品类型', trigger: 'change' }],
-    productClassification: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
+    primaryCategoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
     brandId: [{ required: true, message: '请选择品牌', trigger: 'change' }],
     fulfillmentType: [{ required: true, message: '请选择兑换方式', trigger: 'change' }]
   }
@@ -354,7 +359,7 @@
       spuName: '',
       brandId: undefined,
       productType: '',
-      productClassification: '',
+      primaryCategoryId: undefined,
       sellableCategory: firstDictValue('supply_chain_sellable_category'),
       deliveryType: 'VIRTUAL',
       status: firstDictValue('supply_chain_sku_status'),
@@ -380,7 +385,7 @@
       skuCode: sku.skuCode,
       skuName: sku.skuName || '',
       fulfillmentType: sku.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
-      faceValueYuan: centsToYuan(sku.faceValue) ?? 0,
+      faceValue: centsToYuan(sku.faceValue) ?? 0,
       marketPriceYuan,
       suggestedSalePriceYuan,
       picUrl: sku.picUrl || '',
@@ -413,7 +418,8 @@
         spuName: data.spuName,
         brandId: data.brandId,
         productType: data.productType,
-        productClassification: data.productClassification,
+        primaryCategoryId: data.primaryCategoryId,
+
         sellableCategory: data.sellableCategory || firstDictValue('supply_chain_sellable_category'),
         deliveryType: data.deliveryType || 'VIRTUAL',
         status: data.status != null ? String(data.status) : firstDictValue('supply_chain_sku_status'),
@@ -438,14 +444,14 @@
     brandId: formData.brandId as number,
     sellableCategory: formData.sellableCategory || firstDictValue('supply_chain_sellable_category'),
     productType: formData.productType || '',
-    productClassification: formData.productClassification || '',
+    primaryCategoryId: formData.primaryCategoryId as number,
     deliveryType: formData.deliveryType,
     status: formData.status != null && formData.status !== '' ? Number(formData.status) : undefined,
     skus: formData.skus.map((sku) => ({
       skuCode: sku.skuCode,
       skuName: sku.skuName,
       fulfillmentType: formData.fulfillmentType || firstDictValue('supply_chain_fulfillment_type'),
-      faceValue: yuanToCents(sku.faceValueYuan) ?? 0,
+      faceValue: yuanToCents(sku.faceValue) ?? 0,
       marketPrice: yuanToCents(sku.marketPriceYuan),
       suggestedSalePrice: yuanToCents(sku.suggestedSalePriceYuan),
       picUrl: sku.picUrl || undefined,
@@ -468,10 +474,10 @@
       const payload = buildPayload()
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)
-        message.success(t('common.updateSuccess'))
+        message.success('保存成功')
       } else {
         await ProductApi.createProduct(payload)
-        message.success(t('common.createSuccess'))
+        message.success('保存成功')
       }
       dialogVisible.value = false
       emit('success')
