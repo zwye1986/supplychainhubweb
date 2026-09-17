@@ -38,7 +38,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="兑换方式" prop="fulfillmentType">
+          <el-form-item label="兑换方式" prop="">
             <el-select v-model="formData.fulfillmentType" placeholder="请选择兑换方式">
               <el-option v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
@@ -141,7 +141,7 @@
         <div class="flex flex-wrap items-center gap-8px">
           <el-checkbox v-model="formData.userLimitEnabled">开启</el-checkbox>
           <el-select v-if="formData.userLimitEnabled" v-model="formData.userLimitPeriod" class="!w-120px" placeholder="请选择" clearable>
-            <el-option v-for="dict in getStrDictOptions('supply_chain_limit_period')" :key="dict.value" :label="dict.label" :value="dict.value" />
+            <el-option v-for="dict in getStrDictOptions('supply_chain_purchase_limit_period')" :key="dict.value" :label="dict.label" :value="dict.value" />
           </el-select>
           <span v-if="formData.userLimitEnabled">限购</span>
           <el-input-number :controls="false" v-if="formData.userLimitEnabled" v-model="formData.userLimitQuantity" :min="1" :precision="0" />
@@ -242,7 +242,7 @@
   const createSku = (): SkuFormItem => ({
     skuName: '',
     skuCode: '',
-    fulfillmentType: firstDictValue('supply_chain_fulfillment_type'),
+    fulfillmentType: null,
     faceValueYuan: 0,
     marketPriceYuan: 0,
     suggestedSalePriceYuan: 0,
@@ -276,7 +276,7 @@
     sellableCategory: '',
     deliveryType: 'VIRTUAL',
     status: firstDictValue('supply_chain_sku_status'),
-    fulfillmentType: firstDictValue('supply_chain_fulfillment_type'),
+    fulfillmentType: null,
     ...defaultLimit(),
     skus: [createSku()]
   })
@@ -358,7 +358,7 @@
       sellableCategory: firstDictValue('supply_chain_sellable_category'),
       deliveryType: 'VIRTUAL',
       status: firstDictValue('supply_chain_sku_status'),
-      fulfillmentType: firstDictValue('supply_chain_fulfillment_type'),
+      fulfillmentType: null,
       ...defaultLimit(),
       skus: [createSku()]
     })

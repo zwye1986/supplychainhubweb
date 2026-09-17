@@ -2,11 +2,7 @@
   <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px" append-to-body>
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="120px">
       <el-form-item label="所属父分类" prop="parentCategoryCode">
-        <ProductCategory
-          v-model="formData.parentCategoryCode"
-          :exclude-code="isEdit ? formData.categoryCode : undefined"
-          placeholder="请选择父分类，不选则为一级分类"
-        />
+        <ProductCategory v-model="formData.parentCategoryCode" :exclude-code="isEdit ? formData.categoryCode : undefined" placeholder="请选择父分类，不选则为一级分类" />
       </el-form-item>
       <el-form-item label="商品类型" prop="typeCodes">
         <ProductType v-model="formData.typeCodes" />
@@ -94,14 +90,16 @@
         ProductCategoryApi.getCategory(categoryCode),
         ProductCategoryApi.getCategoryList()
       ])
-      formData.categoryCode = data.categoryCode || categoryCode
-      formData.categoryName = data.categoryName || ''
-      formData.sort = data.sort
-      formData.visible = data.visible
-      formData.status =
-        data.status === CATEGORY_STATUS.ENABLED ? CATEGORY_STATUS.ENABLED : CATEGORY_STATUS.DISABLED
       originalStatus.value = data.status
-      formData.parentCategoryCode = data.parentCategoryCode || findCodeById(tree, data.parentId)
+      const source: Record<string, unknown> = {
+        ...data,
+        parentCategoryCode: data.parentCategoryCode || findCodeById(tree, data.parentId)
+      }
+      for (const key of Object.keys(formData) as Array<keyof typeof formData>) {
+        if (source[key] !== undefined) {
+          ;(formData as Record<string, unknown>)[key] = source[key]
+        }
+      }
     } finally {
       formLoading.value = false
     }

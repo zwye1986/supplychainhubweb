@@ -1,35 +1,16 @@
+/** 商品分类选择 / 回显 */
 <template>
   <span v-if="text" class="inline-flex flex-wrap items-center">
     <template v-if="displayItems.length">
-      <el-tag
-        v-if="showTags"
-        v-for="item in displayItems"
-        :key="item.value"
-        class="m-2px"
-        size="small"
-        type="warning"
-      >
+      <el-tag v-if="showTags" v-for="item in displayItems" :key="item.value" class="m-2px" size="small" type="warning">
         {{ item.label }}
       </el-tag>
       <span v-else>{{ displayItems[0]?.label }}</span>
     </template>
     <span v-else>-</span>
   </span>
-  <el-tree-select
-    v-else
-    v-model="model"
-    :data="displayTree"
-    :clearable="clearable"
-    :check-strictly="checkStrictly"
-    :filterable="filterable"
-    :disabled="disabled"
-    :node-key="nodeKey"
-    :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }"
-    :placeholder="placeholder"
-    class="w-full"
-    @change="emit('change', $event)"
-    @visible-change="onVisibleChange"
-  />
+  <el-tree-select v-else v-model="model" :data="displayTree" :clearable="clearable" :check-strictly="checkStrictly" :filterable="filterable" :disabled="disabled" :node-key="nodeKey"
+    :props="{ label: 'categoryName', children: 'children', disabled: 'disabled' }" :placeholder="placeholder" class="w-full" @change="emit('change', $event)" @visible-change="onVisibleChange" />
 </template>
 
 <script lang="ts" setup>
@@ -121,14 +102,15 @@
       .filter(Boolean)
       .map((code) => {
         const found = list.find(
-          (item) => item.categoryCode === code || String(item.id) === code || item.categoryName === code
+          (item) =>
+            item.categoryCode === code || String(item.id) === code || item.categoryName === code
         )
         return { value: code, label: found?.categoryName || code }
       })
   })
 
   const loadTree = async () => {
-    categoryTree.value = await ProductCategoryApi.getCategoryList()
+    categoryTree.value = await ProductCategoryApi.getCategoryList({ status: 10 })
   }
 
   const onVisibleChange = (visible: boolean) => {

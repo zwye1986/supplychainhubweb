@@ -1,32 +1,18 @@
+/**
+ * 商品类型选择 / 回显
+ */
 <template>
   <span v-if="text" class="inline-flex flex-wrap items-center">
     <template v-if="displayItems.length">
-      <el-tag
-        v-if="multiple"
-        v-for="item in displayItems"
-        :key="item.value"
-        class="m-2px"
-        size="small"
-        type="success"
-      >
+      <el-tag v-if="multiple" v-for="item in displayItems" :key="item.value" class="m-2px" size="small" type="success">
         {{ item.label }}
       </el-tag>
       <span v-else>{{ displayItems[0]?.label }}</span>
     </template>
     <span v-else>-</span>
   </span>
-  <el-select
-    v-else
-    v-model="model"
-    v-select-load-more="loadMore"
-    :multiple="multiple"
-    :collapse-tags="collapseTags"
-    :disabled="disabled"
-    :placeholder="placeholder"
-    class="w-full"
-    clearable
-    @change="emit('change', $event)"
-  >
+  <el-select v-else v-model="model" v-select-load-more="loadMore" :multiple="multiple" :collapse-tags="collapseTags" :disabled="disabled" :placeholder="placeholder" class="w-full" clearable
+    @change="emit('change', $event)">
     <el-option v-for="item in typeList" :key="item.typeCode" :label="item.typeName" :value="item.typeCode" />
   </el-select>
 </template>
@@ -84,7 +70,11 @@
     loading.value = true
     try {
       const nextPage = reset ? 1 : pageNo.value + 1
-      const data = await ProductTypeApi.getTypePage({ pageNo: nextPage, pageSize: PAGE_SIZE })
+      const data = await ProductTypeApi.getTypePage({
+        pageNo: nextPage,
+        pageSize: PAGE_SIZE,
+        status: 10
+      })
       const list = ((data?.list || []) as ProductTypeVO[]).filter((item) => !!item.typeCode)
       typeList.value = reset ? list : [...typeList.value, ...list]
       total.value = data?.total || 0
