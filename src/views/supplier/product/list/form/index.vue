@@ -82,7 +82,7 @@
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
           <template #default="{ row }">
-            <el-input-number :controls="false" v-model="row.marketPriceYuan" :min="0" :precision="2" class="!w-full" @change="syncSuggestedPrice(row)" />
+            <el-input-number :controls="false" v-model="row.marketPrice" :min="0" :precision="2" class="!w-full" @change="syncSuggestedPrice(row)" />
           </template>
         </el-table-column>
         <el-table-column label="销售建议价（元）" min-width="360">
@@ -112,7 +112,7 @@
               </div>
               <div v-if="row.adjustMode === 'FIXED'" class="flex items-center gap-8px">
                 <span>固定售价</span>
-                <el-input-number :controls="false" v-model="row.fixedPriceYuan" :min="0.01" :precision="2" class="!w-140px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" v-model="row.fixedPrice" :min="0" :precision="2" class="!w-140px" @change="syncSuggestedPrice(row)" />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
@@ -167,8 +167,8 @@
       </el-form-item>
     </el-form>
     <template #footer>
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="formLoading" @click="submitForm">保存</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="formLoading" @click="submitForm">保存</el-button>
     </template>
   </el-dialog>
 </template>
@@ -183,7 +183,7 @@
     SupplierSimpleInfo
   } from '@/api/product'
   import { getStrDictOptions } from '@/utils/dict'
-  import { centsToYuan, formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
+  import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
 
   defineOptions({ name: 'ProductListForm' })
 
@@ -195,8 +195,8 @@
     skuCode?: string
     skuName: string
     faceValue?: number
-    marketPriceYuan?: number
-    suggestedSalePriceYuan?: number
+    marketPrice?: number
+    suggestedSalePrice?: number
     picUrl?: string
     detailPics: string[]
     description?: string
@@ -205,8 +205,8 @@
     percent?: number
     op: FormulaOp
     amount?: number
-    fixedPriceYuan?: number
-    baseSuggestedYuan?: number
+    fixedPrice?: number
+    baseSuggested?: number
     supplyPrice?: number
     suppliers?: SupplierSimpleInfo[]
     totalInventory?: number
@@ -248,18 +248,18 @@
     skuName: '',
     skuCode: '',
     faceValue: 0,
-    marketPriceYuan: 0,
-    suggestedSalePriceYuan: 0,
+    marketPrice: 0,
+    suggestedSalePrice: 0,
     picUrl: '',
     detailPics: [],
     description: '',
     adjustMode: 'CUSTOM',
     formulaBase: 'MARKET',
-    percent: 50,
-    op: '+',
+    percent: null,
+    op: null,
     amount: 0,
-    fixedPriceYuan: undefined,
-    baseSuggestedYuan: 0,
+    fixedPrice: undefined,
+    baseSuggested: 0,
     supplyPrice: undefined,
     suppliers: [],
     totalInventory: 0
@@ -304,12 +304,12 @@
   const pageTitle = computed(() => (isEdit.value ? '编辑商品' : '新增商品'))
 
   const calcSuggestedYuan = (sku: SkuFormItem) => {
-    if (sku.adjustMode === 'MARKET') return round2(sku.marketPriceYuan || 0)
-    if (sku.adjustMode === 'FIXED') return round2(sku.fixedPriceYuan || 0)
+    if (sku.adjustMode === 'MARKET') return round2(sku.marketPrice || 0)
+    if (sku.adjustMode === 'FIXED') return round2(sku.fixedPrice || 0)
     const base =
       sku.formulaBase === 'SUGGEST'
-        ? sku.baseSuggestedYuan ?? sku.suggestedSalePriceYuan ?? 0
-        : sku.marketPriceYuan || 0
+        ? sku.baseSuggested ?? sku.suggestedSalePrice ?? 0
+        : sku.marketPrice || 0
     const percentPart = (base * (sku.percent || 0)) / 100
     const amount = sku.amount || 0
     if (sku.op === '-') return Math.max(round2(percentPart - amount), 0)
@@ -319,29 +319,29 @@
   }
 
   const syncSuggestedPrice = (sku: SkuFormItem) => {
-    sku.suggestedSalePriceYuan = calcSuggestedYuan(sku)
+    sku.suggestedSalePrice = calcSuggestedYuan(sku)
   }
 
   const onAdjustModeChange = (sku: SkuFormItem) => {
     if (sku.adjustMode === 'CUSTOM' && sku.formulaBase === 'SUGGEST') {
-      sku.baseSuggestedYuan = sku.suggestedSalePriceYuan || 0
+      sku.baseSuggested = sku.suggestedSalePrice || 0
     }
-    if (sku.adjustMode === 'FIXED' && sku.fixedPriceYuan == null) {
-      sku.fixedPriceYuan = sku.suggestedSalePriceYuan || sku.marketPriceYuan || 0
+    if (sku.adjustMode === 'FIXED' && sku.fixedPrice == null) {
+      sku.fixedPrice = sku.suggestedSalePrice || sku.marketPrice || 0
     }
     syncSuggestedPrice(sku)
   }
 
   const onFormulaBaseChange = (sku: SkuFormItem) => {
     if (sku.formulaBase === 'SUGGEST') {
-      sku.baseSuggestedYuan = sku.suggestedSalePriceYuan || 0
+      sku.baseSuggested = sku.suggestedSalePrice || 0
     }
     syncSuggestedPrice(sku)
   }
 
   const formatSuggestFormula = (sku: SkuFormItem) => {
     if (sku.adjustMode === 'MARKET') return '销售建议价=市场价'
-    if (sku.adjustMode === 'FIXED') return `固定售价 ${sku.fixedPriceYuan ?? 0}元`
+    if (sku.adjustMode === 'FIXED') return `固定售价 ${sku.fixedPrice ?? 0}元`
     const base = sku.formulaBase === 'SUGGEST' ? '销售建议价' : '市场价'
     return `${base}*${sku.percent ?? 0}%${sku.op ?? '+'}${sku.amount ?? 0}元`
   }
@@ -376,32 +376,6 @@
   }
   const removeSku = (index: number) => formData.skus.splice(index, 1)
 
-  const mapSku = (sku: NonNullable<SpuDetail['skus']>[number]): SkuFormItem => {
-    const marketPriceYuan = centsToYuan(sku.marketPrice) ?? 0
-    const suggestedSalePriceYuan = centsToYuan(sku.suggestedSalePrice) ?? 0
-    const sameAsMarket = round2(marketPriceYuan) === round2(suggestedSalePriceYuan)
-    return {
-      skuCode: sku.skuCode,
-      skuName: sku.skuName || '',
-      faceValue: centsToYuan(sku.faceValue) ?? 0,
-      marketPriceYuan,
-      suggestedSalePriceYuan,
-      picUrl: sku.picUrl || '',
-      detailPics: sku.detailPics?.length ? [...sku.detailPics] : [],
-      description: sku.description || '',
-      adjustMode: sameAsMarket ? 'MARKET' : 'CUSTOM',
-      formulaBase: 'MARKET',
-      percent: 50,
-      op: '+',
-      amount: 0,
-      fixedPriceYuan: suggestedSalePriceYuan,
-      baseSuggestedYuan: suggestedSalePriceYuan,
-      supplyPrice: sku.supplyPrice,
-      suppliers: sku.suppliers || [],
-      totalInventory: sku.totalInventory ?? 0
-    }
-  }
-
   const open = async (spuCode?: string) => {
     dialogVisible.value = true
     isEdit.value = !!spuCode
@@ -418,41 +392,19 @@
     }
   }
 
-  const buildPayload = (): SpuSaveReqVO => ({
-    spuCode: formData.spuCode,
-    spuName: formData.spuName,
-    brandId: formData.brandId as number,
-    sellableCategory: formData.sellableCategory || firstDictValue('supply_chain_sellable_category'),
-    productType: formData.productType || '',
-    primaryCategoryId: formData.primaryCategoryId as number,
-    productClassification: formData.productClassification || '',
-    fulfillmentType: formData.fulfillmentType || '',
-    deliveryType: formData.deliveryType,
-    status: formData.status != null && formData.status !== '' ? Number(formData.status) : undefined,
-    skus: formData.skus.map((sku) => ({
-      skuCode: sku.skuCode,
-      skuName: sku.skuName,
-      faceValue: yuanToCents(sku.faceValue) ?? 0,
-      marketPrice: yuanToCents(sku.marketPriceYuan),
-      suggestedSalePrice: yuanToCents(sku.suggestedSalePriceYuan),
-      picUrl: sku.picUrl || undefined,
-      detailPics: sku.detailPics?.length ? sku.detailPics : undefined,
-      description: sku.description || undefined,
-      userLimitEnabled: formData.userLimitEnabled,
-      userLimitPeriod: formData.userLimitEnabled ? formData.userLimitPeriod : undefined,
-      userLimitQuantity: formData.userLimitEnabled ? formData.userLimitQuantity : undefined,
-      phoneBindLimitEnabled: formData.phoneBindLimitEnabled,
-      phoneBindLimitQuantity: formData.phoneBindLimitEnabled
-        ? formData.phoneBindLimitQuantity
-        : undefined
-    }))
-  })
-
   const submitForm = async () => {
     await formRef.value?.validate()
     formLoading.value = true
     try {
-      const payload = buildPayload()
+      const payload = {
+        ...formData,
+        skus: formData.skus.map((sku) => ({
+          ...sku,
+          marketPrice: yuanToCents(sku.marketPrice),
+          suggestedSalePrice: yuanToCents(sku.suggestedSalePrice),
+          faceValue: yuanToCents(sku.faceValue) ?? 0
+        }))
+      } as SpuSaveReqVO
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)
         message.success('保存成功')
