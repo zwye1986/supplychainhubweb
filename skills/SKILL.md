@@ -1,9 +1,7 @@
 ---
 name: supplychainhubweb
 description: >
-  供应链中台 supplychainhubweb（基于 yudao-ui-admin-vue3）项目开发技能。
-  在本仓库创建或修改业务模块页面（列表/表单/详情）、API、前端 Mock、路由、字典、
-  Element Plus 表格弹窗，或开发供应商、商品、订单、定价、分销等供应链模块时必须使用。
+  供应链中台 supplychainhubweb（基于 yudao-ui-admin-vue3）项目开发技能。 在本仓库创建或修改业务模块页面（列表/表单/详情）、API、前端 Mock、路由、字典、 Element Plus 表格弹窗，或开发供应商、商品、订单、定价、分销等供应链模块时必须使用。
 ---
 
 # 供应链中台开发技能
@@ -14,14 +12,14 @@ description: >
 
 ## 技术栈与命令
 
-| 项 | 值 |
-| --- | --- |
-| 框架 | Vue 3.5 + `<script lang="ts" setup>` |
-| UI | Element Plus 2.13（自动导入 `el-*`） |
-| 构建 | Vite + TypeScript，别名 `@/` → `src/` |
-| 样式 | UnoCSS + SCSS |
-| 包管理 | **pnpm**（禁止 npm/yarn） |
-| 启动 | `pnpm dev`（env.local）/ `pnpm dev-server`（连后端） |
+| 项     | 值                                                   |
+| ------ | ---------------------------------------------------- |
+| 框架   | Vue 3.5 + `<script lang="ts" setup>`                 |
+| UI     | Element Plus 2.13（自动导入 `el-*`）                 |
+| 构建   | Vite + TypeScript，别名 `@/` → `src/`                |
+| 样式   | UnoCSS + SCSS                                        |
+| 包管理 | **pnpm**（禁止 npm/yarn）                            |
+| 启动   | `pnpm dev`（env.local）/ `pnpm dev-server`（连后端） |
 
 Node >= 20.19。改完页面后按用户规则在浏览器走通主路径再结束。
 
@@ -170,8 +168,14 @@ const getList = async () => {
     loading.value = false
   }
 }
-const handleQuery = () => { queryParams.pageNo = 1; getList() }
-const resetQuery = () => { queryParams.keyword = undefined; handleQuery() }
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getList()
+}
+const resetQuery = () => {
+  queryParams.keyword = undefined
+  handleQuery()
+}
 const openForm = (id?: number) => formRef.value.open(id)
 
 onMounted(getList)
@@ -181,6 +185,29 @@ onMounted(getList)
 校验：简单表单用 `{ required: true, message: '请输入…', trigger: 'blur' }`；存量页可用自动导入的 `required()`。
 
 成功文案：供应链新页多用 `message.success('保存成功')`；存量页用 `t('common.createSuccess')` 等。与邻文件保持一致。
+
+### 对象赋值
+
+详情回填、表单转提交、嵌套规则对象：先铺默认值再覆盖，**禁止逐字段 `item.foo = src.foo`**，会拥堵。
+
+同名字段用 `...src`；只需写默认值、空兜底、分转元/元转分、嵌套对象。
+
+```ts
+// 禁止
+const item = createSku()
+item.skuCode = sku.skuCode
+item.skuName = sku.skuName || ''
+item.picUrl = sku.picUrl
+item.marketPrice = centsToYuan(sku.marketPrice) ?? 0
+
+// 应当
+return {
+  ...createSku(),
+  ...sku,
+  marketPrice: centsToYuan(sku.marketPrice) ?? 0,
+  suggestedSalePriceRule: { ...createPriceRule(), ...sku.suggestedSalePriceRule }
+}
+```
 
 ## 四、字典
 
@@ -276,14 +303,15 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - 用 `<Dialog>` 做供应链新表单（默认全屏）
 - 修改无关文件、新增 README、顺手重构邻模块
 - Windows 反斜杠路径
+- 详情/表单/提交对象逐字段赋值（`item.foo = src.foo`），代码拥堵
 
 ## 对照范例
 
-| 场景 | 抄这个 |
-| --- | --- |
-| 供应商列表 + 宽表单 + 详情抽屉 | `src/views/supplier/manage/` |
-| 商品列表 + SKU 展开 + Mock 主数据 | `src/views/supplier/product/`、`src/api/product/` |
-| 分销 Mock 拆文件 | `src/api/supplier/distribution/` |
-| 订单共享列表 | `src/views/supplier/order/components/OrderListPage.vue` |
-| 简单 CRUD 弹窗 | `src/views/supplier/product/brand/` |
-| 存量标准 CRUD | `src/views/system/user/` |
+| 场景                              | 抄这个                                                  |
+| --------------------------------- | ------------------------------------------------------- |
+| 供应商列表 + 宽表单 + 详情抽屉    | `src/views/supplier/manage/`                            |
+| 商品列表 + SKU 展开 + Mock 主数据 | `src/views/supplier/product/`、`src/api/product/`       |
+| 分销 Mock 拆文件                  | `src/api/supplier/distribution/`                        |
+| 订单共享列表                      | `src/views/supplier/order/components/OrderListPage.vue` |
+| 简单 CRUD 弹窗                    | `src/views/supplier/product/brand/`                     |
+| 存量标准 CRUD                     | `src/views/system/user/`                                |
