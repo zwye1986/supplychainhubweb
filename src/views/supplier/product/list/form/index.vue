@@ -24,8 +24,8 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="品牌" prop="brandId">
-            <el-select v-model="formData.brandId" clearable placeholder="请选择品牌">
+          <el-form-item label="品牌" prop="brandCode">
+            <el-select v-model="formData.brandCode" clearable placeholder="请选择品牌">
               <el-option v-for="item in brandList" :key="item.brandCode" :label="item.brandName" :value="item.brandCode" />
             </el-select>
           </el-form-item>
@@ -216,7 +216,7 @@
   interface SpuFormData {
     spuCode?: string
     spuName: string
-    brandId?: number | string
+    brandCode?: number | string
     sellableCategory?: string
     productType?: string
     primaryCategoryId?: number
@@ -300,7 +300,7 @@
     spuName: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
     productType: [{ required: true, message: '请选择商品类型', trigger: 'change' }],
     primaryCategoryId: [{ required: true, message: '请选择商品分类', trigger: 'change' }],
-    brandId: [{ required: true, message: '请选择品牌', trigger: 'change' }],
+    brandCode: [{ required: true, message: '请选择品牌', trigger: 'change' }],
     fulfillmentType: [{ required: true, message: '请选择兑换方式', trigger: 'change' }]
   }
   const pageTitle = computed(() => (isEdit.value ? '编辑商品' : '新增商品'))
@@ -343,7 +343,7 @@
     Object.assign(formData, {
       spuCode: undefined,
       spuName: '',
-      brandId: undefined,
+      brandCode: undefined,
       productType: '',
       primaryCategoryId: undefined,
       productClassification: undefined,
