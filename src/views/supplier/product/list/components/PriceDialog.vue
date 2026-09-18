@@ -7,33 +7,39 @@
       title="定价规则将按所选调价方式回写 SKU 销售建议价。"
     />
     <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
-      <el-form-item label="调价方式" prop="adjustMode">
-        <el-radio-group v-model="formData.adjustMode">
-          <el-radio value="MARKET">按照销售建议价=市场价</el-radio>
-          <el-radio value="CUSTOM">自定义设置</el-radio>
-          <el-radio value="FIXED">固定值</el-radio>
+      <el-form-item label="调价方式" prop="mode">
+        <el-radio-group v-model="formData.mode">
+          <el-radio
+            v-for="dict in getStrDictOptions('supply_chain_suggested_sale_price_mode')"
+            :key="dict.value"
+            :value="dict.value"
+          >
+            {{ dict.label }}
+          </el-radio>
         </el-radio-group>
       </el-form-item>
-      <el-form-item v-if="formData.adjustMode === 'CUSTOM'" label="销售建议价" prop="percent">
+      <el-form-item v-if="formData.mode === 'CUSTOM'" label="销售建议价" prop="percentage">
         <div class="flex flex-wrap items-center gap-8px">
           <el-select v-model="formData.base" class="!w-140px">
-            <el-option label="市场价" value="MARKET" />
-            <el-option label="销售建议价" value="SUGGEST" />
+            <el-option label="市场价" value="MARKET_PRICE" />
+            <el-option label="销售建议价" value="SUGGESTED_SALE_PRICE" />
           </el-select>
           <span>*</span>
-          <el-input-number :controls="false" v-model="formData.percent" :min="0.01" :precision="2" />
+          <el-input-number :controls="false" v-model="formData.percentage" :min="0.01" :precision="2" />
           <span>%</span>
-          <el-select v-model="formData.op" class="!w-80px">
-            <el-option label="+" value="+" />
-            <el-option label="-" value="-" />
-            <el-option label="*" value="*" />
-            <el-option label="/" value="/" />
+          <el-select v-model="formData.operator" class="!w-90px">
+            <el-option
+              v-for="dict in getStrDictOptions('supply_chain_suggested_sale_price_operator')"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
+            />
           </el-select>
-          <el-input-number :controls="false" v-model="formData.amount" :min="0" :precision="2" />
+          <el-input-number :controls="false" v-model="formData.operand" :min="0" :precision="2" />
           <span>元</span>
         </div>
       </el-form-item>
-      <el-form-item v-if="formData.adjustMode === 'FIXED'" label="固定售价" prop="fixedPrice">
+      <el-form-item v-if="formData.mode === 'FIXED'" label="固定售价" prop="fixedPrice">
         <el-input-number :controls="false" v-model="formData.fixedPrice" :min="0.01" :precision="2" />
       </el-form-item>
     </el-form>
@@ -45,7 +51,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ProductApi, toSpuSaveReq } from '@/api/product'
+import { ProductApi, SuggestedSalePriceRule, toSpuSaveReq } from '@/api/product'
+import { getStrDictOptions } from '@/utils/dict'
 import { yuanToCents } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'ProductPriceDialog' })
@@ -57,28 +64,25 @@ const formLoading = ref(false)
 const formRef = ref()
 const spuCodes = ref<string[]>([])
 const formData = reactive({
-  adjustMode: 'CUSTOM' as 'MARKET' | 'CUSTOM' | 'FIXED',
-  base: 'MARKET' as 'MARKET' | 'SUGGEST',
-  percent: 50,
-  op: '+' as '+' | '-' | '*' | '/',
-  amount: 0,
+  mode: 'CUSTOM',
+  base: 'MARKET_PRICE',
+  percentage: 50,
+  operator: 'ADD',
+  operand: 0,
   fixedPrice: undefined as number | undefined
 })
 const formRules = {
-  adjustMode: [{ required: true, message: '请选择调价方式', trigger: 'change' }]
+  mode: [{ required: true, message: '请选择调价方式', trigger: 'change' }]
 }
 
-const calcSuggested = (marketPrice = 0, suggestedSalePrice = 0) => {
-  if (formData.adjustMode === 'MARKET') return marketPrice
-  if (formData.adjustMode === 'FIXED') return yuanToCents(formData.fixedPrice) ?? 0
-  const base = formData.base === 'SUGGEST' ? suggestedSalePrice : marketPrice
-  const percentPart = Math.round((base * (formData.percent || 0)) / 100)
-  const amountCents = yuanToCents(formData.amount) ?? 0
-  if (formData.op === '-') return Math.max(percentPart - amountCents, 0)
-  if (formData.op === '*') return percentPart * amountCents
-  if (formData.op === '/') return amountCents ? Math.round(percentPart / amountCents) : percentPart
-  return percentPart + amountCents
-}
+const buildPriceRule = (): SuggestedSalePriceRule => ({
+  mode: formData.mode,
+  base: formData.base,
+  percentage: formData.percentage,
+  operator: formData.operator,
+  operand: formData.operand,
+  fixedPriceCents: yuanToCents(formData.fixedPrice)
+})
 
 const open = (codes: string[]) => {
   spuCodes.value = codes
@@ -87,22 +91,23 @@ const open = (codes: string[]) => {
 
 const submit = async () => {
   await formRef.value?.validate()
-  if (formData.adjustMode === 'CUSTOM' && !formData.percent) {
+  if (formData.mode === 'CUSTOM' && !formData.percentage) {
     message.warning('请填写百分比')
     return
   }
-  if (formData.adjustMode === 'FIXED' && !formData.fixedPrice) {
+  if (formData.mode === 'FIXED' && !formData.fixedPrice) {
     message.warning('请填写固定售价')
     return
   }
   formLoading.value = true
   try {
+    const suggestedSalePriceRule = buildPriceRule()
     for (const spuCode of spuCodes.value) {
       const detail = await ProductApi.getProduct(spuCode)
       const payload = toSpuSaveReq(detail)
       payload.skus = (payload.skus || []).map((sku) => ({
         ...sku,
-        suggestedSalePrice: calcSuggested(sku.marketPrice, sku.suggestedSalePrice)
+        suggestedSalePriceRule
       }))
       await ProductApi.updateProduct(spuCode, payload)
     }

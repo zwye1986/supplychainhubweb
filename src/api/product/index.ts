@@ -1,14 +1,12 @@
 import request from '@/config/axios'
 
 export type {
-  AdjustMode,
   BrandPageParam,
   BrandSaveReqVO,
   BrandStatusValue,
   CategoryListParam,
   CategorySaveReqVO,
   CategoryStatusValue,
-  FormulaVO,
   ProductBrandVO,
   ProductCategoryVO,
   ProductManagementPageParam,
@@ -23,6 +21,7 @@ export type {
   SkuItemSaveReqVO,
   SpuDetail,
   SpuSaveReqVO,
+  SuggestedSalePriceRule,
   SupplierSimpleInfo
 } from './types'
 
@@ -180,7 +179,7 @@ export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
     skuName: sku.skuName,
     faceValue: sku.faceValue ?? 0,
     marketPrice: sku.marketPrice,
-    suggestedSalePrice: sku.suggestedSalePrice,
+    suggestedSalePriceRule: sku.suggestedSalePriceRule,
     picUrl: sku.picUrl,
     detailPics: sku.detailPics,
     description: sku.description,

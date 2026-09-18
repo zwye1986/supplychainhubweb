@@ -1,12 +1,11 @@
-export type AdjustMode = 'MARKET' | 'CUSTOM' | 'FIXED'
-export type FormulaBase = 'MARKET' | 'SUGGEST' | 'SUPPLY'
-export type FormulaOp = '+' | '-' | '*' | '/'
-
-export interface FormulaVO {
-  base?: FormulaBase
-  percent?: number
-  op?: FormulaOp
-  amount?: number
+/** 销售建议价规则（SKU.suggestedSalePriceRule） */
+export interface SuggestedSalePriceRule {
+  mode?: string
+  base?: string
+  percentage?: number
+  operator?: string
+  operand?: number
+  fixedPriceCents?: number
 }
 
 /** SPU 状态：0草稿，10已上架/启用，20已下架/停用 */
@@ -28,7 +27,6 @@ export interface ProductManagementSkuItem {
   skuCode?: string
   skuName?: string
   marketPrice?: number
-  suggestedSalePrice?: number
   supplyPrice?: number
   supplyPriceExclusive?: number
   taxIncluded?: boolean
@@ -85,7 +83,7 @@ export interface SkuItemSaveReqVO {
   skuName: string
   faceValue: number
   marketPrice?: number
-  suggestedSalePrice?: number
+  suggestedSalePriceRule?: SuggestedSalePriceRule
   picUrl?: string
   detailPics?: string[]
   description?: string

@@ -82,37 +82,35 @@
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
           <template #default="{ row }">
-            <el-input-number :controls="false" v-model="row.marketPrice" :min="0" :precision="2" class="!w-full" @change="syncSuggestedPrice(row)" />
+            <el-input-number :controls="false" v-model="row.marketPrice" :min="0" :precision="2" class="!w-full" />
           </template>
         </el-table-column>
         <el-table-column label="销售建议价（元）" min-width="360">
           <template #default="{ row }">
             <div class="flex flex-col gap-8px">
-              <el-radio-group v-model="row.adjustMode" @change="onAdjustModeChange(row)">
-                <el-radio value="MARKET">按照销售建议价=市场价</el-radio>
-                <el-radio value="CUSTOM">自定义设置</el-radio>
-                <el-radio value="FIXED">固定值</el-radio>
+              <el-radio-group v-model="row.suggestedSalePriceRule.mode" @change="onAdjustModeChange(row)">
+                <el-radio v-for="dict in getStrDictOptions('supply_chain_suggested_sale_price_mode')" :key="dict.value" :value="dict.value">
+                  {{ dict.label }}
+                </el-radio>
               </el-radio-group>
-              <div v-if="row.adjustMode === 'CUSTOM'" class="flex flex-wrap items-center gap-8px">
-                <el-select v-model="row.formulaBase" clearable class="!w-120px" @change="onFormulaBaseChange(row)">
-                  <el-option label="市场价" value="MARKET" />
-                  <el-option label="销售建议价" value="SUGGEST" />
+              <div v-if="row.suggestedSalePriceRule.mode === 'CUSTOM'" class="flex flex-wrap items-center gap-8px">
+                <el-select v-model="row.suggestedSalePriceRule.base" clearable class="!w-140px">
+                  <el-option label="市场价" value="MARKET_PRICE" />
+                  <el-option label="销售建议价" value="SUGGESTED_SALE_PRICE" />
                 </el-select>
                 <span>*</span>
-                <el-input-number :controls="false" v-model="row.percent" :min="0.01" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" v-model="row.suggestedSalePriceRule.percentage" :min="0.01" :precision="2" class="!w-110px" />
                 <span>%</span>
-                <el-select v-model="row.op" clearable class="!w-72px" @change="syncSuggestedPrice(row)">
-                  <el-option label="+" value="+" />
-                  <el-option label="-" value="-" />
-                  <el-option label="*" value="*" />
-                  <el-option label="/" value="/" />
+                <el-select v-model="row.suggestedSalePriceRule.operator" clearable class="!w-90px">
+                  <el-option v-for="dict in getStrDictOptions('supply_chain_suggested_sale_price_operator')" :key="dict.value" :label="dict.label" :value="dict.value" />
                 </el-select>
-                <el-input-number :controls="false" v-model="row.amount" :min="0" :precision="2" class="!w-110px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" v-model="row.suggestedSalePriceRule.operand" :min="0" :precision="2" class="!w-110px" />
                 <span>元</span>
               </div>
-              <div v-if="row.adjustMode === 'FIXED'" class="flex items-center gap-8px">
+              <div v-if="row.suggestedSalePriceRule.mode === 'FIXED'" class="flex items-center gap-8px">
                 <span>固定售价</span>
-                <el-input-number :controls="false" v-model="row.fixedPrice" :min="0" :precision="2" class="!w-140px" @change="syncSuggestedPrice(row)" />
+                <el-input-number :controls="false" :model-value="centsToYuan(row.suggestedSalePriceRule.fixedPriceCents)" :min="0" :precision="2" class="!w-140px"
+                  @update:model-value="(val) => onFixedPriceChange(row, val)" />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
@@ -178,35 +176,38 @@
     ProductApi,
     ProductBrandApi,
     ProductBrandVO,
-    SpuDetail,
+    ProductCategoryApi,
+    ProductCategoryVO,
+    ProductTypeApi,
+    SkuDetail,
+    SkuItemSaveReqVO,
     SpuSaveReqVO,
+    SuggestedSalePriceRule,
     SupplierSimpleInfo
   } from '@/api/product'
-  import { getStrDictOptions } from '@/utils/dict'
-  import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
+  import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+  import { centsToYuan, formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
 
   defineOptions({ name: 'ProductListForm' })
 
-  type AdjustMode = 'MARKET' | 'CUSTOM' | 'FIXED'
-  type FormulaBase = 'MARKET' | 'SUGGEST'
-  type FormulaOp = '+' | '-' | '*' | '/'
-
+  const PRICE_RULE_MODE = {
+    MARKET: 'MARKET',
+    CUSTOM: 'CUSTOM',
+    FIXED: 'FIXED'
+  }
+  const PRICE_RULE_BASE = {
+    MARKET_PRICE: 'MARKET_PRICE',
+    SUGGESTED_SALE_PRICE: 'SUGGESTED_SALE_PRICE'
+  }
   interface SkuFormItem {
     skuCode?: string
     skuName: string
     faceValue?: number
     marketPrice?: number
-    suggestedSalePrice?: number
     picUrl?: string
     detailPics: string[]
     description?: string
-    adjustMode: AdjustMode
-    formulaBase: FormulaBase
-    percent?: number
-    op: FormulaOp
-    amount?: number
-    fixedPrice?: number
-    baseSuggested?: number
+    suggestedSalePriceRule: SuggestedSalePriceRule
     supplyPrice?: number
     suppliers?: SupplierSimpleInfo[]
     totalInventory?: number
@@ -242,24 +243,25 @@
   const brandList = ref<ProductBrandVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
-  const round2 = (value: number) => Math.round(value * 100) / 100
+
+  const createPriceRule = (): SuggestedSalePriceRule => ({
+    mode: PRICE_RULE_MODE.CUSTOM,
+    base: PRICE_RULE_BASE.MARKET_PRICE,
+    percentage: undefined,
+    operator: undefined,
+    operand: 0,
+    fixedPriceCents: undefined
+  })
 
   const createSku = (): SkuFormItem => ({
     skuName: '',
     skuCode: '',
     faceValue: 0,
     marketPrice: 0,
-    suggestedSalePrice: 0,
-    picUrl: '',
+    picUrl:'',
     detailPics: [],
     description: '',
-    adjustMode: 'CUSTOM',
-    formulaBase: 'MARKET',
-    percent: null,
-    op: null,
-    amount: 0,
-    fixedPrice: undefined,
-    baseSuggested: 0,
+    suggestedSalePriceRule: createPriceRule(),
     supplyPrice: undefined,
     suppliers: [],
     totalInventory: 0
@@ -303,47 +305,31 @@
   }
   const pageTitle = computed(() => (isEdit.value ? '编辑商品' : '新增商品'))
 
-  const calcSuggestedYuan = (sku: SkuFormItem) => {
-    if (sku.adjustMode === 'MARKET') return round2(sku.marketPrice || 0)
-    if (sku.adjustMode === 'FIXED') return round2(sku.fixedPrice || 0)
-    const base =
-      sku.formulaBase === 'SUGGEST'
-        ? sku.baseSuggested ?? sku.suggestedSalePrice ?? 0
-        : sku.marketPrice || 0
-    const percentPart = (base * (sku.percent || 0)) / 100
-    const amount = sku.amount || 0
-    if (sku.op === '-') return Math.max(round2(percentPart - amount), 0)
-    if (sku.op === '*') return round2(percentPart * amount)
-    if (sku.op === '/') return amount ? round2(percentPart / amount) : round2(percentPart)
-    return round2(percentPart + amount)
-  }
-
-  const syncSuggestedPrice = (sku: SkuFormItem) => {
-    sku.suggestedSalePrice = calcSuggestedYuan(sku)
-  }
-
   const onAdjustModeChange = (sku: SkuFormItem) => {
-    if (sku.adjustMode === 'CUSTOM' && sku.formulaBase === 'SUGGEST') {
-      sku.baseSuggested = sku.suggestedSalePrice || 0
+    const rule = sku.suggestedSalePriceRule
+    if (rule.mode === PRICE_RULE_MODE.FIXED && rule.fixedPriceCents == null) {
+      rule.fixedPriceCents = yuanToCents(sku.marketPrice || 0)
     }
-    if (sku.adjustMode === 'FIXED' && sku.fixedPrice == null) {
-      sku.fixedPrice = sku.suggestedSalePrice || sku.marketPrice || 0
-    }
-    syncSuggestedPrice(sku)
   }
 
-  const onFormulaBaseChange = (sku: SkuFormItem) => {
-    if (sku.formulaBase === 'SUGGEST') {
-      sku.baseSuggested = sku.suggestedSalePrice || 0
-    }
-    syncSuggestedPrice(sku)
+  const onFixedPriceChange = (sku: SkuFormItem, yuan?: number | null) => {
+    sku.suggestedSalePriceRule.fixedPriceCents = yuanToCents(yuan)
   }
 
   const formatSuggestFormula = (sku: SkuFormItem) => {
-    if (sku.adjustMode === 'MARKET') return '销售建议价=市场价'
-    if (sku.adjustMode === 'FIXED') return `固定售价 ${sku.fixedPrice ?? 0}元`
-    const base = sku.formulaBase === 'SUGGEST' ? '销售建议价' : '市场价'
-    return `${base}*${sku.percent ?? 0}%${sku.op ?? '+'}${sku.amount ?? 0}元`
+    const rule = sku.suggestedSalePriceRule
+    if (rule.mode === PRICE_RULE_MODE.MARKET) {
+      return getDictLabel('supply_chain_suggested_sale_price_mode', rule.mode) || '销售建议价=市场价'
+    }
+    if (rule.mode === PRICE_RULE_MODE.FIXED) {
+      return `固定售价 ${centsToYuan(rule.fixedPriceCents) ?? 0}元`
+    }
+    const base = rule.base === PRICE_RULE_BASE.SUGGESTED_SALE_PRICE ? '销售建议价' : '市场价'
+    const opLabel =
+      getDictLabel('supply_chain_suggested_sale_price_operator', rule.operator) ||
+      rule.operator ||
+      '+'
+    return `${base}*${rule.percentage ?? 0}%${opLabel}${rule.operand ?? 0}元`
   }
 
   const formatSkuSuppliers = (suppliers?: SupplierSimpleInfo[]) => {
@@ -376,6 +362,38 @@
   }
   const removeSku = (index: number) => formData.skus.splice(index, 1)
 
+  const mapSkuToForm = (sku: SkuDetail): SkuFormItem => ({
+    ...createSku(),
+    ...sku,
+    marketPrice: centsToYuan(sku.marketPrice) ?? 0,
+    faceValue: centsToYuan(sku.faceValue) ?? 0,
+    suggestedSalePriceRule: {
+      ...createPriceRule(),
+      ...sku.suggestedSalePriceRule
+    }
+  })
+
+  const toSkuSaveItem = (sku: SkuFormItem): SkuItemSaveReqVO => {
+    const rule = sku.suggestedSalePriceRule
+    return {
+      skuCode: sku.skuCode,
+      skuName: sku.skuName,
+      picUrl: sku.picUrl,
+      detailPics: sku.detailPics,
+      description: sku.description,
+      marketPrice: yuanToCents(sku.marketPrice),
+      faceValue: yuanToCents(sku.faceValue) ?? 0,
+      suggestedSalePriceRule: {
+        mode: rule.mode,
+        base: rule.base,
+        percentage: rule.percentage,
+        operator: rule.operator,
+        operand: rule.operand,
+        fixedPriceCents: rule.fixedPriceCents
+      }
+    }
+  }
+
   const open = async (spuCode?: string) => {
     dialogVisible.value = true
     isEdit.value = !!spuCode
@@ -385,7 +403,10 @@
     formLoading.value = true
     try {
       const data = await ProductApi.getProduct(spuCode)
-      Object.assign(formData, { ...data })
+      Object.assign(formData, {
+        ...data,
+        skus: (data.skus || []).map(mapSkuToForm)
+      })
       if (!formData.skus?.length) formData.skus = [createSku()]
     } finally {
       formLoading.value = false
@@ -398,12 +419,7 @@
     try {
       const payload = {
         ...formData,
-        skus: formData.skus.map((sku) => ({
-          ...sku,
-          marketPrice: yuanToCents(sku.marketPrice),
-          suggestedSalePrice: yuanToCents(sku.suggestedSalePrice),
-          faceValue: yuanToCents(sku.faceValue) ?? 0
-        }))
+        skus: formData.skus.map(toSkuSaveItem)
       } as SpuSaveReqVO
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)

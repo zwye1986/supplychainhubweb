@@ -247,7 +247,6 @@
           skuName: sku.skuName,
           skuCode: sku.skuCode,
           marketPrice: sku.marketPrice,
-          suggestedSalePrice: sku.suggestedSalePrice,
           supplyPrice: sku.supplyPrice,
           supplyPriceExclusive: sku.supplyPriceExclusive,
           taxRateDisplay: sku.taxRateDisplay,
