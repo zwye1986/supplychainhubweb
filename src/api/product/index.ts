@@ -7,6 +7,13 @@ export type {
   CategoryListParam,
   CategorySaveReqVO,
   CategoryStatusValue,
+  FormulaRuleBase,
+  FormulaRuleMode,
+  FormulaRuleOperator,
+  FormulaRuleReqVO,
+  FormulaVO,
+  PlatformPricingDetail,
+  PlatformSkuBatchPricingReqVO,
   ProductBrandVO,
   ProductCategoryVO,
   ProductManagementPageParam,
@@ -17,6 +24,7 @@ export type {
   ProductTypeSaveReqVO,
   ProductTypeStatusValue,
   ProductTypeVO,
+  ServiceFeeRuleReqVO,
   SkuDetail,
   SkuItemSaveReqVO,
   SpuDetail,
@@ -32,6 +40,8 @@ import type {
   BrandSaveReqVO,
   CategoryListParam,
   CategorySaveReqVO,
+  PlatformPricingDetail,
+  PlatformSkuBatchPricingReqVO,
   ProductCategoryVO,
   ProductManagementPageParam,
   ProductTypePageParam,
@@ -212,6 +222,16 @@ export const ProductApi = {
     return await request.put({
       url: `/supply-chain/products/spus/${spuCode}/status`,
       data: { targetStatus }
+    })
+  },
+  /** 批量保存商品 SKU 默认定价，单事务全量成功或回滚 */
+  batchSkuPricing: async (data: PlatformSkuBatchPricingReqVO) => {
+    return await request.put({ url: '/supply-chain/products/skus/pricing', data })
+  },
+  /** 查询商品 SKU 当前完整默认定价；未定价返回 UNPRICED */
+  getSkuPricing: async (skuCode: string): Promise<PlatformPricingDetail> => {
+    return await request.get({
+      url: `/supply-chain/products/skus/${encodeURIComponent(skuCode)}/pricing`
     })
   }
 }

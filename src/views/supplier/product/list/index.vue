@@ -63,7 +63,7 @@
         <el-button type="warning" plain :disabled="!selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
           批量下架
         </el-button>
-        <el-button type="primary" plain :disabled="!selectedCodes.length" @click="openPriceDialog()">
+        <el-button type="primary" plain :disabled="!selectedSkuCodes.length" @click="openPriceDialog()">
           批量定价
         </el-button>
       </el-form-item>
@@ -109,9 +109,9 @@
       <el-table-column label="供应价（元）" min-width="110" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
       </el-table-column>
-      <el-table-column label="不含税供应价（元）" min-width="140" align="right">
+      <!-- <el-table-column label="不含税供应价（元）" min-width="140" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.supplyPriceExclusive) }}</template>
-      </el-table-column>
+      </el-table-column> -->
       <el-table-column label="税率" min-width="110" align="right">
         <template #default="{ row }">{{ row.taxRateDisplay || '—' }}</template>
       </el-table-column>
@@ -267,6 +267,17 @@
     ...new Set(selectedList.value.map((item) => item.spuCode).filter(Boolean))
   ])
 
+  const getSkuCodesBySpu = (spuCode?: string) =>
+    (list.value.find((item) => item.spuCode === spuCode)?.skus || [])
+      .map((sku) => sku.skuCode)
+      .filter((code): code is string => !!code)
+
+  const selectedSkuCodes = computed(() =>
+    list.value
+      .filter((spu) => !!spu.spuCode && selectedCodes.value.includes(spu.spuCode))
+      .flatMap((spu) => getSkuCodesBySpu(spu.spuCode))
+  )
+
   const spanMethod = ({ row, columnIndex }: { row: any; columnIndex: number }) => {
     if ([0, 1, 3, 4, 5, 15, 16, 17, 18].includes(columnIndex)) {
       return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
@@ -349,7 +360,12 @@
   }
 
   const openPriceDialog = (spuCode?: string) => {
-    priceRef.value.open(spuCode ? [spuCode] : selectedCodes.value)
+    const skuCodes = spuCode ? getSkuCodesBySpu(spuCode) : selectedSkuCodes.value
+    if (!skuCodes.length) {
+      message.warning('请选择需要定价的商品 SKU')
+      return
+    }
+    priceRef.value.open(skuCodes, !spuCode)
   }
 
   const handleDelete = async (row: ProductManagementSpuItem) => {

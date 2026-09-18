@@ -8,6 +8,85 @@ export interface SuggestedSalePriceRule {
   fixedPriceCents?: number
 }
 
+/** 默认定价公式：DIRECT_MARKET_PRICE 直接等于市场价，CUSTOM 自定义 */
+export type FormulaRuleMode = 'DIRECT_MARKET_PRICE' | 'CUSTOM'
+export type FormulaRuleBase = 'MARKET_PRICE' | 'SUGGESTED_SALE_PRICE' | 'SUPPLY_PRICE'
+export type FormulaRuleOperator = 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'
+
+/** PUT /supply-chain/products/skus/pricing 分销价 / 销售价公式 */
+export interface FormulaRuleReqVO {
+  mode: FormulaRuleMode
+  base?: FormulaRuleBase
+  percentage?: number
+  operator?: FormulaRuleOperator
+  operand?: number
+}
+
+/** PUT /supply-chain/products/skus/pricing 服务费规则 */
+export interface ServiceFeeRuleReqVO {
+  percentage?: number
+  operator: FormulaRuleOperator
+  operand?: number
+  hideCopy?: boolean
+  copy?: string
+}
+
+/** PUT /supply-chain/products/skus/pricing 平台商品 SKU 默认批量定价 */
+export interface PlatformSkuBatchPricingReqVO {
+  platformSkuCodes: string[]
+  distributionRule: FormulaRuleReqVO
+  salesRule: FormulaRuleReqVO
+  serviceFeeRule: ServiceFeeRuleReqVO
+  distributionHideThresholdPercent?: number
+  salesHideThresholdPercent?: number
+  taxIncluded: boolean
+  taxRateCode: string
+}
+
+/** GET /supply-chain/products/skus/{skuCode}/pricing 定价状态 */
+export type PlatformPricingStatus =
+  | 'UNPRICED'
+  | 'READY'
+  | 'RECALCULATING'
+  | 'DEPENDENCY_MISSING'
+  | 'CALCULATION_FAILED'
+  | 'MARGIN_HIDDEN'
+
+export interface HideRuleVO {
+  distributionThresholdPercent?: number
+  salesThresholdPercent?: number
+}
+
+export interface TaxMetadataVO {
+  taxIncluded?: boolean
+  taxRateCode?: string
+  taxRateLabel?: string
+}
+
+/** GET /supply-chain/products/skus/{skuCode}/pricing 当前完整默认定价 */
+export interface PlatformPricingDetail {
+  platformSkuCode?: string
+  currentVersionId?: number
+  versionNo?: number
+  pricingStatus?: PlatformPricingStatus | string
+  unavailableReason?: string
+  distributionRule?: FormulaRuleReqVO
+  salesRule?: FormulaRuleReqVO
+  serviceFeeRule?: ServiceFeeRuleReqVO
+  hideRule?: HideRuleVO
+  taxMetadata?: TaxMetadataVO
+  marketPriceCents?: number
+  suggestedSalePriceCents?: number
+  supplyPriceCents?: number
+  distributionPriceCents?: number
+  salesPriceCents?: number
+  distributionMarginPercent?: number
+  effectiveHideThresholdPercent?: number
+  currency?: string
+  publishedBy?: number
+  publishedAt?: string
+}
+
 /** SPU 状态：0草稿，10已上架/启用，20已下架/停用 */
 export const PRODUCT_STATUS = {
   DRAFT: 0,
