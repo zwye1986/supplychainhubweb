@@ -45,6 +45,20 @@
       </el-col>
     </el-row>
   </ContentWrap>
+
+  <ProjectDetailDrawer
+    ref="detailRef"
+    v-model="detailVisible"
+    :project-code="detailProjectCode"
+    @success="loadData"
+    @edit="openForm"
+  />
+  <ProjectFormDialog
+    v-model="formVisible"
+    :project-code="formProjectCode"
+    :mode="formMode"
+    @success="handleFormSuccess"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -54,6 +68,8 @@ import {
   getProjectStatusType,
   getSettlementPartyTypeLabel
 } from '@/views/supplier/utils/constants'
+import ProjectDetailDrawer from '@/views/supplier/distribution/project/detail/index.vue'
+import ProjectFormDialog from '@/views/supplier/distribution/project/form/index.vue'
 
 defineOptions({ name: 'DistributorProjectList' })
 
@@ -61,9 +77,14 @@ const props = defineProps<{
   buyerCode: string
 }>()
 
-const router = useRouter()
 const loading = ref(false)
 const list = ref<DistributorProjectVO[]>([])
+const detailVisible = ref(false)
+const detailProjectCode = ref<string | undefined>(undefined)
+const detailRef = ref()
+const formVisible = ref(false)
+const formProjectCode = ref<string | undefined>(undefined)
+const formMode = ref<'create' | 'edit' | 'view'>('edit')
 
 const loadData = async () => {
   if (!props.buyerCode) return
@@ -79,10 +100,22 @@ const loadData = async () => {
 
 const handleViewDetail = (item: DistributorProjectVO) => {
   if (!item.projectCode) return
-  router.push({
-    name: 'SupplierDistributionProject',
-    query: { projectCode: item.projectCode }
-  })
+  detailProjectCode.value = item.projectCode
+  detailVisible.value = true
+}
+
+const openForm = (projectCode?: string) => {
+  if (!projectCode) return
+  formProjectCode.value = projectCode
+  formMode.value = 'edit'
+  formVisible.value = true
+}
+
+const handleFormSuccess = () => {
+  loadData()
+  if (detailVisible.value) {
+    detailRef.value?.reload?.()
+  }
 }
 
 watch(

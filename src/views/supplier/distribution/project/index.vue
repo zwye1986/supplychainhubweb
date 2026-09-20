@@ -332,4 +332,8 @@ const loadPage = () => {
 
 onMounted(loadPage)
 onActivated(loadPage)
+onDeactivated(() => {
+  detailVisible.value = false
+  formVisible.value = false
+})
 </script>
