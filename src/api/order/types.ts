@@ -1,5 +1,5 @@
-export type OrderBizType = 'EQUITY' | 'DINING' | 'MOVIE' | 'HEMA'
-export type OrderStatus = 'WAIT_PAY' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'AFTER_SALE' | 'CLOSED'
+export type OrderBizType = 'VIRTUAL_CARD' | 'VIRTUAL_RECHARGE' | 'DINING' | 'MOVIE' | 'HEMA'
+export type OrderStatus = 'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED'
 export type LogisticsStatus = 'UNSHIPPED' | 'SHIPPED' | 'SIGNED'
 export type AfterSaleType = 'RETURN_REFUND' | 'REFUND_ONLY' | 'OTHER'
 export type AfterSaleStatus =
@@ -13,14 +13,29 @@ export type AfterSaleStatus =
   | 'REJECTED'
   | 'CANCELLED'
 
+export interface CardInfoVO {
+  cardNo?: string
+  password?: string
+  expireTime?: string
+}
+
+export interface RechargeInfoVO {
+  account?: string
+  result?: string
+  voucherNo?: string
+}
+
 export interface OrderItemVO {
   id?: number
   name: string
   picUrl?: string
   skuCode: string
+  spec?: string
   qty: number
   afterSaleQty?: number
   supplyPrice: number
+  distPrice?: number
+  projectPrice?: number
   salePrice: number
   serviceFee: number
   couponAmount: number
@@ -32,6 +47,8 @@ export interface OrderItemVO {
   afterSaleStatus: AfterSaleStatus
   ticketCode?: string
   pickupCode?: string
+  cardInfos?: CardInfoVO[]
+  rechargeInfo?: RechargeInfoVO
 }
 
 export interface PackageTraceVO {
@@ -51,6 +68,7 @@ export interface OrderVO {
   qty: number
   supplierName?: string
   distributorName?: string
+  projectName?: string
   buyerId?: string
   buyerName?: string
   buyerMobile?: string
@@ -67,9 +85,12 @@ export interface OrderVO {
   distGoodsAmount?: number
   distFreightAmount?: number
   distFeeAmount?: number
+  projectPayAmount?: number
   remark?: string
   finishTime?: string
   createTime?: string
+  pushTime?: string
+  confirmTime?: string
   items: OrderItemVO[]
   traces?: PackageTraceVO[]
   source?: 'PLATFORM' | 'SUPPLIER'
@@ -102,7 +123,8 @@ export interface AfterSaleVO {
 export interface OrderPageParam {
   pageNo?: number
   pageSize?: number
-  bizType?: OrderBizType
+  bizType?: OrderBizType | ''
+  bizTypes?: OrderBizType[]
   source?: 'PLATFORM' | 'SUPPLIER'
   orderNo?: string
   status?: OrderStatus
@@ -110,6 +132,8 @@ export interface OrderPageParam {
   createTo?: string
   supplierOrderNo?: string
   distributorOrderNo?: string
+  supplierNames?: string[]
+  distributorNames?: string[]
   supplierName?: string
   distributorName?: string
   productName?: string

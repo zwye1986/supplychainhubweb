@@ -16,15 +16,17 @@ const orders: OrderVO[] = [
     supplierOrderNo: 'SPL20260912088',
     distributorOrderNo: 'DST20260912011',
     parentOrderNo: 'P202609120001',
-    bizType: 'EQUITY',
-    status: 'FINISHED',
+    bizType: 'VIRTUAL_CARD',
+    status: 'SUCCESS',
     amount: 15.15,
     qty: 1,
     supplierName: '腾讯会员供应商',
     distributorName: '华东福利分销中心',
+    projectName: '沪上互联网员工权益',
     buyerId: 'U10086',
     buyerName: '张三',
     buyerMobile: '13800001111',
+    buyerGroup: '总部福利组',
     receiverName: '张三',
     receiverMobile: '13800001111',
     receiverAddress: '上海市浦东新区世纪大道 1 号',
@@ -37,6 +39,7 @@ const orders: OrderVO[] = [
     distGoodsAmount: 15.15,
     distFreightAmount: 0,
     distFeeAmount: 0.3,
+    projectPayAmount: 15.15,
     createTime: '2026-09-12 10:21:00',
     finishTime: '2026-09-12 10:22:00',
     source: 'PLATFORM',
@@ -44,18 +47,23 @@ const orders: OrderVO[] = [
       {
         id: 11,
         name: '腾讯视频VIP会员 月卡',
+        picUrl: 'https://static.iocoder.cn/mall/tencent-vip.png',
         skuCode: 'SKU10002',
+        spec: '月卡',
         qty: 1,
         afterSaleQty: 0,
         supplyPrice: 12.5,
+        distPrice: 14.8,
+        projectPrice: 15.15,
         salePrice: 15.15,
         serviceFee: 0,
         couponAmount: 0,
-        orderType: 'EQUITY',
+        orderType: 'VIRTUAL_CARD',
         supplierName: '腾讯会员供应商',
         distSubOrderNo: 'DST20260912011-1',
         logisticsStatus: 'SIGNED',
-        afterSaleStatus: 'NONE'
+        afterSaleStatus: 'NONE',
+        cardInfos: [{ cardNo: 'TX20260912001', password: 'VIP-8821', expireTime: '2026-12-31 23:59:59' }]
       }
     ],
     traces: [{ time: '2026-09-12 10:22:00', content: '虚拟凭证已发放，订单完成' }]
@@ -66,14 +74,16 @@ const orders: OrderVO[] = [
     supplierOrderNo: 'MY20260913002',
     distributorOrderNo: 'DST20260913022',
     bizType: 'MOVIE',
-    status: 'WAIT_SHIP',
+    status: 'PROCESSING',
     amount: 38,
     qty: 1,
     supplierName: '猫眼票务',
     distributorName: '华东福利分销中心',
+    projectName: '暑期电影通兑专项',
     buyerId: 'U10087',
     buyerName: '李四',
     buyerMobile: '13900002222',
+    buyerGroup: '华东福利组',
     receiverName: '李四',
     receiverMobile: '13900002222',
     receiverAddress: '江苏省南京市建邺区江东中路 88 号',
@@ -86,6 +96,7 @@ const orders: OrderVO[] = [
     distGoodsAmount: 38,
     distFreightAmount: 0,
     distFeeAmount: 0.8,
+    projectPayAmount: 38,
     createTime: '2026-09-13 19:10:00',
     source: 'PLATFORM',
     items: [
@@ -93,9 +104,12 @@ const orders: OrderVO[] = [
         id: 21,
         name: '全国电影快充通兑券 40元通兑',
         skuCode: 'SKU20001',
+        spec: '40元通兑',
         qty: 1,
         afterSaleQty: 0,
         supplyPrice: 32,
+        distPrice: 36,
+        projectPrice: 38,
         salePrice: 38,
         serviceFee: 0,
         couponAmount: 0,
@@ -114,14 +128,16 @@ const orders: OrderVO[] = [
     supplierOrderNo: 'KFC20260913003',
     distributorOrderNo: 'DST20260913033',
     bizType: 'DINING',
-    status: 'FINISHED',
+    status: 'SUCCESS',
     amount: 44,
     qty: 1,
     supplierName: '百胜餐饮',
     distributorName: '苏州企业购分销商',
+    projectName: '苏州园区午餐补贴',
     buyerId: 'U10088',
     buyerName: '王五',
     buyerMobile: '13700003333',
+    buyerGroup: '园区餐补组',
     receiverName: '王五',
     receiverMobile: '13700003333',
     receiverAddress: '江苏省苏州市工业园区星湖街 328 号',
@@ -134,6 +150,7 @@ const orders: OrderVO[] = [
     distGoodsAmount: 29,
     distFreightAmount: 0,
     distFeeAmount: 0.6,
+    projectPayAmount: 44,
     createTime: '2026-09-13 12:08:00',
     finishTime: '2026-09-13 12:10:00',
     source: 'PLATFORM',
@@ -142,9 +159,12 @@ const orders: OrderVO[] = [
         id: 31,
         name: '肯德基超值兑换券 经典汉堡套餐',
         skuCode: 'SKU30001',
+        spec: '经典汉堡套餐',
         qty: 1,
         afterSaleQty: 0,
         supplyPrice: 24,
+        distPrice: 28,
+        projectPrice: 29,
         salePrice: 29,
         serviceFee: 15,
         couponAmount: 0,
@@ -163,14 +183,16 @@ const orders: OrderVO[] = [
     supplierOrderNo: 'HEMA20260911004',
     distributorOrderNo: 'DST20260911044',
     bizType: 'HEMA',
-    status: 'AFTER_SALE',
+    status: 'SUCCESS',
     amount: 128.6,
     qty: 2,
     supplierName: '盒马鲜生',
     distributorName: '华南积分商城',
+    projectName: '华东企业年节福利包',
     buyerId: 'U10089',
     buyerName: '赵六',
     buyerMobile: '13600004444',
+    buyerGroup: '华南积分组',
     receiverName: '赵六',
     receiverMobile: '13600004444',
     receiverAddress: '广东省深圳市南山区科技园南路 10 号',
@@ -183,16 +205,21 @@ const orders: OrderVO[] = [
     distGoodsAmount: 118.6,
     distFreightAmount: 10,
     distFeeAmount: 2.4,
+    projectPayAmount: 128.6,
     createTime: '2026-09-11 18:40:00',
+    finishTime: '2026-09-12 09:00:00',
     source: 'PLATFORM',
     items: [
       {
         id: 41,
         name: '盒马鲜生 牛肉卷',
         skuCode: 'SKU50001',
+        spec: '500g',
         qty: 2,
         afterSaleQty: 1,
         supplyPrice: 48,
+        distPrice: 55,
+        projectPrice: 59.3,
         salePrice: 59.3,
         serviceFee: 0,
         couponAmount: 0,
@@ -214,15 +241,17 @@ const orders: OrderVO[] = [
     orderNo: 'SC202609140005',
     supplierOrderNo: 'SPL20260914005',
     distributorOrderNo: 'DST20260914055',
-    bizType: 'EQUITY',
-    status: 'WAIT_SHIP',
+    bizType: 'VIRTUAL_CARD',
+    status: 'PROCESSING',
     amount: 97,
     qty: 1,
     supplierName: '京东慧采',
     distributorName: '华东福利分销中心',
+    projectName: '沪上互联网员工权益',
     buyerId: 'U10090',
     buyerName: '钱七',
     buyerMobile: '13500005555',
+    buyerGroup: '总部福利组',
     receiverName: '钱七',
     receiverMobile: '13500005555',
     receiverAddress: '上海市徐汇区漕溪北路 18 号',
@@ -235,22 +264,191 @@ const orders: OrderVO[] = [
     distGoodsAmount: 97,
     distFreightAmount: 0,
     distFeeAmount: 1.9,
+    projectPayAmount: 97,
     createTime: '2026-09-14 08:30:00',
+    pushTime: '2026-09-14 08:31:00',
     source: 'SUPPLIER',
     items: [
       {
         id: 51,
         name: '京东E卡 100元面值',
         skuCode: 'SKU40001',
+        spec: '100元',
         qty: 1,
         afterSaleQty: 0,
         supplyPrice: 95,
+        distPrice: 96,
+        projectPrice: 97,
         salePrice: 97,
         serviceFee: 0,
         couponAmount: 0,
-        orderType: 'EQUITY',
+        orderType: 'VIRTUAL_CARD',
         supplierName: '京东慧采',
         distSubOrderNo: 'DST20260914055-1',
+        logisticsStatus: 'UNSHIPPED',
+        afterSaleStatus: 'NONE'
+      }
+    ]
+  },
+  {
+    id: 6,
+    orderNo: 'SC202609150006',
+    supplierOrderNo: '',
+    distributorOrderNo: 'DST20260915066',
+    bizType: 'VIRTUAL_RECHARGE',
+    status: 'FAILED',
+    amount: 50,
+    qty: 1,
+    supplierName: '',
+    distributorName: '苏州企业购分销商',
+    projectName: '沪上互联网员工权益',
+    buyerId: 'U10091',
+    buyerName: '周八',
+    buyerMobile: '13400006666',
+    buyerGroup: '直充组',
+    receiverName: '周八',
+    receiverMobile: '13400006666',
+    receiverAddress: '江苏省苏州市工业园区若水路 1 号',
+    payMethod: '余额支付：50.00元',
+    payTradeNo: 'PAY202609150006',
+    goodsAmount: 50,
+    freightAmount: 0,
+    serviceFee: 0,
+    couponAmount: 0,
+    distGoodsAmount: 48,
+    distFreightAmount: 0,
+    distFeeAmount: 1,
+    projectPayAmount: 50,
+    createTime: '2026-09-15 16:18:00',
+    source: 'PLATFORM',
+    remark: '候选供应商均失败，待人工处理',
+    items: [
+      {
+        id: 61,
+        name: '移动话费直充 50元',
+        skuCode: 'SKU60001',
+        spec: '50元',
+        qty: 1,
+        afterSaleQty: 0,
+        supplyPrice: 49.2,
+        distPrice: 48,
+        projectPrice: 50,
+        salePrice: 50,
+        serviceFee: 0,
+        couponAmount: 0,
+        orderType: 'VIRTUAL_RECHARGE',
+        supplierName: '',
+        distSubOrderNo: 'DST20260915066-1',
+        logisticsStatus: 'UNSHIPPED',
+        afterSaleStatus: 'NONE',
+        rechargeInfo: { account: '13800009999', result: '失败', voucherNo: '' }
+      }
+    ]
+  },
+  {
+    id: 7,
+    orderNo: 'SC202609160007',
+    supplierOrderNo: 'TX20260916007',
+    distributorOrderNo: 'DST20260916077',
+    bizType: 'VIRTUAL_RECHARGE',
+    status: 'SUCCESS',
+    amount: 100,
+    qty: 1,
+    supplierName: '腾讯会员供应商',
+    distributorName: '华南积分商城',
+    projectName: '沪上互联网员工权益',
+    buyerId: 'U10092',
+    buyerName: '吴九',
+    buyerMobile: '13300007777',
+    buyerGroup: '直充组',
+    receiverName: '吴九',
+    receiverMobile: '13300007777',
+    receiverAddress: '广东省广州市天河区珠江新城',
+    payMethod: '福利卡支付：100.00元',
+    payTradeNo: 'PAY202609160007',
+    goodsAmount: 100,
+    freightAmount: 0,
+    serviceFee: 0,
+    couponAmount: 0,
+    distGoodsAmount: 98,
+    distFreightAmount: 0,
+    distFeeAmount: 2,
+    projectPayAmount: 100,
+    createTime: '2026-09-16 11:05:00',
+    finishTime: '2026-09-16 11:06:00',
+    pushTime: '2026-09-16 11:05:20',
+    confirmTime: '2026-09-16 11:06:00',
+    source: 'SUPPLIER',
+    items: [
+      {
+        id: 71,
+        name: '腾讯视频VIP 季卡直充',
+        skuCode: 'SKU10008',
+        spec: '季卡',
+        qty: 1,
+        afterSaleQty: 0,
+        supplyPrice: 88,
+        distPrice: 96,
+        projectPrice: 100,
+        salePrice: 100,
+        serviceFee: 0,
+        couponAmount: 0,
+        orderType: 'VIRTUAL_RECHARGE',
+        supplierName: '腾讯会员供应商',
+        distSubOrderNo: 'DST20260916077-1',
+        logisticsStatus: 'SIGNED',
+        afterSaleStatus: 'NONE',
+        rechargeInfo: { account: 'qq-908812', result: '成功', voucherNo: 'RC20260916007' }
+      }
+    ]
+  },
+  {
+    id: 8,
+    orderNo: 'SC202609170008',
+    distributorOrderNo: 'DST20260917088',
+    bizType: 'MOVIE',
+    status: 'CLOSED',
+    amount: 45,
+    qty: 1,
+    supplierName: '猫眼票务',
+    distributorName: '华东福利分销中心',
+    projectName: '暑期电影通兑专项',
+    buyerId: 'U10093',
+    buyerName: '郑十',
+    buyerMobile: '13200008888',
+    buyerGroup: '电影组',
+    receiverName: '郑十',
+    receiverMobile: '13200008888',
+    receiverAddress: '上海市黄浦区南京东路 1 号',
+    payMethod: '未支付',
+    goodsAmount: 45,
+    freightAmount: 0,
+    serviceFee: 0,
+    couponAmount: 0,
+    distGoodsAmount: 42,
+    distFreightAmount: 0,
+    distFeeAmount: 0.8,
+    projectPayAmount: 0,
+    createTime: '2026-09-17 20:01:00',
+    source: 'PLATFORM',
+    remark: '超时未支付自动关闭',
+    items: [
+      {
+        id: 81,
+        name: '全国电影慢充通兑券 50元',
+        skuCode: 'SKU20008',
+        spec: '50元通兑',
+        qty: 1,
+        afterSaleQty: 0,
+        supplyPrice: 40,
+        distPrice: 42,
+        projectPrice: 45,
+        salePrice: 45,
+        serviceFee: 0,
+        couponAmount: 0,
+        orderType: 'MOVIE',
+        supplierName: '猫眼票务',
+        distSubOrderNo: 'DST20260917088-1',
         logisticsStatus: 'UNSHIPPED',
         afterSaleStatus: 'NONE'
       }
@@ -290,7 +488,8 @@ let afterSaleSeq = 101
 const filterOrders = (params: OrderPageParam) => {
   let list = orders.filter((item) => !params.source || item.source === params.source)
   if (params.bizType) list = list.filter((item) => item.bizType === params.bizType)
-  if (params.orderNo) list = list.filter((item) => item.orderNo === params.orderNo)
+  if (params.bizTypes?.length) list = list.filter((item) => params.bizTypes!.includes(item.bizType))
+  if (params.orderNo) list = list.filter((item) => item.orderNo.includes(params.orderNo!))
   if (params.status) list = list.filter((item) => item.status === params.status)
   if (params.supplierOrderNo) list = list.filter((item) => item.supplierOrderNo === params.supplierOrderNo)
   if (params.distributorOrderNo) {
@@ -298,6 +497,10 @@ const filterOrders = (params: OrderPageParam) => {
   }
   if (params.supplierName) list = list.filter((item) => item.supplierName === params.supplierName)
   if (params.distributorName) list = list.filter((item) => item.distributorName === params.distributorName)
+  if (params.supplierNames?.length) list = list.filter((item) => params.supplierNames!.includes(item.supplierName || ''))
+  if (params.distributorNames?.length) {
+    list = list.filter((item) => params.distributorNames!.includes(item.distributorName || ''))
+  }
   if (params.productName) {
     list = list.filter((item) => item.items.some((sku) => sku.name.includes(params.productName!)))
   }
@@ -322,6 +525,10 @@ export const OrderMockApi = {
     await delay()
     return paginate(filterOrders(params).map(clone), params.pageNo || 1, params.pageSize || 20)
   },
+  async exportOrders(params: OrderPageParam) {
+    await delay()
+    return filterOrders(params).map(clone)
+  },
   async getOrder(orderNo: string) {
     await delay()
     const found = orders.find((item) => item.orderNo === orderNo)
@@ -332,7 +539,8 @@ export const OrderMockApi = {
     await delay()
     const item = orders.find((row) => row.orderNo === orderNo)
     if (!item) throw new Error('订单不存在')
-    item.status = 'SHIPPED'
+    item.status = 'SUCCESS'
+    item.finishTime = now()
     item.items.forEach((sku) => {
       sku.logisticsStatus = 'SHIPPED'
       if (data.voucher) {
@@ -396,7 +604,6 @@ export const OrderMockApi = {
     }
     sku.afterSaleStatus = 'WAIT_PLATFORM'
     sku.afterSaleType = created.type
-    order.status = 'AFTER_SALE'
     afterSales.unshift(created)
     return clone(created)
   },
@@ -420,7 +627,6 @@ export const OrderMockApi = {
     const order = orders.find((row) => row.orderNo === item.orderNo)
     const sku = order?.items.find((row) => row.id === item.itemId)
     if (sku) sku.afterSaleStatus = item.status
-    if (order && data.result === 'PASS') order.status = 'FINISHED'
     return true
   }
 }

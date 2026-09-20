@@ -1,7 +1,16 @@
 import type { AfterSaleStatus, AfterSaleType, LogisticsStatus, OrderBizType, OrderStatus } from '@/api/order/types'
 
+export const ORDER_TAB_OPTIONS: { value: OrderBizType | ''; label: string }[] = [
+  { value: '', label: '全部订单' },
+  { value: 'VIRTUAL_CARD', label: '虚拟卡密' },
+  { value: 'VIRTUAL_RECHARGE', label: '虚拟直充' },
+  { value: 'DINING', label: '点餐' },
+  { value: 'MOVIE', label: '电影' }
+]
+
 export const ORDER_BIZ_TYPE_OPTIONS: { value: OrderBizType; label: string }[] = [
-  { value: 'EQUITY', label: '权益商品' },
+  { value: 'VIRTUAL_CARD', label: '虚拟卡密' },
+  { value: 'VIRTUAL_RECHARGE', label: '虚拟直充' },
   { value: 'DINING', label: '点餐' },
   { value: 'MOVIE', label: '电影' },
   { value: 'HEMA', label: '盒马购' }
@@ -9,10 +18,9 @@ export const ORDER_BIZ_TYPE_OPTIONS: { value: OrderBizType; label: string }[] = 
 
 export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: string }[] = [
   { value: 'WAIT_PAY', label: '待支付', type: 'info' },
-  { value: 'WAIT_SHIP', label: '待发货', type: 'warning' },
-  { value: 'SHIPPED', label: '已发货', type: 'primary' },
-  { value: 'FINISHED', label: '已完成', type: 'success' },
-  { value: 'AFTER_SALE', label: '售后中', type: 'danger' },
+  { value: 'PROCESSING', label: '处理中', type: 'warning' },
+  { value: 'SUCCESS', label: '成功', type: 'success' },
+  { value: 'FAILED', label: '失败', type: 'danger' },
   { value: 'CLOSED', label: '已关闭', type: 'info' }
 ]
 
@@ -53,6 +61,20 @@ export const AFTER_SALE_STATUS_OPTIONS: { value: AfterSaleStatus; label: string;
   { value: 'CANCELLED', label: '已撤销', type: 'info' }
 ]
 
+export const MOCK_DISTRIBUTORS = [
+  { code: '18-001', name: '华东福利分销中心' },
+  { code: '18-002', name: '苏州企业购分销商' },
+  { code: '18-003', name: '华南积分商城' }
+]
+
+export const MOCK_SUPPLIERS = [
+  { code: 'SUP-001', name: '腾讯会员供应商' },
+  { code: 'SUP-002', name: '猫眼票务' },
+  { code: 'SUP-003', name: '百胜餐饮' },
+  { code: 'SUP-004', name: '京东慧采' },
+  { code: 'SUP-005', name: '盒马鲜生' }
+]
+
 export const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
   options.find((item) => item.value === value)?.label || '-'
 
@@ -63,3 +85,6 @@ export const formatMoney = (value?: number | null) => {
   if (value == null || Number.isNaN(Number(value))) return '¥0.00'
   return `¥${Number(value).toFixed(2)}`
 }
+
+export const canRefund = (status?: OrderStatus) => status === 'SUCCESS' || status === 'FAILED'
+export const canResend = (status?: OrderStatus) => status === 'FAILED'

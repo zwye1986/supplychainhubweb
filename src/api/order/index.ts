@@ -21,6 +21,10 @@ export const OrderApi = {
     if (USE_ORDER_MOCK) return OrderMockApi.getOrderPage(params)
     return await request.get({ url: '/supply-chain/orders', params })
   },
+  exportOrders: async (params: OrderPageParam) => {
+    if (USE_ORDER_MOCK) return OrderMockApi.exportOrders(params)
+    return await request.download({ url: '/supply-chain/orders/export', params })
+  },
   getOrder: async (orderNo: string) => {
     if (USE_ORDER_MOCK) return OrderMockApi.getOrder(orderNo)
     return await request.get({ url: `/supply-chain/orders/${orderNo}` })
