@@ -6,6 +6,7 @@
     append-to-body
     destroy-on-close
   >
+  <div class="p-16px">
     <div v-loading="loading">
       <div class="mb-16px flex items-center justify-between">
         <div class="flex items-center gap-12px">
@@ -123,7 +124,7 @@
 
 <script lang="ts" setup>
 import { OrderApi, OrderItemVO, OrderVO } from '@/api/order'
-import AfterSaleForm from '../components/AfterSaleForm.vue'
+import AfterSaleForm from '@/views/supplier/order/components/AfterSaleForm.vue'
 import {
   AFTER_SALE_STATUS_OPTIONS,
   LOGISTICS_STATUS_OPTIONS,

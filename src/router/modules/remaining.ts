@@ -1015,36 +1015,6 @@ const remainingRouter: AppRouteRecordRaw[] = [
   //   ]
   // },
   {
-    path: '/order',
-    component: Layout,
-    name: 'OrderManage',
-    meta: {
-      title: '订单管理',
-      icon: 'ep:document',
-      alwaysShow: true
-    },
-    children: [
-      {
-        path: 'platform',
-        name: 'OrderPlatform',
-        component: () => import('@/views/supplier/order/platform/index.vue'),
-        meta: { title: '平台订单', icon: 'ep:tickets' }
-      },
-      {
-        path: 'aftersale',
-        name: 'OrderAftersale',
-        component: () => import('@/views/supplier/order/aftersale/index.vue'),
-        meta: { title: '平台售后处理', icon: 'ep:refresh-left' }
-      },
-      {
-        path: 'supplier',
-        name: 'OrderSupplier',
-        component: () => import('@/views/supplier/order/supplier/index.vue'),
-        meta: { title: '供应商订单', icon: 'ep:box' }
-      }
-    ]
-  },
-  {
     path: '/im',
     name: 'Im',
     redirect: '/im/home/conversation',
