@@ -6,7 +6,6 @@
     <span class="text-[var(--el-color-danger)]">*</span>
     <el-input-number v-model="model.percentage" :controls="false" :min="0.01" :precision="2" class="!w-90px" />
     <span>%</span>
-    <span class="text-[var(--el-color-danger)]">*</span>
     <el-select v-model="model.operator" class="!w-80px" placeholder="请选择">
       <el-option v-for="item in FORMULA_OPERATOR_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
     </el-select>

@@ -10,7 +10,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="SPU编号" prop="spuCode">
-            <el-input v-model="formData.spuCode" placeholder="可自动生成或手动输入" />
+            <el-input v-model="formData.spuCode" disabled placeholder="由系统生成" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -33,7 +33,7 @@
         <el-col :span="12">
           <el-form-item label="商品状态">
             <el-select v-model="formData.status" clearable>
-              <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+              <el-option v-for="dict in getIntDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -185,7 +185,7 @@
     SuggestedSalePriceRule,
     SupplierSimpleInfo
   } from '@/api/product'
-  import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+  import { getDictLabel, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
   import { centsToYuan, formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
 
   defineOptions({ name: 'ProductListForm' })
@@ -222,7 +222,7 @@
     primaryCategoryId?: number
     productClassification?: string
     deliveryType?: string
-    status?: string
+    status?: number
     fulfillmentType?: string
     userLimitEnabled?: boolean
     userLimitPeriod?: string
@@ -243,6 +243,7 @@
   const brandList = ref<ProductBrandVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
+  const firstIntDictValue = (dictType: string) => getIntDictOptions(dictType)[0]?.value
 
   const createPriceRule = (): SuggestedSalePriceRule => ({
     mode: PRICE_RULE_MODE.CUSTOM,
@@ -282,7 +283,7 @@
     productClassification: undefined,
     sellableCategory: '',
     deliveryType: 'VIRTUAL',
-    status: firstDictValue('supply_chain_sku_status'),
+    status: firstIntDictValue('supply_chain_sku_status'),
     fulfillmentType: null,
     ...defaultLimit(),
     skus: [createSku()]
@@ -349,7 +350,7 @@
       productClassification: undefined,
       sellableCategory: firstDictValue('supply_chain_sellable_category'),
       deliveryType: 'VIRTUAL',
-      status: firstDictValue('supply_chain_sku_status'),
+      status: firstIntDictValue('supply_chain_sku_status'),
       fulfillmentType: null,
       ...defaultLimit(),
       skus: [createSku()]
@@ -425,6 +426,7 @@
         await ProductApi.updateProduct(formData.spuCode, payload)
         message.success('保存成功')
       } else {
+        delete payload.spuCode
         await ProductApi.createProduct(payload)
         message.success('保存成功')
       }

@@ -71,7 +71,6 @@
           <span class="text-[var(--el-color-danger)]">*</span>
           <el-input-number v-model="formData.serviceFeeRule.percentage" :controls="false" :min="0.01" :precision="2" class="!w-90px" @change="() => formRef?.validateField('serviceFeeRule')" />
           <span>%</span>
-          <span class="text-[var(--el-color-danger)]">*</span>
           <el-select v-model="formData.serviceFeeRule.operator" class="!w-80px" placeholder="请选择" @change="() => formRef?.validateField('serviceFeeRule')">
             <el-option v-for="item in FORMULA_OPERATOR_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -160,7 +159,7 @@
     salesRule: createFormulaRule('MARKET_PRICE'),
     serviceFeeRule: {
       percentage: undefined as number | undefined,
-      operator: undefined as FormulaRuleOperator | undefined,
+      operator: 'MULTIPLY',
       operand: undefined as number | undefined,
       hideCopy: false,
       copy: '配送、服务及其他费用：'
