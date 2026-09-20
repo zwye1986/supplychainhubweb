@@ -6,7 +6,7 @@
           <div class="mb-8px flex items-center gap-10px">
             <span class="truncate text-20px font-700">{{ detail.spuName || '商品详情' }}</span>
             <el-tag size="small">
-              {{ getDictLabel('supply_chain_product_status', detail.status) || '-' }}
+              {{ getDictLabel('supply_chain_sku_status', detail.status) || '-' }}
             </el-tag>
           </div>
           <div class="text-13px text-gray-500">SPU：{{ detail.spuCode || '-' }}</div>

@@ -41,7 +41,7 @@
       </el-form-item>
       <el-form-item label="商品状态" prop="status">
         <el-select v-model="queryParams.status" clearable>
-            <el-option v-for="dict in getIntDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+            <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="更新时间">
@@ -184,7 +184,7 @@
     PRODUCT_STATUS,
     SupplierSimpleInfo
   } from '@/api/product'
-  import { getDictLabel, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
+  import { getDictLabel, getStrDictOptions } from '@/utils/dict'
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
   import ProductPriceDialog from './components/PriceDialog.vue'
@@ -221,7 +221,7 @@
     supplyPriceMax: undefined as string | undefined,
     supplierCode: undefined as string | undefined,
     fulfillmentType: undefined as string | undefined,
-    status: undefined as number | undefined,
+    status: undefined as string | undefined,
     updateTimeStart: undefined as string | undefined,
     updateTimeEnd: undefined as string | undefined
   })
@@ -308,7 +308,9 @@
         productType: queryParams.productType,
         categoryId: queryParams.categoryId,
         brandId: queryParams.brandId,
-        status: queryParams.status,
+        status: queryParams.status != null && queryParams.status !== '' && /^\d+$/.test(queryParams.status)
+          ? Number(queryParams.status)
+          : queryParams.status,
         fulfillmentType: queryParams.fulfillmentType,
         supplierCode: queryParams.supplierCode,
         marketPriceMin: toFen(queryParams.marketPriceMin),

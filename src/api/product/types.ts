@@ -186,6 +186,12 @@ export interface SpuSaveReqVO {
   fulfillmentType: string
   deliveryType?: string
   status?: number
+  userLimitEnabled?: boolean
+  userLimitPeriod?: string
+  userLimitQuantity?: number
+  phoneBindLimitEnabled?: boolean
+  phoneBindLimitPeriod?: string
+  phoneBindLimitQuantity?: number
   skus: SkuItemSaveReqVO[]
 }
 
@@ -209,6 +215,12 @@ export interface SpuDetail {
   fulfillmentType?: string
   deliveryType?: string
   status?: number
+  userLimitEnabled?: boolean
+  userLimitPeriod?: string
+  userLimitQuantity?: number
+  phoneBindLimitEnabled?: boolean
+  phoneBindLimitPeriod?: string
+  phoneBindLimitQuantity?: number
   skus?: SkuDetail[]
   createdAt?: string
   updatedAt?: string

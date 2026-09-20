@@ -32,14 +32,19 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="商品状态">
-            <el-select v-model="formData.status" clearable>
-              <el-option v-for="dict in getIntDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+            <el-select v-model="formData.status" clearable placeholder="请选择">
+              <el-option
+                v-for="dict in getStrDictOptions('supply_chain_sku_status')"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
+              />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="兑换方式" prop="">
-            <el-select v-model="formData.fulfillmentType" clearable placeholder="请选择兑换方式">
+            <el-select v-model="formData.fulfillmentType" clearable placeholder="请选择兑换方式" @change="onFulfillmentTypeChange">
               <el-option v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
@@ -150,7 +155,7 @@
           <el-input-number :controls="false" v-if="formData.userLimitEnabled" v-model="formData.userLimitQuantity" :min="1" :precision="0" />
         </div>
       </el-form-item>
-      <el-form-item label="每个订单限购">
+      <el-form-item v-if="!isCardFulfillment" label="绑定手机号限购">
         <div class="flex flex-wrap items-center gap-8px">
           <el-checkbox v-model="formData.phoneBindLimitEnabled">开启</el-checkbox>
           <span v-if="formData.phoneBindLimitEnabled">限购绑定手机号数量</span>
@@ -185,7 +190,7 @@
     SuggestedSalePriceRule,
     SupplierSimpleInfo
   } from '@/api/product'
-  import { getDictLabel, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
+  import { getDictLabel, getStrDictOptions } from '@/utils/dict'
   import { centsToYuan, formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
 
   defineOptions({ name: 'ProductListForm' })
@@ -222,12 +227,13 @@
     primaryCategoryId?: number
     productClassification?: string
     deliveryType?: string
-    status?: number
+    status?: string
     fulfillmentType?: string
     userLimitEnabled?: boolean
     userLimitPeriod?: string
     userLimitQuantity?: number
     phoneBindLimitEnabled?: boolean
+    phoneBindLimitPeriod?: string
     phoneBindLimitQuantity?: number
     skus: SkuFormItem[]
   }
@@ -243,7 +249,9 @@
   const brandList = ref<ProductBrandVO[]>([])
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
-  const firstIntDictValue = (dictType: string) => getIntDictOptions(dictType)[0]?.value
+  const PRODUCT_STATUS_DICT = 'supply_chain_sku_status'
+  const toStatusDictValue = (status?: string | number | null) =>
+    status == null || status === '' ? firstDictValue(PRODUCT_STATUS_DICT) : String(status)
 
   const createPriceRule = (): SuggestedSalePriceRule => ({
     mode: PRICE_RULE_MODE.CUSTOM,
@@ -283,7 +291,7 @@
     productClassification: undefined,
     sellableCategory: '',
     deliveryType: 'VIRTUAL',
-    status: firstIntDictValue('supply_chain_sku_status'),
+    status: firstDictValue('supply_chain_sku_status'),
     fulfillmentType: null,
     ...defaultLimit(),
     skus: [createSku()]
@@ -295,6 +303,25 @@
       formData.deliveryType = val ? 'VIRTUAL' : undefined
     }
   })
+
+  const isCardFulfillment = computed(() => {
+    const type = formData.fulfillmentType
+    if (type == null || type === '') return false
+    const code = String(type).toUpperCase()
+    if (['CARD', 'CARD_SECRET', 'CARD_CODE', 'CARD_PWD', 'CARD_KEY', 'CARD_PIN', 'CDK'].includes(code)) {
+      return true
+    }
+    const text = `${getDictLabel('supply_chain_fulfillment_type', type) || ''} ${type}`
+    return /卡号|卡密/.test(text)
+  })
+
+  const disablePhoneBindLimit = () => {
+    formData.phoneBindLimitEnabled = false
+  }
+
+  const onFulfillmentTypeChange = () => {
+    if (isCardFulfillment.value) disablePhoneBindLimit()
+  }
 
   const skuRequiredRules = [{ required: true, message: '该项为必填项', trigger: 'blur' }]
   const formRules = {
@@ -350,7 +377,7 @@
       productClassification: undefined,
       sellableCategory: firstDictValue('supply_chain_sellable_category'),
       deliveryType: 'VIRTUAL',
-      status: firstIntDictValue('supply_chain_sku_status'),
+      status: firstDictValue('supply_chain_sku_status'),
       fulfillmentType: null,
       ...defaultLimit(),
       skus: [createSku()]
@@ -406,9 +433,11 @@
       const data = await ProductApi.getProduct(spuCode)
       Object.assign(formData, {
         ...data,
+        status: toStatusDictValue(data.status),
         skus: (data.skus || []).map(mapSkuToForm)
       })
       if (!formData.skus?.length) formData.skus = [createSku()]
+      if (isCardFulfillment.value) disablePhoneBindLimit()
     } finally {
       formLoading.value = false
     }
@@ -420,8 +449,22 @@
     try {
       const payload = {
         ...formData,
+        status:
+          formData.status != null && formData.status !== '' && /^\d+$/.test(formData.status)
+            ? Number(formData.status)
+            : formData.status,
+        userLimitEnabled: !!formData.userLimitEnabled,
+        phoneBindLimitEnabled: isCardFulfillment.value ? false : !!formData.phoneBindLimitEnabled,
         skus: formData.skus.map(toSkuSaveItem)
       } as SpuSaveReqVO
+      if (!payload.userLimitEnabled) {
+        delete payload.userLimitPeriod
+        delete payload.userLimitQuantity
+      }
+      if (!payload.phoneBindLimitEnabled) {
+        delete payload.phoneBindLimitPeriod
+        delete payload.phoneBindLimitQuantity
+      }
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)
         message.success('保存成功')
