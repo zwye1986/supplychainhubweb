@@ -68,7 +68,7 @@ export const XxxMockApi = {
   >
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
       <el-form-item label="名称" prop="name">
-        <el-input v-model="formData.name" maxlength="50" placeholder="请输入名称" />
+        <el-input v-model="formData.name" maxlength="50" placeholder="请输入名称" clearable />
       </el-form-item>
     </el-form>
     <template #footer>

@@ -124,6 +124,7 @@ export const XxxApi = {
 
 - `defineOptions({ name: 'PascalCaseName' })`
 - 列表搜索：`ContentWrap` + `el-form` `:inline="true"` `class="-mb-15px search-form"`
+- 可清空控件一律加 `clearable`：搜索栏和新增/编辑表单里的 `el-input`、`el-select`、`el-cascader`、`el-tree-select`、`el-date-picker`、`el-time-picker`、`el-autocomplete`（只读展示、开关、数字步进器、上传、富文本除外）
 - 按钮图标：`<Icon icon="ep:search" class="mr-5px" />`（refresh / plus / delete 同理）
 - 分页：`<Pagination v-model:page="queryParams.pageNo" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />`
 - 列表状态：直接模式（`loading` / `list` / `total` / `queryParams`），不要对供应链新页上 `useTable`，除非邻文件已经在用。
@@ -141,6 +142,23 @@ export const XxxApi = {
 供应链新模块用 **`el-dialog`，不用 `<Dialog>`**（`<Dialog>` 默认 fullscreen，存量 system 页才常用）。
 
 父页：`<XxxForm ref="formRef" @success="getList" />`，`formRef.value.open(id?)`。
+
+### 表单控件：必须 `clearable`
+
+搜索条件和弹窗表单里，只要控件支持清空，就写 `clearable`，不要等用户点「重置」。必填项同样加，清空后由校验拦截。
+
+```vue
+<el-input v-model="formData.name" maxlength="50" placeholder="请输入名称" clearable />
+<el-select v-model="formData.status" placeholder="请选择状态" clearable>
+  <el-option
+    v-for="dict in getStrDictOptions('supply_chain_supplier_status')"
+    :key="dict.value"
+    :label="dict.label"
+    :value="dict.value"
+  />
+</el-select>
+<el-date-picker v-model="queryParams.createTime" type="daterange" value-format="YYYY-MM-DD HH:mm:ss" clearable />
+```
 
 ### 列表骨架（直接模式）
 
@@ -254,7 +272,7 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - 订单金额若已是元：用该模块 `formatMoney`。
 - 不要把分直接当元显示。
 - 日期列：`dateFormatter`（`@/utils/formatTime`）。
-- 日期筛选：`el-date-picker` + `value-format`；接口要 ISO 时用 `YYYY-MM-DDTHH:mm:ss`，普通查询用 `YYYY-MM-DD HH:mm:ss`，跟已接接口保持一致。
+- 日期筛选：`el-date-picker` + `value-format` + `clearable`；接口要 ISO 时用 `YYYY-MM-DDTHH:mm:ss`，普通查询用 `YYYY-MM-DD HH:mm:ss`，跟已接接口保持一致。
 
 ## 六、路由
 
@@ -304,6 +322,7 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - 修改无关文件、新增 README、顺手重构邻模块
 - Windows 反斜杠路径
 - 详情/表单/提交对象逐字段赋值（`item.foo = src.foo`），代码拥堵
+- 可清空的输入框、下拉框、级联、日期时间漏写 `clearable`
 
 ## 对照范例
 
