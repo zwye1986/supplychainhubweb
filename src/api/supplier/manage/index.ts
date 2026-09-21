@@ -22,6 +22,8 @@ export type {
   OfferItemsReqVO,
   DraftReqVO,
   PatchOfferReqVO,
+  FulfillmentScoreSaveReqVO,
+  ScoreUpdateResult,
   NamedRef
 } from './types'
 
@@ -32,6 +34,8 @@ import type {
   OfferListItem,
   OfferPageParam,
   PatchOfferReqVO,
+  FulfillmentScoreSaveReqVO,
+  ScoreUpdateResult,
   SaveScopesReqVO,
   InvoiceSaveReqVO,
   SupplierInvoiceView,
@@ -39,7 +43,7 @@ import type {
   SupplierProductVO,
   SupplierSaveReqVO,
   SupplierSupplyConfigVO,
-  SupplierSupplyScopeDO
+  SupplyScopeView
 } from './types'
 
 export const SupplierApi = {
@@ -114,7 +118,7 @@ export const SupplierApi = {
 
   /** 查询供货配置：GET /suppliers/{supplierCode}/supply-scopes */
   getSupplyScopes: async (supplierCode: string) => {
-    return await request.get<SupplierSupplyScopeDO[]>({
+    return await request.get<SupplyScopeView[]>({
       url: `/supply-chain/suppliers/${supplierCode}/supply-scopes`
     })
   },
@@ -146,7 +150,7 @@ export const SupplierApi = {
     })
   },
 
-  /** 批量新增合作商品：POST /suppliers/{supplierCode}/offers */
+  /** 批量新增合作商品：POST /suppliers/{supplierCode}/offers，body.items 优先，新增即 PUBLISHED */
   createOffers: async (supplierCode: string, data: OfferItemsReqVO) => {
     return await request.post<string[]>({
       url: `/supply-chain/suppliers/${supplierCode}/offers`,
@@ -154,10 +158,18 @@ export const SupplierApi = {
     })
   },
 
-  /** 编辑合作商品：PUT /suppliers/{supplierCode}/offers/{offerNo} */
+  /** 编辑合作商品：PUT /suppliers/{supplierCode}/offers/{offerNo}，不提交评分 */
   updateOffer: async (supplierCode: string, offerNo: string, data: DraftReqVO) => {
     return await request.put<boolean>({
       url: `/supply-chain/suppliers/${supplierCode}/offers/${offerNo}`,
+      data
+    })
+  },
+
+  /** 保存履约能力评分：PUT /suppliers/{supplierCode}/fulfillment-scores */
+  saveFulfillmentScores: async (supplierCode: string, data: FulfillmentScoreSaveReqVO) => {
+    return await request.put<ScoreUpdateResult>({
+      url: `/supply-chain/suppliers/${supplierCode}/fulfillment-scores`,
       data
     })
   },

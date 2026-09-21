@@ -93,7 +93,7 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <el-tabs v-model="activeTab" class="mt-16px">
+      <el-tabs v-model="activeTab" class="mt-16px" @tab-change="handleTabChange">
         <el-tab-pane label="基础信息" name="basic">
           <el-form :model="supplier" label-width="140px">
             <el-divider content-position="left">基础信息</el-divider>
@@ -307,7 +307,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="合作商品" name="product" lazy>
-          <ProductList v-if="supplierCode" :supplier-code="supplierCode" />
+          <ProductList ref="productListRef" v-if="supplierCode" :supplier-code="supplierCode" />
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -340,6 +340,7 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const supplier = ref<SupplierVO>({} as SupplierVO)
+const productListRef = ref<InstanceType<typeof ProductList>>()
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
@@ -442,6 +443,12 @@ const handleStatusChange = async (status: string) => {
 const handleClosed = () => {
   supplier.value = {} as SupplierVO
   activeTab.value = 'basic'
+}
+
+const handleTabChange = async (name: string | number) => {
+  if (name !== 'product') return
+  await nextTick()
+  await productListRef.value?.reload?.()
 }
 
 defineExpose({ reload: getDetail })

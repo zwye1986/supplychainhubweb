@@ -9,12 +9,12 @@
       <el-table-column label="可售品类" min-width="150">
         <template #default="{ row }">
           <el-select
-            v-model="row.categoryL1Id"
+            v-model="row.sellableCategory"
             placeholder="请选择可售品类"
             filterable
             clearable
             class="!w-full"
-            @change="() => handleCategoryL1Change(row)"
+            @change="() => handleSellableCategoryChange(row)"
           >
             <el-option
               v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
@@ -28,22 +28,22 @@
       <el-table-column label="商品类型" min-width="140">
         <template #default="{ row }">
           <ProductType
-            v-model="row.categoryL2Id"
+            v-model="row.productType"
             :multiple="false"
             filterable
             class="!w-full"
-            :disabled="!row.categoryL1Id"
-            @change="() => handleCategoryL2Change(row)"
+            :disabled="!row.sellableCategory"
+            @change="() => handleProductTypeChange(row)"
           />
         </template>
       </el-table-column>
       <el-table-column label="商品分类" min-width="150">
         <template #default="{ row }">
           <ProductCategory
-            v-model="row.categoryL3Id"
+            v-model="row.productClassification"
             class="!w-full"
-            :disabled="!row.categoryL2Id"
-            @change="() => handleCategoryL3Change(row)"
+            :disabled="!row.productType"
+            @change="() => handleProductClassificationChange(row)"
           />
         </template>
       </el-table-column>
@@ -56,7 +56,7 @@
             collapse-tags
             collapse-tags-tooltip
             class="!w-full"
-            :disabled="!row.categoryL3Id"
+            :disabled="!row.productClassification"
           >
             <el-option
               v-for="dict in getStrDictOptions('supply_chain_supply_mode')"
@@ -132,19 +132,26 @@ const loading = ref(false)
 const saving = ref(false)
 
 /** 表格行：保存字段 + 查询带回的名称 */
-type SupplyScopeRow = Partial<Pick<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' | 'categoryL3Id'>> &
-  Omit<ScopeReqVO, 'categoryL1Id' | 'categoryL2Id' | 'categoryL3Id'> &
-  Pick<SupplyScopeView, 'id' | 'categoryL1Name' | 'categoryL2Name' | 'categoryL3Name'>
+type SupplyScopeRow = Partial<
+  Pick<ScopeReqVO, 'sellableCategory' | 'productType' | 'productClassification'>
+> &
+  Omit<ScopeReqVO, 'sellableCategory' | 'productType' | 'productClassification'> &
+  Pick<SupplyScopeView, 'id'>
 
 const list = ref<SupplyScopeRow[]>([])
 
 const DEFAULT_MAX_QUANTITY = 9999999
 const DEFAULT_MIN_QUANTITY = 1
 
+const toScopeCode = (value?: string | number | null) => {
+  if (value == null || value === '') return undefined
+  return String(value)
+}
+
 const createEmptyRow = (): SupplyScopeRow => ({
-  categoryL1Id: undefined,
-  categoryL2Id: undefined,
-  categoryL3Id: undefined,
+  sellableCategory: undefined,
+  productType: undefined,
+  productClassification: undefined,
   supplyModes: [],
   maxQuantity: DEFAULT_MAX_QUANTITY,
   minQuantity: DEFAULT_MIN_QUANTITY
@@ -156,11 +163,11 @@ const hasSupplyMode = (row: SupplyScopeRow) => {
 
 /** 同一供应商下品类组合：可售品类 + 商品类型 + 商品分类 */
 const getComboKey = (row: SupplyScopeRow) => {
-  return [row.categoryL1Id ?? '', row.categoryL2Id ?? '', row.categoryL3Id ?? ''].join('|')
+  return [row.sellableCategory ?? '', row.productType ?? '', row.productClassification ?? ''].join('|')
 }
 
 const isComboDuplicated = (current: SupplyScopeRow) => {
-  if (!current.categoryL1Id || !current.categoryL2Id || !current.categoryL3Id) return false
+  if (!current.sellableCategory || !current.productType || !current.productClassification) return false
   const key = getComboKey(current)
   return list.value.some((item) => item !== current && getComboKey(item) === key)
 }
@@ -169,28 +176,22 @@ const alertConflict = async () => {
   await message.alert('同一供应商下品类组合不可重复，请检查冲突配置')
 }
 
-const handleCategoryL1Change = (row: SupplyScopeRow) => {
-  row.categoryL1Name = undefined
-  row.categoryL2Id = undefined
-  row.categoryL2Name = undefined
-  row.categoryL3Id = undefined
-  row.categoryL3Name = undefined
+const handleSellableCategoryChange = (row: SupplyScopeRow) => {
+  row.productType = undefined
+  row.productClassification = undefined
   row.supplyModes = []
 }
 
-const handleCategoryL2Change = (row: SupplyScopeRow) => {
-  row.categoryL2Name = undefined
-  row.categoryL3Id = undefined
-  row.categoryL3Name = undefined
+const handleProductTypeChange = (row: SupplyScopeRow) => {
+  row.productClassification = undefined
   row.supplyModes = []
 }
 
-const handleCategoryL3Change = async (row: SupplyScopeRow) => {
-  row.categoryL3Name = undefined
+const handleProductClassificationChange = async (row: SupplyScopeRow) => {
   row.supplyModes = []
   if (isComboDuplicated(row)) {
     await alertConflict()
-    row.categoryL3Id = undefined
+    row.productClassification = undefined
   }
 }
 
@@ -225,12 +226,9 @@ const parseSupplyModes = (item: SupplierSupplyScopeDO & SupplyScopeView) => {
 const normalizeRow = (item: SupplierSupplyScopeDO & SupplyScopeView): SupplyScopeRow => ({
   ...createEmptyRow(),
   id: item.id,
-  categoryL1Id: item.categoryL1Id,
-  categoryL1Name: item.categoryL1Name,
-  categoryL2Id: item.categoryL2Id,
-  categoryL2Name: item.categoryL2Name,
-  categoryL3Id: item.categoryL3Id,
-  categoryL3Name: item.categoryL3Name,
+  sellableCategory: toScopeCode(item.sellableCategory ?? item.categoryL1Id),
+  productType: toScopeCode(item.productType ?? item.categoryL2Id),
+  productClassification: toScopeCode(item.productClassification ?? item.categoryL3Id),
   supplyModes: parseSupplyModes(item),
   maxQuantity: item.maxQuantity ?? DEFAULT_MAX_QUANTITY,
   minQuantity: item.minQuantity ?? DEFAULT_MIN_QUANTITY
@@ -240,15 +238,15 @@ const validateRows = async () => {
   for (let i = 0; i < list.value.length; i++) {
     const row = list.value[i]
     const rowNo = i + 1
-    if (!row.categoryL1Id) {
+    if (!row.sellableCategory) {
       message.warning(`第 ${rowNo} 行请先选择可售品类`)
       return false
     }
-    if (!row.categoryL2Id) {
+    if (!row.productType) {
       message.warning(`第 ${rowNo} 行需依次选择商品类型`)
       return false
     }
-    if (!row.categoryL3Id) {
+    if (!row.productClassification) {
       message.warning(`第 ${rowNo} 行需依次选择商品分类`)
       return false
     }
@@ -292,9 +290,9 @@ const loadData = async () => {
 }
 
 const toScopeLine = (row: SupplyScopeRow): ScopeReqVO => ({
-  categoryL1Id: row.categoryL1Id,
-  categoryL2Id: row.categoryL2Id,
-  categoryL3Id: row.categoryL3Id,
+  sellableCategory: row.sellableCategory || '',
+  productType: row.productType || '',
+  productClassification: row.productClassification || '',
   supplyModes: row.supplyModes || [],
   maxQuantity: row.maxQuantity ?? 0,
   minQuantity: row.minQuantity ?? 0

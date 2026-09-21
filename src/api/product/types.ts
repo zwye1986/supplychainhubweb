@@ -140,7 +140,7 @@ export interface ProductManagementPageParam {
   tabCode?: string
   keyword?: string
   productType?: string
-  categoryId?: number
+  categoryId?: number | number[] | string
   brandId?: number | string
   status?: number
   unshelveMode?: string

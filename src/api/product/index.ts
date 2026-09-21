@@ -204,7 +204,12 @@ export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
 
 export const ProductApi = {
   getProductPage: async (params: ProductManagementPageParam) => {
-    return await request.get({ url: '/supply-chain/products/management-page', params })
+    const query = { ...params } as Record<string, unknown>
+    if (Array.isArray(params.categoryId)) {
+      const ids = params.categoryId.filter((id) => id != null && `${id}` !== '')
+      query.categoryId = ids.length ? ids.join(',') : undefined
+    }
+    return await request.get({ url: '/supply-chain/products/management-page', params: query })
   },
   getProduct: async (spuCode: string) => {
     return await request.get({ url: `/supply-chain/products/spus/${spuCode}` })

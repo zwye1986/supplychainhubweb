@@ -43,6 +43,11 @@ export interface SupplierSaveReqVO {
 /** 供货配置视图（接口 SupplyScopeView） */
 export interface SupplyScopeView {
   id?: number
+  sellableCategory?: string
+  productType?: string
+  productClassification?: string
+  /** 主类目内部主键 */
+  categoryId?: number
   categoryL1Id?: number
   categoryL1Name?: string
   categoryL2Id?: number
@@ -56,17 +61,17 @@ export interface SupplyScopeView {
 
 /** 保存供货配置行（接口 ScopeReqVO） */
 export interface ScopeReqVO {
-  /** 可售品类内部主键 */
-  categoryL1Id: number
-  /** 商品类型内部主键 */
-  categoryL2Id: number
-  /** 商品分类内部主键 */
-  categoryL3Id: number
+  /** 可售品类枚举名 */
+  sellableCategory: string
+  /** 动态商品类型编码 */
+  productType: string
+  /** 商品分类：字典枚举名或类目 categoryCode */
+  productClassification: string
   /** 供货模式枚举名列表，不可为空 */
   supplyModes: string[]
-  /** 单次最大数量 */
+  /** 供货上限 */
   maxQuantity: number
-  /** 单次最小数量 */
+  /** 允许最低起订量，预留字段 */
   minQuantity: number
 }
 
@@ -80,6 +85,9 @@ export interface SaveScopesReqVO {
 export interface SupplierSupplyScopeDO {
   id?: number
   supplierId?: number
+  sellableCategory?: string
+  productType?: string
+  productClassification?: string
   categoryL1Id?: number
   categoryL2Id?: number
   categoryL3Id?: number
@@ -157,47 +165,87 @@ export interface SupplierInvoiceVO extends SupplierInvoiceView {
 export interface OfferListItem {
   /** 供应商报价稳定业务编号 */
   offerNo?: string
+  /** 平台SPU永久业务编码 */
   platformSpuCode?: string
+  /** 平台SPU标准名称 */
   platformSpuName?: string
+  /** 平台SKU永久业务编码 */
   platformSkuCode?: string
+  /** 平台SKU标准名称 */
   platformSkuName?: string
-  categoryL1Id?: number
-  categoryL1Name?: string
-  categoryL2Id?: number
-  categoryL2Name?: string
-  categoryL3Id?: number
-  categoryL3Name?: string
-  /** L1 B端结算单价，CNY 分 */
+  /** 可售品类封闭枚举名 */
+  sellableCategory?: string
+  /** 动态商品类型编码 */
+  productType?: string
+  /** 商品分类封闭枚举名 */
+  productClassification?: string
+  /** L1 B端结算单价，CNY 分，允许0 */
   suggestPriceCents?: number
-  /** 供应价模式：FIXED / REALTIME / DISCOUNT */
+  /** 供应价模式：FIXED固定值，REALTIME实时，DISCOUNT折扣 */
   priceMode?: string
-  /** 草稿供应价，CNY 分；REALTIME 为空 */
+  /** 草稿供应价，CNY分；REALTIME为空 */
   unitPriceCents?: number
   /** 折扣基点，10000=100% */
   discountBp?: number
   /** 该 Offer 供货模式 */
   offerSupplyMode?: string
+  /** 草稿供货上限 */
   maxQuantity?: number
+  /** 草稿最低起购量 */
   minQuantity?: number
-  /** 生命周期：PUBLISHED 已发布，SUSPENDED 暂停 */
+  /** 稳定性评分，人工录入，0-100 */
+  stabilityScore?: number
+  /** 时效性评分，人工录入，0-100 */
+  timelinessScore?: number
+  /** 是否含税 */
+  taxIncluded?: boolean
+  /** 税率编码 */
+  taxRateCode?: string
+  /** 生命周期：PUBLISHED已发布，SUSPENDED暂停 */
   status?: string
 }
 
 /** 合作商品行（接口 DraftReqVO） */
 export interface DraftReqVO {
+  /** 平台 SKU 永久业务编码 */
   platformSkuCode: string
+  /** 供应价模式：FIXED固定值，REALTIME实时，DISCOUNT折扣 */
   priceMode: string
+  /** 草稿供应价，CNY 分；REALTIME 为空 */
   unitPriceCents?: number
+  /** 折扣基点，10000=100% */
   discountBp?: number
+  /** L1 B端结算单价，CNY 分，允许 0 */
   suggestedPriceCents?: number
+  /** 该 Offer 供货模式 */
   supplyMode: string
+  /** 草稿供货上限，空则继承供货配置 */
   maxQuantity?: number
+  /** 草稿最低起购量，空则取 1，不继承供货配置预留字段 */
   minQuantity?: number
 }
 
-/** 批量新增合作商品（接口 OfferItemsReqVO） */
+/** 履约能力评分保存（接口 FulfillmentScoreSaveReqVO） */
+export interface FulfillmentScoreSaveReqVO {
+  /** 稳定性评分，人工录入，0-100 */
+  stabilityScore?: number
+  /** 时效性评分，人工录入，0-100 */
+  timelinessScore?: number
+  /** 平台SKU永久业务编码列表；省略则覆盖该供应商全部未退役 Offer */
+  platformSkuCodes?: string[]
+}
+
+/** 履约能力评分更新结果 */
+export interface ScoreUpdateResult {
+  /** 本次更新的未退役 Offer 行数 */
+  updatedCount?: number
+}
+
+/** 批量新增合作商品（接口 OfferItemsReqVO，items 优先，兼容 lines） */
 export interface OfferItemsReqVO {
+  /** 合作商品行，优先于 lines */
   items?: DraftReqVO[]
+  /** 兼容 batch-draft 的 lines */
   lines?: DraftReqVO[]
 }
 
@@ -211,15 +259,17 @@ export interface PatchOfferReqVO {
 export interface OfferPageParam {
   pageNo?: number
   pageSize?: number
-  categoryL1Id?: number
-  categoryL2Id?: number
-  categoryL3Id?: number
+  sellableCategory?: string
+  productType?: string
+  productClassification?: string
 }
 
 /** 合作商品表单行（列表展示字段 + 草稿提交字段） */
 export interface OfferFormItem extends OfferListItem {
   supplyMode?: string
   suggestedPriceCents?: number
+  taxIncluded?: boolean
+  taxRateCode?: string
 }
 
 /** 合作商品（表单/详情旧结构，逐步迁移） */

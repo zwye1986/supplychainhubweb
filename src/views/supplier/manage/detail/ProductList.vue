@@ -13,7 +13,10 @@
           {{ tag.label }}
         </button>
       </div>
-      <el-button type="primary" round @click="openSelectDialog">+新增商品</el-button>
+      <div class="flex items-center gap-10px">
+        <el-button :disabled="!selectedRows.length" @click="openBatchScore">批量修改评分</el-button>
+        <el-button type="primary" round @click="openSelectDialog">+新增商品</el-button>
+      </div>
     </div>
 
     <el-alert class="mb-12px" type="info" :closable="false" title="供应价模式说明">
@@ -24,18 +27,27 @@
       </div>
     </el-alert>
 
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+    <el-table
+      ref="tableRef"
+      v-loading="loading"
+      :data="list"
+      :row-key="getRowKey"
+      :stripe="true"
+      :show-overflow-tooltip="true"
+      @selection-change="handleSelectionChange"
+    >
+      <el-table-column type="selection" width="48" :reserve-selection="true" />
       <el-table-column label="商品名称" prop="platformSpuName" min-width="140" />
       <el-table-column label="SKU规格" prop="platformSkuName" min-width="110" />
       <el-table-column label="SKU编号" prop="platformSkuCode" min-width="120" />
-      <el-table-column label="类型/分类" min-width="160">
+      <el-table-column label="类型/分类" min-width="180">
         <template #default="{ row }">
-          <div class="flex flex-wrap gap-4px">
-            <el-tag v-if="getTypeCategoryPath(row)" size="small" type="info">
-              {{ getTypeCategoryPath(row) }}
-            </el-tag>
-            <span v-else>-</span>
-          </div>
+          <el-tag v-if="row.productType || row.productClassification" size="small" type="info">
+            <ProductType v-if="row.productType" :model-value="row.productType" :multiple="false" text />
+            <template v-if="row.productType && row.productClassification"> / </template>
+            <ProductCategory v-if="row.productClassification" :model-value="row.productClassification" text />
+          </el-tag>
+          <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column label="销售建议价（元）" min-width="150" align="right">
@@ -63,6 +75,38 @@
       </el-table-column>
       <el-table-column label="供货上限" prop="maxQuantity" min-width="100" align="right" />
       <el-table-column label="最低起购量" prop="minQuantity" min-width="100" align="right" />
+      <el-table-column label="稳定性评分" min-width="130" align="center">
+        <template #default="{ row }">
+          <el-input-number
+            :controls="false"
+            v-model="row.stabilityScore"
+            :disabled="scoreSavingKey === getScoreKey(row, 'stabilityScore')"
+            placeholder="0-100"
+            class="!w-100px"
+            @click.stop
+            @change="
+              (val: number | undefined, oldVal: number | undefined) =>
+                handleScoreChange(row, 'stabilityScore', val, oldVal)
+            "
+          />
+        </template>
+      </el-table-column>
+      <el-table-column label="时效性评分" min-width="130" align="center">
+        <template #default="{ row }">
+          <el-input-number
+            :controls="false"
+            v-model="row.timelinessScore"
+            :disabled="scoreSavingKey === getScoreKey(row, 'timelinessScore')"
+            placeholder="0-100"
+            class="!w-100px"
+            @click.stop
+            @change="
+              (val: number | undefined, oldVal: number | undefined) =>
+                handleScoreChange(row, 'timelinessScore', val, oldVal)
+            "
+          />
+        </template>
+      </el-table-column>
       <el-table-column label="状态" min-width="90" align="center">
         <template #default="{ row }">
           <el-tag :type="getOfferStatusType(row.status)" size="small">
@@ -70,25 +114,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="120" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button
-            v-if="row.status === OfferStatusEnum.PUBLISHED"
-            link
-            type="warning"
-            @click="handlePatchStatus(row, OfferStatusEnum.SUSPENDED)"
-          >
-            下架
-          </el-button>
-          <el-button
-            v-else-if="row.status === OfferStatusEnum.SUSPENDED"
-            link
-            type="success"
-            @click="handlePatchStatus(row, OfferStatusEnum.PUBLISHED)"
-          >
-            上架
-          </el-button>
+          <el-button link type="primary" @click="openEdit(row)">改价</el-button>
           <el-button link type="danger" @click="handleDelete(row.offerNo)">移除</el-button>
         </template>
       </el-table-column>
@@ -101,21 +129,148 @@
     />
 
     <ProductSelectDialog ref="selectDialogRef" :supplier-code="supplierCode" @success="getList" />
+
+    <Dialog v-model="priceVisible" title="改价" width="560px">
+      <el-alert class="mb-12px" type="info" :closable="false">
+        校验价格与供货配置后更新，不修改评分。
+      </el-alert>
+      <el-form label-width="120px">
+        <el-form-item label="商品名称">{{ priceRow?.platformSpuName || '-' }}</el-form-item>
+        <el-form-item label="SKU规格">{{ priceRow?.platformSkuName || '-' }}</el-form-item>
+        <el-form-item label="SKU编号">{{ priceForm.platformSkuCode || '-' }}</el-form-item>
+        <el-form-item label="销售建议价">{{ formatCentsYuan(priceForm.suggestedPriceCents) }}</el-form-item>
+        <el-form-item label="供应价模式" required>
+          <el-select v-model="priceForm.priceMode" class="!w-full">
+            <el-option
+              v-for="item in priceModeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="priceForm.priceMode === OfferPriceModeEnum.FIXED"
+          label="供应价（元）"
+          required
+        >
+          <el-input-number
+            v-model="priceForm.unitPriceYuan"
+            :controls="false"
+            :min="0"
+            :precision="2"
+            placeholder="请输入供应价"
+            class="!w-full"
+          />
+        </el-form-item>
+        <el-form-item
+          v-else-if="priceForm.priceMode === OfferPriceModeEnum.DISCOUNT"
+          label="供货折扣(%)"
+          required
+        >
+          <el-input-number
+            v-model="priceForm.discountPercent"
+            :controls="false"
+            :min="0.01"
+            :max="100"
+            :precision="2"
+            placeholder="请输入折扣"
+            class="!w-full"
+          />
+        </el-form-item>
+        <el-form-item v-else label="供应价">
+          <el-input model-value="API实时获取" disabled />
+        </el-form-item>
+        <el-form-item label="供货模式" required>
+          <el-select v-model="priceForm.supplyMode" class="!w-full" placeholder="请选择供货模式">
+            <el-option
+              v-for="item in supplyModeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="供货上限">
+          <el-input-number
+            v-model="priceForm.maxQuantity"
+            :controls="false"
+            :min="1"
+            :precision="0"
+            placeholder="空则继承供货配置"
+            class="!w-full"
+          />
+        </el-form-item>
+        <el-form-item label="最低起购量">
+          <el-input-number
+            v-model="priceForm.minQuantity"
+            :controls="false"
+            :min="1"
+            :precision="0"
+            placeholder="空则取 1"
+            class="!w-full"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="priceVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="priceSubmitting" @click="submitPrice">确 定</el-button>
+      </template>
+    </Dialog>
+
+    <Dialog v-model="batchScoreVisible" title="批量修改评分" width="480px">
+      <el-alert class="mb-12px" type="info" :closable="false">
+        将覆盖已选 {{ selectedRows.length }} 个 SKU 的履约评分。未填写的项不会修改。
+      </el-alert>
+      <el-form
+        ref="batchScoreFormRef"
+        :model="batchScoreForm"
+        :rules="batchScoreRules"
+        label-width="120px"
+      >
+        <el-form-item label="稳定性评分" prop="stabilityScore">
+          <el-input-number
+            v-model="batchScoreForm.stabilityScore"
+            :controls="false"
+            placeholder="0-100，允许小数"
+            class="!w-full"
+          />
+        </el-form-item>
+        <el-form-item label="时效性评分" prop="timelinessScore">
+          <el-input-number
+            v-model="batchScoreForm.timelinessScore"
+            :controls="false"
+            placeholder="0-100，允许小数"
+            class="!w-full"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchScoreVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="batchScoreSubmitting" @click="submitBatchScore">确 定</el-button>
+      </template>
+    </Dialog>
   </ContentWrap>
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, OfferListItem } from '@/api/supplier/manage'
+import { SupplierApi, DraftReqVO, OfferListItem, SupplyScopeView } from '@/api/supplier/manage'
+import { ProductTypeApi } from '@/api/product'
 import {
+  OFFER_PRICE_MODE_OPTIONS,
   OfferPriceModeEnum,
-  OfferStatusEnum,
-  SUPPLIER_PRODUCT_FILTER_TAGS,
+  bpToPercent,
+  centsToYuan,
   formatCentsYuan,
   getOfferPriceModeLabel,
   getOfferStatusLabel,
   getOfferStatusType,
-  getSupplyModeLabel
+  getSupplyModeLabel,
+  percentToBp,
+  yuanToCents
 } from '@/views/supplier/utils/constants'
+import { getStrDictOptions } from '@/utils/dict'
+import type { FormInstance, FormRules } from 'element-plus'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 
 defineOptions({ name: 'SupplierProductList' })
@@ -128,22 +283,140 @@ const message = useMessage()
 const loading = ref(false)
 const list = ref<OfferListItem[]>([])
 const total = ref(0)
-const activeTag = ref('equity')
+const activeTag = ref('')
 const selectDialogRef = ref<InstanceType<typeof ProductSelectDialog>>()
+const tableRef = ref()
+const selectedRows = ref<OfferListItem[]>([])
+const scoreSavingKey = ref('')
+const batchScoreVisible = ref(false)
+const batchScoreSubmitting = ref(false)
+const batchScoreFormRef = ref<FormInstance>()
+const priceVisible = ref(false)
+const priceSubmitting = ref(false)
+const priceRow = ref<OfferListItem>()
 
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20
 })
 
-/** 顶部筛选：固定展示可售品类胶囊标签 */
-const categoryTags = SUPPLIER_PRODUCT_FILTER_TAGS
+const priceModeOptions = computed(() => {
+  const dict = getStrDictOptions('supply_chain_offer_price_mode')
+  return dict.length ? dict : OFFER_PRICE_MODE_OPTIONS
+})
+const supplyModeOptions = computed(() => getStrDictOptions('supply_chain_supply_mode'))
 
-const getTypeCategoryPath = (row: OfferListItem) => {
-  const typeName = row.categoryL2Name
-  const categoryName = row.categoryL3Name
-  if (typeName && categoryName) return `${typeName} / ${categoryName}`
-  return typeName || categoryName || ''
+const batchScoreForm = reactive({
+  stabilityScore: undefined as number | undefined,
+  timelinessScore: undefined as number | undefined
+})
+
+/** 履约评分：允许小数，必须在 0-100 之间 */
+const SCORE_RANGE_MESSAGE = '评分必须在0-100分之间'
+
+const parseScore = (value?: number | string | null) => {
+  if (value == null || value === '') return undefined
+  const num = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(num) || num < 0 || num > 100) return undefined
+  return num
+}
+
+const validateScoreField = (_rule: unknown, value: number | undefined, callback: (error?: Error) => void) => {
+  if (value == null) {
+    callback()
+    return
+  }
+  if (parseScore(value) == null) {
+    callback(new Error(SCORE_RANGE_MESSAGE))
+    return
+  }
+  callback()
+}
+
+const batchScoreRules: FormRules = {
+  stabilityScore: [{ validator: validateScoreField, trigger: ['blur', 'change'] }],
+  timelinessScore: [{ validator: validateScoreField, trigger: ['blur', 'change'] }]
+}
+
+const priceForm = reactive({
+  offerNo: '',
+  platformSkuCode: '',
+  priceMode: OfferPriceModeEnum.FIXED,
+  unitPriceYuan: undefined as number | undefined,
+  discountPercent: undefined as number | undefined,
+  suggestedPriceCents: undefined as number | undefined,
+  supplyMode: '',
+  maxQuantity: undefined as number | undefined,
+  minQuantity: undefined as number | undefined
+})
+
+/** 顶部筛选：来自供货配置的商品类型 */
+const categoryTags = ref<{ value: string; label: string }[]>([])
+
+const toScopeCode = (value?: string | number | null) => {
+  if (value == null || value === '') return ''
+  return String(value)
+}
+
+const lastSavedScores = new Map<string, { stabilityScore?: number; timelinessScore?: number }>()
+
+const getRowKey = (row: OfferListItem) => row.offerNo || row.platformSkuCode || ''
+
+const getScoreKey = (row: OfferListItem, field: 'stabilityScore' | 'timelinessScore') => {
+  return `${getRowKey(row)}-${field}`
+}
+
+const rememberRowScore = (row: OfferListItem) => {
+  const key = getRowKey(row)
+  if (!key) return
+  lastSavedScores.set(key, {
+    stabilityScore: row.stabilityScore,
+    timelinessScore: row.timelinessScore
+  })
+}
+
+const toDraftNumber = (value?: number | null) => {
+  if (value == null) return undefined
+  const num = Number(value)
+  return Number.isFinite(num) ? num : undefined
+}
+
+const loadCategoryTags = async () => {
+  if (!props.supplierCode) {
+    categoryTags.value = []
+    activeTag.value = ''
+    return
+  }
+  try {
+    const [data, typeList] = await Promise.all([
+      SupplierApi.getSupplyScopes(props.supplierCode),
+      ProductTypeApi.getTypeList()
+    ])
+    const typeNameMap = new Map(
+      (typeList || [])
+        .filter((item) => item.typeCode)
+        .map((item) => [item.typeCode as string, item.typeName || (item.typeCode as string)])
+    )
+    const seen = new Set<string>()
+    categoryTags.value = (data || []).reduce<{ value: string; label: string }[]>(
+      (tags, item: SupplyScopeView) => {
+        const value = toScopeCode(item.productType)
+        if (!value || seen.has(value)) return tags
+        seen.add(value)
+        tags.push({
+          value,
+          label: typeNameMap.get(value) || value
+        })
+        return tags
+      },
+      []
+    )
+  } catch {
+    categoryTags.value = []
+  }
+  if (!categoryTags.value.some((tag) => tag.value === activeTag.value)) {
+    activeTag.value = categoryTags.value[0]?.value || ''
+  }
 }
 
 /** 供应价展示：固定值取供应价；折扣取建议价×折扣基点；实时更新为 - */
@@ -166,30 +439,218 @@ const getList = async () => {
   try {
     const data = await SupplierApi.getOfferPage(props.supplierCode, {
       pageNo: queryParams.pageNo,
-      pageSize: queryParams.pageSize
+      pageSize: queryParams.pageSize,
+      productType: activeTag.value || undefined
     })
     list.value = data?.list || []
     total.value = data?.total || 0
+    lastSavedScores.clear()
+    list.value.forEach(rememberRowScore)
+    selectedRows.value = []
+    await nextTick()
+    tableRef.value?.clearSelection()
   } catch {
     list.value = []
     total.value = 0
+    selectedRows.value = []
   } finally {
     loading.value = false
   }
 }
 
+const handleSelectionChange = (rows: OfferListItem[]) => {
+  selectedRows.value = rows
+}
+
+const handleScoreChange = async (
+  row: OfferListItem,
+  field: 'stabilityScore' | 'timelinessScore',
+  value?: number,
+  previous?: number
+) => {
+  const saved = lastSavedScores.get(getRowKey(row))
+  const previousValue = previous ?? saved?.[field]
+  if (value === previousValue) return
+  if (!row.platformSkuCode) {
+    row[field] = previousValue
+    message.warning('缺少平台 SKU 编号，无法保存评分')
+    return
+  }
+  if (value == null) {
+    row[field] = previousValue
+    return
+  }
+  const score = parseScore(value)
+  if (score == null) {
+    row[field] = previousValue
+    message.warning(SCORE_RANGE_MESSAGE)
+    return
+  }
+  const savingKey = getScoreKey(row, field)
+  scoreSavingKey.value = savingKey
+  try {
+    await SupplierApi.saveFulfillmentScores(props.supplierCode, {
+      [field]: score,
+      platformSkuCodes: [row.platformSkuCode]
+    })
+    rememberRowScore(row)
+    message.success('评分已保存')
+  } catch {
+    row[field] = previousValue
+  } finally {
+    if (scoreSavingKey.value === savingKey) scoreSavingKey.value = ''
+  }
+}
+
+const openBatchScore = async () => {
+  if (!selectedRows.value.length) {
+    message.warning('请先选择要修改评分的商品')
+    return
+  }
+  batchScoreForm.stabilityScore = undefined
+  batchScoreForm.timelinessScore = undefined
+  batchScoreVisible.value = true
+  await nextTick()
+  batchScoreFormRef.value?.clearValidate()
+}
+
+const submitBatchScore = async () => {
+  if (!selectedRows.value.length) {
+    message.warning('请先选择要修改评分的商品')
+    return
+  }
+  const valid = await batchScoreFormRef.value?.validate().catch(() => false)
+  if (valid === false) return
+  const stabilityScore = parseScore(batchScoreForm.stabilityScore)
+  const timelinessScore = parseScore(batchScoreForm.timelinessScore)
+  if (stabilityScore == null && timelinessScore == null) {
+    message.warning('请至少填写一项评分')
+    return
+  }
+  if (batchScoreForm.stabilityScore != null && stabilityScore == null) {
+    message.warning(SCORE_RANGE_MESSAGE)
+    return
+  }
+  if (batchScoreForm.timelinessScore != null && timelinessScore == null) {
+    message.warning(SCORE_RANGE_MESSAGE)
+    return
+  }
+  const platformSkuCodes = [
+    ...new Set(selectedRows.value.map((row) => row.platformSkuCode).filter((code): code is string => !!code))
+  ]
+  if (!platformSkuCodes.length) {
+    message.error('选中商品缺少平台 SKU 编号，无法批量修改评分')
+    return
+  }
+  batchScoreSubmitting.value = true
+  try {
+    const data = await SupplierApi.saveFulfillmentScores(props.supplierCode, {
+      ...(stabilityScore != null ? { stabilityScore } : {}),
+      ...(timelinessScore != null ? { timelinessScore } : {}),
+      platformSkuCodes
+    })
+    message.success(`已更新 ${data?.updatedCount ?? platformSkuCodes.length} 个商品评分`)
+    batchScoreVisible.value = false
+    await getList()
+  } finally {
+    batchScoreSubmitting.value = false
+  }
+}
+
 const handleTagChange = (value: string) => {
+  if (activeTag.value === value) return
   activeTag.value = value
   queryParams.pageNo = 1
   getList()
 }
 
 const openSelectDialog = () => {
-  selectDialogRef.value?.open('create')
+  selectDialogRef.value?.open()
 }
 
 const openEdit = (row: OfferListItem) => {
-  selectDialogRef.value?.open('update', row)
+  if (!row.offerNo) {
+    message.error('缺少合作商品编号，暂无法改价')
+    return
+  }
+  if (!row.platformSkuCode) {
+    message.error('缺少平台 SKU 编号，暂无法改价')
+    return
+  }
+  priceRow.value = row
+  priceForm.offerNo = row.offerNo
+  priceForm.platformSkuCode = row.platformSkuCode
+  priceForm.priceMode = row.priceMode || OfferPriceModeEnum.FIXED
+  priceForm.unitPriceYuan = centsToYuan(row.unitPriceCents)
+  priceForm.discountPercent = bpToPercent(row.discountBp)
+  priceForm.suggestedPriceCents = row.suggestPriceCents
+  priceForm.supplyMode = row.offerSupplyMode || ''
+  priceForm.maxQuantity = row.maxQuantity
+  priceForm.minQuantity = row.minQuantity
+  priceVisible.value = true
+}
+
+const submitPrice = async () => {
+  if (!props.supplierCode) {
+    message.error('缺少供应商编号，暂无法改价')
+    return
+  }
+  if (!priceForm.offerNo) {
+    message.error('缺少合作商品编号，暂无法改价')
+    return
+  }
+  if (!priceForm.platformSkuCode) {
+    message.warning('缺少平台 SKU 编号')
+    return
+  }
+  if (!priceForm.priceMode) {
+    message.warning('请选择供应价模式')
+    return
+  }
+  if (!priceForm.supplyMode) {
+    message.warning('请选择供货模式')
+    return
+  }
+  const payload: DraftReqVO = {
+    platformSkuCode: priceForm.platformSkuCode,
+    priceMode: priceForm.priceMode,
+    supplyMode: priceForm.supplyMode
+  }
+  if (priceForm.priceMode === OfferPriceModeEnum.FIXED) {
+    const unitPriceCents = yuanToCents(priceForm.unitPriceYuan)
+    if (!unitPriceCents || unitPriceCents <= 0) {
+      message.warning('固定值模式下供应价必须大于 0')
+      return
+    }
+    payload.unitPriceCents = unitPriceCents
+  } else if (priceForm.priceMode === OfferPriceModeEnum.DISCOUNT) {
+    const percent = priceForm.discountPercent || 0
+    if (percent < 0.01 || percent > 100) {
+      message.warning('供货折扣需在 0.01%~100% 之间')
+      return
+    }
+    const discountBp = percentToBp(percent)
+    if (discountBp != null) payload.discountBp = discountBp
+  }
+  const suggestedPriceCents = toDraftNumber(priceForm.suggestedPriceCents)
+  if (suggestedPriceCents != null) payload.suggestedPriceCents = suggestedPriceCents
+  const maxQuantity = toDraftNumber(priceForm.maxQuantity)
+  if (maxQuantity != null && maxQuantity > 0) payload.maxQuantity = maxQuantity
+  const minQuantity = toDraftNumber(priceForm.minQuantity)
+  if (minQuantity != null && minQuantity > 0) payload.minQuantity = minQuantity
+  if (payload.maxQuantity && payload.minQuantity && payload.maxQuantity < payload.minQuantity) {
+    message.warning('供货上限不能小于最低起购量')
+    return
+  }
+  priceSubmitting.value = true
+  try {
+    await SupplierApi.updateOffer(props.supplierCode, priceForm.offerNo, payload)
+    message.success('改价成功')
+    priceVisible.value = false
+    await getList()
+  } finally {
+    priceSubmitting.value = false
+  }
 }
 
 const handleDelete = async (offerNo?: string) => {
@@ -202,26 +663,19 @@ const handleDelete = async (offerNo?: string) => {
   } catch {}
 }
 
-const handlePatchStatus = async (row: OfferListItem, status: string) => {
-  if (!row.offerNo) return
-  const actionText = status === OfferStatusEnum.SUSPENDED ? '下架' : '上架'
-  try {
-    await message.confirm(`确认${actionText}该合作商品吗？`, `${actionText}确认`)
-    await SupplierApi.patchOffer(props.supplierCode, row.offerNo, { status })
-    message.success(`${actionText}成功`)
-    await getList()
-  } catch {}
+const reload = async () => {
+  queryParams.pageNo = 1
+  await loadCategoryTags()
+  await getList()
 }
 
 watch(
   () => props.supplierCode,
-  async () => {
-    queryParams.pageNo = 1
-    activeTag.value = categoryTags[0]?.value || 'equity'
-    await getList()
-  },
+  () => reload(),
   { immediate: true }
 )
+
+defineExpose({ reload })
 </script>
 
 <style scoped>

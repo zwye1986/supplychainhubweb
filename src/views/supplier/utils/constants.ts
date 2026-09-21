@@ -1,3 +1,5 @@
+import { getDictLabel } from '@/utils/dict'
+
 /** 供应商合作状态（接口枚举名） */
 export const SupplierStatusEnum = {
   NORMAL: 'ACTIVE', // 正常合作
@@ -292,7 +294,12 @@ export const getSupplyPriceModeLabel = (value?: number): string => {
 
 /** 获取合作商品供应价模式文案（接口 priceMode） */
 export const getOfferPriceModeLabel = (value?: string): string => {
-  return OFFER_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label || value || '-'
+  return (
+    getDictLabel('supply_chain_offer_price_mode', value) ||
+    OFFER_PRICE_MODE_OPTIONS.find((item) => item.value === value)?.label ||
+    value ||
+    '-'
+  )
 }
 
 /** 获取合作商品上架状态文案 */
