@@ -167,7 +167,7 @@
     </el-table>
     <Pagination v-model:page="queryParams.pageNo" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
   </ContentWrap>
-  <ProductForm ref="formRef" @success="getList" />
+  <ProductForm ref="formRef" @success="handleFormSuccess" />
   <ProductDetail ref="detailRef" @edit="handleEditFromDetail" />
   <ProductPriceDialog ref="priceRef" @success="getList" />
 </template>
@@ -359,6 +359,13 @@
 
   const handleEditFromDetail = (spuCode?: string) => {
     openForm(spuCode)
+  }
+
+  const handleFormSuccess = async (spuCode?: string) => {
+    await getList()
+    if (spuCode) {
+      await detailRef.value?.reload?.(spuCode)
+    }
   }
 
   const openPriceDialog = (spuCode?: string) => {

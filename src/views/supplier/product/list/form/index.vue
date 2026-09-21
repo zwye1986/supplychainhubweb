@@ -63,9 +63,22 @@
             <UploadImg v-model="row.picUrl" height="100px" width="100px" :drag="false" />
           </template>
         </el-table-column>
-        <el-table-column label="SKU详情图" min-width="160" align="center">
+        <el-table-column label="SKU详情图" min-width="110" align="center">
           <template #default="{ row }">
-            <UploadImgs v-model="row.detailPics" :limit="5" height="100px" width="100px" :drag="false" />
+            <div class="sku-detail-pics-trigger" @click="openDetailPicsEditor(row)">
+              <el-image
+                v-if="row.detailPics?.[0]"
+                :src="row.detailPics[0]"
+                fit="cover"
+                class="h-100px w-100px rounded"
+              />
+              <div v-else class="sku-detail-pics-empty">
+                <Icon icon="ep:plus" />
+              </div>
+              <span v-if="row.detailPics?.length" class="sku-detail-pics-count">
+                {{ row.detailPics.length }}/5
+              </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="商品描述" min-width="180">
@@ -126,14 +139,10 @@
             <el-input-number :controls="false" v-model="row.faceValue" :min="0" :precision="2" class="!w-full" />
           </template>
         </el-table-column>
-        <el-table-column label="供应价（元）" min-width="110" align="right">
-          <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
-        </el-table-column>
-        <el-table-column label="供应商" min-width="180" show-overflow-tooltip>
-          <template #default="{ row }">{{ formatSkuSuppliers(row.suppliers) }}</template>
-        </el-table-column>
-        <el-table-column label="总库存" min-width="80" align="right">
-          <template #default="{ row }">{{ row.totalInventory ?? 0 }}</template>
+        <el-table-column label="总库存" min-width="110" align="right">
+          <template #default="{ row }">
+            <el-input-number :controls="false" v-model="row.skuInventory" :min="0" :precision="0" class="!w-full" />
+          </template>
         </el-table-column>
         <el-table-column label="操作" width="80" fixed="right" align="center">
           <template #default="{ $index }">
@@ -174,6 +183,26 @@
       <el-button type="primary" :loading="formLoading" @click="submitForm">保存</el-button>
     </template>
   </el-dialog>
+
+  <el-dialog
+    v-model="detailPicsDialogVisible"
+    :title="detailPicsDialogTitle"
+    width="680px"
+    append-to-body
+    destroy-on-close
+  >
+    <UploadImgs
+      v-if="detailPicsEditingSku"
+      v-model="detailPicsEditingSku.detailPics"
+      :limit="5"
+      height="100px"
+      width="100px"
+      :drag="false"
+    />
+    <template #footer>
+      <el-button type="primary" @click="detailPicsDialogVisible = false">完成</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -186,12 +215,12 @@
     ProductTypeApi,
     SkuDetail,
     SkuItemSaveReqVO,
+    SpuDetail,
     SpuSaveReqVO,
-    SuggestedSalePriceRule,
-    SupplierSimpleInfo
+    SuggestedSalePriceRule
   } from '@/api/product'
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-  import { centsToYuan, formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
+  import { centsToYuan, yuanToCents } from '@/views/supplier/utils/constants'
 
   defineOptions({ name: 'ProductListForm' })
 
@@ -213,9 +242,7 @@
     detailPics: string[]
     description?: string
     suggestedSalePriceRule: SuggestedSalePriceRule
-    supplyPrice?: number
-    suppliers?: SupplierSimpleInfo[]
-    totalInventory?: number
+    skuInventory?: number
   }
 
   interface SpuFormData {
@@ -240,13 +267,28 @@
 
   const message = useMessage()
   const { t } = useI18n()
-  const emit = defineEmits(['success'])
+  const emit = defineEmits<{
+    success: [spuCode?: string]
+  }>()
 
   const dialogVisible = ref(false)
   const formRef = ref()
   const formLoading = ref(false)
   const isEdit = ref(false)
   const brandList = ref<ProductBrandVO[]>([])
+  const detailPicsDialogVisible = ref(false)
+  const detailPicsEditingSku = ref<SkuFormItem | null>(null)
+  const detailPicsDialogTitle = computed(() =>
+    detailPicsEditingSku.value?.skuName
+      ? `SKU详情图 · ${detailPicsEditingSku.value.skuName}`
+      : 'SKU详情图'
+  )
+
+  const openDetailPicsEditor = (row: SkuFormItem) => {
+    if (!Array.isArray(row.detailPics)) row.detailPics = []
+    detailPicsEditingSku.value = row
+    detailPicsDialogVisible.value = true
+  }
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''
   const PRODUCT_STATUS_DICT = 'supply_chain_sku_status'
@@ -271,9 +313,7 @@
     detailPics: [],
     description: '',
     suggestedSalePriceRule: createPriceRule(),
-    supplyPrice: undefined,
-    suppliers: [],
-    totalInventory: 0
+    skuInventory: 0
   })
 
   const defaultLimit = () => ({
@@ -360,13 +400,6 @@
     return `${base}*${rule.percentage ?? 0}%${opLabel}${rule.operand ?? 0}元`
   }
 
-  const formatSkuSuppliers = (suppliers?: SupplierSimpleInfo[]) => {
-    if (!suppliers?.length) return '—'
-    return suppliers
-      .map((item) => [item.supplierCode, item.supplierName].filter(Boolean).join('-'))
-      .join(' ')
-  }
-
   const resetForm = () => {
     Object.assign(formData, {
       spuCode: undefined,
@@ -392,13 +425,18 @@
 
   const mapSkuToForm = (sku: SkuDetail): SkuFormItem => ({
     ...createSku(),
-    ...sku,
+    skuCode: sku.skuCode,
+    skuName: sku.skuName,
+    picUrl: sku.picUrl,
+    detailPics: Array.isArray(sku.detailPics) ? sku.detailPics : [],
+    description: sku.description,
     marketPrice: centsToYuan(sku.marketPrice) ?? 0,
     faceValue: centsToYuan(sku.faceValue) ?? 0,
     suggestedSalePriceRule: {
       ...createPriceRule(),
       ...sku.suggestedSalePriceRule
-    }
+    },
+    skuInventory: sku.skuInventory ?? sku.totalInventory ?? 0
   })
 
   const toSkuSaveItem = (sku: SkuFormItem): SkuItemSaveReqVO => {
@@ -411,6 +449,7 @@
       description: sku.description,
       marketPrice: yuanToCents(sku.marketPrice),
       faceValue: yuanToCents(sku.faceValue) ?? 0,
+      skuInventory: sku.skuInventory ?? 0,
       suggestedSalePriceRule: {
         mode: rule.mode,
         base: rule.base,
@@ -422,6 +461,20 @@
     }
   }
 
+  const applyProductDetail = (data: SpuDetail) => {
+    Object.assign(formData, {
+      ...data,
+      status: toStatusDictValue(data.status),
+      skus: (data.skus || []).map(mapSkuToForm)
+    })
+    if (!formData.skus?.length) formData.skus = [createSku()]
+    if (isCardFulfillment.value) disablePhoneBindLimit()
+  }
+
+  const loadProduct = async (spuCode: string) => {
+    applyProductDetail(await ProductApi.getProduct(spuCode))
+  }
+
   const open = async (spuCode?: string) => {
     dialogVisible.value = true
     isEdit.value = !!spuCode
@@ -430,14 +483,7 @@
     if (!spuCode) return
     formLoading.value = true
     try {
-      const data = await ProductApi.getProduct(spuCode)
-      Object.assign(formData, {
-        ...data,
-        status: toStatusDictValue(data.status),
-        skus: (data.skus || []).map(mapSkuToForm)
-      })
-      if (!formData.skus?.length) formData.skus = [createSku()]
-      if (isCardFulfillment.value) disablePhoneBindLimit()
+      await loadProduct(spuCode)
     } finally {
       formLoading.value = false
     }
@@ -465,16 +511,24 @@
         delete payload.phoneBindLimitPeriod
         delete payload.phoneBindLimitQuantity
       }
+      let savedSpuCode = formData.spuCode
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)
-        message.success('保存成功')
       } else {
         delete payload.spuCode
-        await ProductApi.createProduct(payload)
-        message.success('保存成功')
+        const created = await ProductApi.createProduct(payload)
+        savedSpuCode =
+          typeof created === 'string'
+            ? created
+            : created?.spuCode || created?.data || formData.spuCode
       }
+      if (savedSpuCode) {
+        await loadProduct(savedSpuCode)
+        isEdit.value = true
+      }
+      message.success('保存成功')
       dialogVisible.value = false
-      emit('success')
+      emit('success', savedSpuCode)
     } finally {
       formLoading.value = false
     }
@@ -494,5 +548,35 @@
   .sku-spec-table :deep(.el-upload--picture-card) {
     width: var(--upload-width);
     height: var(--upload-height);
+  }
+  .sku-detail-pics-trigger {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .sku-detail-pics-empty {
+    display: flex;
+    width: 100px;
+    height: 100px;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--el-border-color-darker);
+    border-radius: 8px;
+    color: var(--el-text-color-secondary);
+    font-size: 28px;
+  }
+  .sku-detail-pics-trigger:hover .sku-detail-pics-empty {
+    border-color: var(--el-color-primary);
+  }
+  .sku-detail-pics-count {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 0 6px;
+    border-radius: 4px 0 8px 0;
+    background: rgb(0 0 0 / 60%);
+    color: #fff;
+    font-size: 12px;
+    line-height: 18px;
   }
 </style>

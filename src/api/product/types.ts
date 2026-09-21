@@ -166,6 +166,7 @@ export interface SkuItemSaveReqVO {
   picUrl?: string
   detailPics?: string[]
   description?: string
+  skuInventory?: number
   userLimitEnabled?: boolean
   userLimitPeriod?: string
   userLimitQuantity?: number
@@ -213,6 +214,7 @@ export interface SpuDetail {
   primaryCategoryId?: number
   productClassification?: string
   fulfillmentType?: string
+  fulfillmentTypeDisplay?: string
   deliveryType?: string
   status?: number
   userLimitEnabled?: boolean
