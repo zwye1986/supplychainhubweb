@@ -1,5 +1,5 @@
 <template>
-  <OrderListPage source="SUPPLIER" :show-tabs="false" />
+  <OrderListPage source="SUPPLIER" />
 </template>
 <script lang="ts" setup>
 import OrderListPage from '../components/OrderListPage.vue'

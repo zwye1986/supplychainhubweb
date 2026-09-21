@@ -8,60 +8,49 @@
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="130px">
       <el-divider content-position="left">基础信息</el-divider>
       <el-form-item label="规则名称" prop="name">
-        <el-input v-model="formData.name" maxlength="50" :disabled="formData.protectedRule" placeholder="请输入规则名称" />
+        <el-input
+          v-model="formData.name"
+          maxlength="50"
+          :disabled="formData.protectedRule"
+          placeholder="请输入规则名称"
+          clearable
+        />
       </el-form-item>
       <el-form-item label="适用分销商">
-        <el-radio-group v-model="formData.distributorMode">
-          <el-radio value="ALL">全部分销商</el-radio>
-          <el-radio value="SPECIFIED">指定分销商</el-radio>
-        </el-radio-group>
         <el-select
-          v-if="formData.distributorMode === 'SPECIFIED'"
           v-model="formData.distributorCodes"
-          class="mt-8px"
           multiple
+          collapse-tags
           filterable
-          placeholder="请选择分销商"
+          clearable
+          placeholder="全部"
         >
           <el-option v-for="item in MOCK_DISTRIBUTORS" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="适用项目">
-        <el-radio-group v-model="formData.projectMode">
-          <el-radio value="ALL">全部项目</el-radio>
-          <el-radio value="SPECIFIED">指定项目</el-radio>
-        </el-radio-group>
         <el-select
-          v-if="formData.projectMode === 'SPECIFIED'"
           v-model="formData.projectCodes"
-          class="mt-8px"
           multiple
+          collapse-tags
           filterable
-          placeholder="请选择项目"
+          clearable
+          placeholder="请选择"
         >
           <el-option v-for="item in MOCK_PROJECTS" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="适用商品类型">
-        <el-radio-group v-model="formData.productTypeMode">
-          <el-radio value="ALL">全部类型</el-radio>
-          <el-radio value="SPECIFIED">指定类型</el-radio>
-        </el-radio-group>
         <el-select
-          v-if="formData.productTypeMode === 'SPECIFIED'"
           v-model="formData.productTypeCodes"
-          class="mt-8px"
           multiple
+          collapse-tags
           filterable
-          placeholder="请选择商品类型"
+          clearable
+          placeholder="全部"
         >
           <el-option v-for="item in PRODUCT_TYPE_OPTIONS" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-radio-group v-model="formData.status">
-          <el-radio v-for="item in ROUTE_STATUS_OPTIONS" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
-        </el-radio-group>
       </el-form-item>
 
       <el-divider content-position="left">路由模式与供应商设置</el-divider>
@@ -70,34 +59,28 @@
           <el-radio v-for="item in ROUTE_MODE_OPTIONS" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
         </el-radio-group>
       </el-form-item>
-      <el-form-item label="适用供应商">
+      <el-form-item v-if="formData.routeMode === 'AUTO'" label="适用供应商" required>
         <el-radio-group v-model="formData.supplierMode">
-          <el-radio value="ALL">全部供应商</el-radio>
+          <el-radio value="ALL">全部</el-radio>
           <el-radio value="SPECIFIED">指定供应商</el-radio>
         </el-radio-group>
-        <el-select
-          v-if="formData.supplierMode === 'SPECIFIED'"
-          v-model="formData.supplierCodes"
-          class="mt-8px"
-          multiple
-          filterable
-          placeholder="请选择供应商"
-        >
-          <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.code" />
-        </el-select>
-        <div v-if="formData.supplierMode === 'SPECIFIED' && formData.routeMode === 'AUTO'" class="mt-8px text-12px text-gray-500">
-          指定供应商时请至少选择 2 个，用于失败降级。
+        <div v-if="formData.supplierMode === 'SPECIFIED'" class="mt-8px">
+          <el-button link type="primary" @click="pickerVisible = true">选择供应商</el-button>
+          <div v-if="selectedSupplierNames.length" class="mt-8px text-13px">
+            已选：{{ selectedSupplierNames.join('、') }}
+          </div>
+          <div class="mt-4px text-12px text-gray-500">指定供应商时请至少选择 2 个，用于失败降级。</div>
         </div>
       </el-form-item>
       <el-form-item v-if="formData.routeMode === 'FIXED'" label="主供应商" prop="primarySupplierCode">
-        <el-select v-model="formData.primarySupplierCode" filterable placeholder="请选择固定主供应商">
-          <el-option
-            v-for="item in primarySupplierOptions"
-            :key="item.code"
-            :label="item.name"
-            :value="item.code"
-          />
+        <el-select v-model="formData.primarySupplierCode" filterable clearable placeholder="请选择固定主供应商">
+          <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="状态">
+        <el-radio-group v-model="formData.status">
+          <el-radio v-for="item in ROUTE_STATUS_OPTIONS" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
+        </el-radio-group>
       </el-form-item>
 
       <el-divider content-position="left">优先级顺序设置</el-divider>
@@ -142,12 +125,32 @@
           <span :class="weightSum === 100 ? 'text-[var(--el-color-success)]' : 'text-[var(--el-color-danger)]'">
             {{ weightSum }}%
           </span>
+          <div v-if="weightSum !== 100" class="mt-4px text-12px text-[var(--el-color-danger)]">
+            稳定性权重、价格权重、时效权重之和必须等于100%，当前为 {{ weightSum }}%
+          </div>
         </el-form-item>
       </template>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="formLoading" @click="submitForm">确定</el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="pickerVisible" title="选择供应商" width="640px" append-to-body>
+    <el-table
+      ref="supplierTableRef"
+      :data="MOCK_SUPPLIERS"
+      row-key="code"
+      @selection-change="handleSupplierPick"
+    >
+      <el-table-column type="selection" width="50" :selectable="() => true" />
+      <el-table-column label="供应商编码" prop="code" min-width="140" />
+      <el-table-column label="供应商名称" prop="name" min-width="180" />
+    </el-table>
+    <template #footer>
+      <el-button @click="pickerVisible = false">取消</el-button>
+      <el-button type="primary" @click="confirmSupplierPick">确定</el-button>
     </template>
   </el-dialog>
 </template>
@@ -173,8 +176,11 @@ defineOptions({ name: 'RoutingRuleForm' })
 const message = useMessage()
 const emit = defineEmits(['success'])
 const dialogVisible = ref(false)
+const pickerVisible = ref(false)
 const formLoading = ref(false)
 const formRef = ref()
+const pickedCodes = ref<string[]>([])
+const supplierTableRef = ref()
 const formData = reactive<RouteRuleVO>({
   ruleCode: '',
   name: '',
@@ -194,19 +200,36 @@ const formData = reactive<RouteRuleVO>({
 const formRules = {
   name: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
   routeMode: [{ required: true, message: '请选择路由模式', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  primarySupplierCode: [{ required: true, message: '请选择主供应商', trigger: 'change' }]
 }
 const showWeights = computed(() => formData.priorities.some((item) => item.strategy === 'COMPOSITE'))
 const weightSum = computed(
   () => (formData.weights.stability || 0) + (formData.weights.price || 0) + (formData.weights.timeliness || 0)
 )
 const usedStrategies = computed(() => formData.priorities.map((item) => item.strategy))
-const primarySupplierOptions = computed(() => {
-  if (formData.supplierMode === 'SPECIFIED') {
-    return MOCK_SUPPLIERS.filter((item) => formData.supplierCodes?.includes(item.code))
-  }
-  return MOCK_SUPPLIERS
+const selectedSupplierNames = computed(() =>
+  MOCK_SUPPLIERS.filter((item) => formData.supplierCodes?.includes(item.code)).map((item) => item.name)
+)
+
+const handleSupplierPick = (rows: { code: string }[]) => {
+  pickedCodes.value = rows.map((item) => item.code)
+}
+
+watch(pickerVisible, async (visible) => {
+  if (!visible) return
+  await nextTick()
+  supplierTableRef.value?.clearSelection()
+  MOCK_SUPPLIERS.forEach((item) => {
+    if (formData.supplierCodes?.includes(item.code)) {
+      supplierTableRef.value?.toggleRowSelection(item, true)
+    }
+  })
 })
+
+const confirmSupplierPick = () => {
+  formData.supplierCodes = [...pickedCodes.value]
+  pickerVisible.value = false
+}
 
 const resetForm = () => {
   Object.assign(formData, {
@@ -227,22 +250,18 @@ const resetForm = () => {
     weights: createWeights(),
     status: 'ENABLED'
   })
+  pickedCodes.value = []
   formRef.value?.resetFields()
 }
 
 const submitForm = async () => {
   await formRef.value?.validate()
-  if (formData.distributorMode === 'SPECIFIED' && !formData.distributorCodes?.length) {
-    message.warning('请至少选择一个分销商')
-    return
-  }
-  if (formData.projectMode === 'SPECIFIED' && !formData.projectCodes?.length) {
-    message.warning('请至少选择一个项目')
-    return
-  }
-  if (formData.productTypeMode === 'SPECIFIED' && !formData.productTypeCodes?.length) {
-    message.warning('请至少选择一个商品类型')
-    return
+  formData.distributorMode = formData.distributorCodes?.length ? 'SPECIFIED' : 'ALL'
+  formData.projectMode = formData.projectCodes?.length ? 'SPECIFIED' : 'ALL'
+  formData.productTypeMode = formData.productTypeCodes?.length ? 'SPECIFIED' : 'ALL'
+  if (formData.routeMode === 'FIXED') {
+    formData.supplierMode = 'SPECIFIED'
+    formData.supplierCodes = formData.primarySupplierCode ? [formData.primarySupplierCode] : []
   }
   if (
     formData.routeMode === 'AUTO' &&
@@ -262,7 +281,7 @@ const submitForm = async () => {
     return
   }
   if (showWeights.value && weightSum.value !== 100) {
-    message.warning('综合排序评分权重的三项之和必须为 100%')
+    message.warning(`稳定性权重、价格权重、时效权重之和必须等于100%，当前为 ${weightSum.value}%`)
     return
   }
   formData.productTypeNames = PRODUCT_TYPE_OPTIONS.filter((item) =>
@@ -291,6 +310,10 @@ const open = async (ruleCode?: string) => {
     Object.assign(formData, await RoutingApi.get(ruleCode))
     if (!formData.priorities?.length) formData.priorities = createPriorities()
     if (!formData.weights) formData.weights = createWeights()
+    if (!formData.distributorCodes) formData.distributorCodes = []
+    if (!formData.projectCodes) formData.projectCodes = []
+    if (!formData.productTypeCodes) formData.productTypeCodes = []
+    pickedCodes.value = [...(formData.supplierCodes || [])]
   } finally {
     formLoading.value = false
   }

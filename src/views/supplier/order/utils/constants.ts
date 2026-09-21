@@ -1,4 +1,12 @@
-import type { AfterSaleStatus, AfterSaleType, LogisticsStatus, OrderBizType, OrderStatus } from '@/api/order/types'
+import type {
+  AfterSaleStatus,
+  AfterSaleType,
+  LogisticsStatus,
+  OrderBizType,
+  OrderStatus,
+  RouteFailReason,
+  SupplyMode
+} from '@/api/order/types'
 
 export const ORDER_TAB_OPTIONS: { value: OrderBizType | ''; label: string }[] = [
   { value: '', label: '全部订单' },
@@ -24,8 +32,41 @@ export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: st
   { value: 'CLOSED', label: '已关闭', type: 'info' }
 ]
 
+export const PLATFORM_STATUS_FILTER_OPTIONS = ORDER_STATUS_OPTIONS.filter((item) => item.value !== 'CLOSED')
+
+export const SUPPLIER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: string }[] = [
+  { value: 'WAIT_PAY', label: '待支付', type: 'info' },
+  { value: 'CLOSED', label: '已关闭', type: 'info' },
+  { value: 'WAIT_SHIP', label: '待发货', type: 'warning' },
+  { value: 'SHIPPED', label: '已发货', type: 'primary' },
+  { value: 'FINISHED', label: '已完成', type: 'success' },
+  { value: 'FAILED', label: '失败', type: 'danger' }
+]
+
+export const SUPPLY_MODE_OPTIONS: { value: SupplyMode; label: string }[] = [
+  { value: 'DROP_SHIP', label: '一件代发' },
+  { value: 'BATCH', label: '批量发货' },
+  { value: 'STORE_PICKUP', label: '门店自提' },
+  { value: 'API_DIRECT', label: 'API直发' },
+  { value: 'H5_DIRECT', label: 'H5直发' }
+]
+
+export const ROUTE_FAIL_REASON_OPTIONS: { value: RouteFailReason; label: string }[] = [
+  { value: 'API_TIMEOUT', label: 'API响应超时（>3s）' },
+  { value: 'PRICE_OVER_THRESHOLD', label: '价格高于路由阈值' },
+  { value: 'STOCK_SHORT', label: '库存不足' },
+  { value: 'SUPPLIER_REJECT', label: '供应商拒单' },
+  { value: 'API_ERROR', label: '接口返回异常' }
+]
+
 export const LOGISTICS_STATUS_OPTIONS: { value: LogisticsStatus; label: string; type: string }[] = [
   { value: 'UNSHIPPED', label: '未发货', type: 'info' },
+  { value: 'SHIPPED', label: '已发货', type: 'primary' },
+  { value: 'SIGNED', label: '已签收', type: 'success' }
+]
+
+export const SUPPLIER_LOGISTICS_STATUS_OPTIONS: { value: LogisticsStatus; label: string; type: string }[] = [
+  { value: 'UNSHIPPED', label: '待发货', type: 'info' },
   { value: 'SHIPPED', label: '已发货', type: 'primary' },
   { value: 'SIGNED', label: '已签收', type: 'success' }
 ]
@@ -86,5 +127,15 @@ export const formatMoney = (value?: number | null) => {
   return `¥${Number(value).toFixed(2)}`
 }
 
+export const formatAmount = (value?: number | null) => {
+  if (value == null || Number.isNaN(Number(value))) return '0.00'
+  return Number(value).toFixed(2)
+}
+
+export const isUnpaidStatus = (status?: OrderStatus) => status === 'WAIT_PAY' || status === 'CLOSED'
+
 export const canRefund = (status?: OrderStatus) => status === 'SUCCESS' || status === 'FAILED'
 export const canResend = (status?: OrderStatus) => status === 'FAILED'
+export const canRouteRecord = (status?: OrderStatus) =>
+  status === 'CLOSED' || status === 'PROCESSING' || status === 'SUCCESS' || status === 'FAILED'
+export const canSupplierRefund = (status?: OrderStatus) => status === 'WAIT_SHIP' || status === 'SHIPPED'

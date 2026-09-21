@@ -163,7 +163,7 @@ export const RoutingMockApi = {
   },
   async create(data: RouteRuleVO) {
     await delay()
-    if (rules.some((item) => item.name === data.name)) throw new Error('规则名称已存在')
+    if (rules.some((item) => item.name === data.name)) throw new Error('规则名称重复！')
     const created = fillNames({
       ...clone(data),
       ruleCode: `RR${dayjs().format('YYYYMMDD')}${String(++seq).padStart(3, '0')}`,
@@ -187,7 +187,7 @@ export const RoutingMockApi = {
     const index = rules.findIndex((item) => item.ruleCode === ruleCode)
     if (index < 0) throw new Error('路由规则不存在')
     if (rules.some((item) => item.ruleCode !== ruleCode && item.name === data.name)) {
-      throw new Error('规则名称已存在')
+      throw new Error('规则名称重复！')
     }
     const next = fillNames({
       ...rules[index],

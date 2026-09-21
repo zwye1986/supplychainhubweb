@@ -1,6 +1,11 @@
 export type OrderBizType = 'VIRTUAL_CARD' | 'VIRTUAL_RECHARGE' | 'DINING' | 'MOVIE' | 'HEMA'
-export type OrderStatus = 'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED'
+export type PlatformOrderStatus = 'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED'
+export type SupplierOrderStatus = 'WAIT_PAY' | 'CLOSED' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'FAILED'
+export type OrderStatus = PlatformOrderStatus | SupplierOrderStatus
+export type SupplyMode = 'DROP_SHIP' | 'BATCH' | 'STORE_PICKUP' | 'API_DIRECT' | 'H5_DIRECT'
 export type LogisticsStatus = 'UNSHIPPED' | 'SHIPPED' | 'SIGNED'
+export type RouteResult = 'SUCCESS' | 'FAILED'
+export type RouteFailReason = 'API_TIMEOUT' | 'PRICE_OVER_THRESHOLD' | 'STOCK_SHORT' | 'SUPPLIER_REJECT' | 'API_ERROR'
 export type AfterSaleType = 'RETURN_REFUND' | 'REFUND_ONLY' | 'OTHER'
 export type AfterSaleStatus =
   | 'NONE'
@@ -56,10 +61,44 @@ export interface PackageTraceVO {
   content: string
 }
 
+export interface SupplierOrderRefVO {
+  supplierOrderNo: string
+  supplierName?: string
+  status?: OrderStatus
+}
+
+export interface RouteStepVO {
+  index: number
+  supplierName: string
+  result: RouteResult
+  time: string
+  supplyPrice: number
+  assignQty: number
+  failReason?: RouteFailReason
+  remark?: string
+  request?: Record<string, any>
+  response?: Record<string, any>
+}
+
+export interface OrderRouteRecordVO {
+  orderNo: string
+  productName: string
+  qty: number
+  status: RouteResult
+  productType: OrderBizType
+  tryCount: number
+  failCount: number
+  finalSupplierName?: string
+  supplierOrderNo?: string
+  durationSec: number
+  steps: RouteStepVO[]
+}
+
 export interface OrderVO {
   id?: number
   orderNo: string
   supplierOrderNo?: string
+  relatedPlatformOrderNo?: string
   distributorOrderNo?: string
   parentOrderNo?: string
   bizType: OrderBizType
@@ -86,6 +125,14 @@ export interface OrderVO {
   distFreightAmount?: number
   distFeeAmount?: number
   projectPayAmount?: number
+  projectGoodsAmount?: number
+  projectFreightAmount?: number
+  distributorPayAmount?: number
+  distributorGoodsAmount?: number
+  distributorFreightAmount?: number
+  supplyMode?: SupplyMode
+  deliveryMode?: string
+  shipTime?: string
   remark?: string
   finishTime?: string
   createTime?: string
@@ -93,6 +140,7 @@ export interface OrderVO {
   confirmTime?: string
   items: OrderItemVO[]
   traces?: PackageTraceVO[]
+  supplierOrders?: SupplierOrderRefVO[]
   source?: 'PLATFORM' | 'SUPPLIER'
 }
 
@@ -128,6 +176,7 @@ export interface OrderPageParam {
   source?: 'PLATFORM' | 'SUPPLIER'
   orderNo?: string
   status?: OrderStatus
+  statuses?: OrderStatus[]
   createFrom?: string
   createTo?: string
   supplierOrderNo?: string
@@ -139,9 +188,10 @@ export interface OrderPageParam {
   productName?: string
   buyerKeyword?: string
   receiverKeyword?: string
+  supplyMode?: SupplyMode
 }
 
-export interface AfterSalePageParam extends OrderPageParam {
+export interface AfterSalePageParam extends Omit<OrderPageParam, 'statuses'> {
   types?: AfterSaleType[]
   statuses?: AfterSaleStatus[]
   applyFrom?: string

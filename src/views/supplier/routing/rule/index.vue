@@ -47,6 +47,7 @@
           value-format="YYYY-MM-DD HH:mm:ss"
           start-placeholder="开始时间"
           end-placeholder="结束时间"
+          clearable
         />
       </el-form-item>
       <el-form-item>
@@ -67,7 +68,7 @@
       <el-table-column label="规则名称" prop="name" min-width="180">
         <template #default="{ row }">
           <span>{{ row.name }}</span>
-          <el-tag v-if="row.protectedRule" class="ml-8px" size="small">系统预置</el-tag>
+          <el-tag v-if="row.protectedRule" class="ml-8px" size="small" type="warning">默认</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="适用分销商" min-width="160">
@@ -102,23 +103,19 @@
       </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{ row }">
-          <el-tag :type="getOptionType(ROUTE_STATUS_OPTIONS, row.status)" size="small">
-            {{ getOptionLabel(ROUTE_STATUS_OPTIONS, row.status) }}
-          </el-tag>
+          <el-switch
+            :model-value="row.status"
+            active-value="ENABLED"
+            inactive-value="DISABLED"
+            @change="(val) => handleStatus(row, String(val))"
+          />
         </template>
       </el-table-column>
       <el-table-column label="更新人" prop="updater" min-width="100" />
       <el-table-column label="更新时间" prop="updateTime" min-width="170" />
-      <el-table-column label="操作" fixed="right" width="180">
+      <el-table-column label="操作" fixed="right" width="140">
         <template #default="{ row }">
           <el-button link type="primary" @click="openForm(row.ruleCode)">编辑</el-button>
-          <el-button
-            link
-            :type="row.status === 'ENABLED' ? 'warning' : 'success'"
-            @click="handleStatus(row)"
-          >
-            {{ row.status === 'ENABLED' ? '停用' : '启用' }}
-          </el-button>
           <el-button v-if="!row.protectedRule" link type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -146,8 +143,7 @@ import {
   ROUTE_MODE_OPTIONS,
   ROUTE_STATUS_OPTIONS,
   formatScope,
-  getOptionLabel,
-  getOptionType
+  getOptionLabel
 } from '@/views/supplier/routing/rule/utils/constants'
 
 defineOptions({ name: 'RoutingRule' })
@@ -221,11 +217,11 @@ const handleDelete = async (row: RouteRuleVO) => {
   }
 }
 
-const handleStatus = async (row: RouteRuleVO) => {
-  const next = row.status === 'ENABLED' ? 'DISABLED' : 'ENABLED'
+const handleStatus = async (row: RouteRuleVO, next: string) => {
+  const target = next === 'ENABLED' ? 'ENABLED' : 'DISABLED'
   try {
-    await message.confirm(`确认${next === 'ENABLED' ? '启用' : '停用'}规则「${row.name}」？`)
-    await RoutingApi.changeStatus(row.ruleCode, next)
+    await message.confirm(`确认${target === 'ENABLED' ? '启用' : '停用'}规则「${row.name}」？`)
+    await RoutingApi.changeStatus(row.ruleCode, target)
     message.success('操作成功')
     getList()
   } catch (error: any) {

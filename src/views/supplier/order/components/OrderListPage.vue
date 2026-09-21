@@ -1,45 +1,88 @@
 <template>
   <ContentWrap>
-    <el-tabs v-if="showTabs" v-model="queryParams.bizType" class="mb-12px" @tab-change="handleQuery">
+    <el-tabs v-model="queryParams.bizType" class="mb-12px" @tab-change="handleTabChange">
       <el-tab-pane v-for="item in ORDER_TAB_OPTIONS" :key="item.value || 'ALL'" :label="item.label" :name="item.value" />
     </el-tabs>
-    <el-form
-      ref="queryFormRef"
-      class="-mb-15px search-form"
-      :model="queryParams"
-      :inline="true"
-      label-width="110px"
-    >
-      <el-form-item label="订单编号" prop="orderNo">
-        <el-input v-model="queryParams.orderNo" maxlength="64" clearable @keyup.enter="handleQuery" />
-      </el-form-item>
-      <el-form-item label="商品名称" prop="productName">
-        <el-input v-model="queryParams.productName" maxlength="100" clearable />
-      </el-form-item>
-      <el-form-item label="下单时间">
-        <el-date-picker
-          v-model="createRange"
-          type="datetimerange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-        />
-      </el-form-item>
-      <el-form-item label="分销商名称" prop="distributorNames">
-        <el-select v-model="queryParams.distributorNames" multiple collapse-tags clearable filterable>
-          <el-option v-for="item in MOCK_DISTRIBUTORS" :key="item.code" :label="item.name" :value="item.name" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="供应商名称" prop="supplierNames">
-        <el-select v-model="queryParams.supplierNames" multiple collapse-tags clearable filterable>
-          <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.name" />
-        </el-select>
-      </el-form-item>
-      <el-form-item v-if="!showTabs" label="订单类型" prop="bizTypes">
-        <el-select v-model="queryParams.bizTypes" multiple collapse-tags clearable>
-          <el-option v-for="item in ORDER_BIZ_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
+    <el-form ref="queryFormRef" class="-mb-15px search-form" :model="queryParams" :inline="true" label-width="120px">
+      <template v-if="isPlatform">
+        <el-form-item label="订单编号" prop="orderNo">
+          <el-input v-model="queryParams.orderNo" maxlength="64" placeholder="请输入订单编号" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="商品名称" prop="productName">
+          <el-input v-model="queryParams.productName" maxlength="100" placeholder="商品名称或SPU" clearable />
+        </el-form-item>
+        <el-form-item label="下单时间">
+          <el-date-picker
+            v-model="createRange"
+            type="datetimerange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="分销商名称" prop="distributorNames">
+          <el-select v-model="queryParams.distributorNames" multiple collapse-tags clearable filterable>
+            <el-option v-for="item in MOCK_DISTRIBUTORS" :key="item.code" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="供应商名称" prop="supplierNames">
+          <el-select v-model="queryParams.supplierNames" multiple collapse-tags clearable filterable>
+            <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单类型" prop="bizTypes">
+          <el-select v-model="queryParams.bizTypes" multiple collapse-tags clearable @change="handleBizTypesChange">
+            <el-option v-for="item in ORDER_BIZ_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单状态" prop="statuses">
+          <el-select v-model="queryParams.statuses" multiple collapse-tags clearable>
+            <el-option v-for="item in PLATFORM_STATUS_FILTER_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="下单人姓名或手机号" prop="buyerKeyword">
+          <el-input v-model="queryParams.buyerKeyword" maxlength="50" placeholder="姓名或手机号" clearable />
+        </el-form-item>
+      </template>
+      <template v-else>
+        <el-form-item label="供应商名称" prop="supplierName">
+          <el-select v-model="queryParams.supplierName" clearable filterable>
+            <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单编号" prop="orderNo">
+          <el-input v-model="queryParams.orderNo" maxlength="64" placeholder="供应商订单编号" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="商品名称" prop="productName">
+          <el-input v-model="queryParams.productName" maxlength="100" placeholder="商品名称或SPU" clearable />
+        </el-form-item>
+        <el-form-item label="下单时间">
+          <el-date-picker
+            v-model="createRange"
+            type="datetimerange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="供货模式" prop="supplyMode">
+          <el-select v-model="queryParams.supplyMode" clearable>
+            <el-option v-for="item in SUPPLY_MODE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单类型" prop="bizType">
+          <el-select v-model="queryParams.bizType" clearable @change="handleQuery">
+            <el-option v-for="item in ORDER_BIZ_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订单状态" prop="status">
+          <el-select v-model="queryParams.status" clearable>
+            <el-option v-for="item in SUPPLIER_STATUS_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </template>
       <el-form-item>
         <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
         <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
@@ -48,10 +91,17 @@
     </el-form>
   </ContentWrap>
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" row-key="orderNo">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      row-key="orderNo"
+      :expand-row-keys="expandRowKeys"
+      class="order-list-table"
+      row-class-name="order-summary-row"
+    >
       <el-table-column type="expand">
         <template #default="{ row }">
-          <el-table :data="row.items" size="small" class="m-12px">
+          <el-table v-if="isPlatform" :data="row.items" size="small" class="m-12px">
             <el-table-column label="商品详情" min-width="220">
               <template #default="{ row: item }">
                 <div class="flex items-center gap-8px">
@@ -82,37 +132,111 @@
             <el-table-column label="供应商名称" min-width="140">
               <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
             </el-table-column>
+            <el-table-column label="订单类型" min-width="110">
+              <template #default="{ row: item }">{{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType) }}</template>
+            </el-table-column>
+            <el-table-column label="订单状态" min-width="100">
+              <template #default>
+                <el-tag :type="getOptionType(ORDER_STATUS_OPTIONS, row.status)" size="small">
+                  {{ getOptionLabel(ORDER_STATUS_OPTIONS, row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="下单人" min-width="140">
+              <template #default>{{ formatBuyer(row) }}</template>
+            </el-table-column>
+            <el-table-column label="下单人手机号" min-width="130">
+              <template #default>{{ row.buyerMobile || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" min-width="220">
+              <template #default>
+                <el-button link type="primary" @click="openPlatformDetail(row.orderNo)">详情</el-button>
+                <el-tooltip v-if="canResend(row.status)" content="本期暂不考虑一键补发" placement="top">
+                  <span class="inline-flex">
+                    <el-button link type="warning" disabled>一键补发</el-button>
+                  </span>
+                </el-tooltip>
+                <el-tooltip v-if="canRefund(row.status)" content="本期暂不考虑退款" placement="top">
+                  <span class="inline-flex">
+                    <el-button link type="danger" disabled>退款</el-button>
+                  </span>
+                </el-tooltip>
+                <el-button v-if="canRouteRecord(row.status)" link type="primary" @click="openRouteRecord(row.orderNo)">
+                  路由记录
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-table v-else :data="row.items" size="small" class="m-12px">
+            <el-table-column label="供应商名称" min-width="140">
+              <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="商品信息" min-width="240">
+              <template #default="{ row: item }">
+                <div class="flex items-center gap-8px">
+                  <el-image v-if="item.picUrl" :src="item.picUrl" class="h-40px w-40px rounded" fit="cover" />
+                  <div class="min-w-0">
+                    <div class="truncate">{{ item.name }}</div>
+                    <div class="text-12px text-gray-500">{{ item.skuCode }}</div>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="供货模式" min-width="110">
+              <template #default>{{ getOptionLabel(SUPPLY_MODE_OPTIONS, row.supplyMode) }}</template>
+            </el-table-column>
+            <el-table-column label="供货数量" prop="qty" min-width="90" />
+            <el-table-column label="供货价结算" min-width="130">
+              <template #default="{ row: item }">
+                <div>{{ formatAmount(item.supplyPrice) }}</div>
+                <div class="text-12px text-gray-500">{{ formatAmount(item.supplyPrice) }}×{{ item.qty }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="订单类型" min-width="110">
+              <template #default="{ row: item }">{{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType) }}</template>
+            </el-table-column>
+            <el-table-column label="订单状态" min-width="100">
+              <template #default>
+                <el-tag :type="getOptionType(SUPPLIER_STATUS_OPTIONS, row.status)" size="small">
+                  {{ getOptionLabel(SUPPLIER_STATUS_OPTIONS, row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" width="140">
+              <template #default>
+                <el-button link type="primary" @click="openSupplierDetail(row.supplierOrderNo || row.orderNo)">详情</el-button>
+                <el-tooltip v-if="canSupplierRefund(row.status)" content="本期暂不考虑退款" placement="top">
+                  <span class="inline-flex">
+                    <el-button link type="danger" disabled>退款</el-button>
+                  </span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
           </el-table>
         </template>
       </el-table-column>
-      <el-table-column label="订单编号" prop="orderNo" min-width="170" />
-      <el-table-column label="下单时间" prop="createTime" min-width="170" />
-      <el-table-column label="商品总数" prop="qty" min-width="90" />
-      <el-table-column label="订单总价" min-width="110">
-        <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
-      </el-table-column>
-      <el-table-column label="订单状态" min-width="100">
-        <template #default="{ row }">
-          <el-tag :type="getOptionType(ORDER_STATUS_OPTIONS, row.status)" size="small">
-            {{ getOptionLabel(ORDER_STATUS_OPTIONS, row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" fixed="right" width="200">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row.orderNo)">详情</el-button>
-          <el-tooltip v-if="canResend(row.status)" content="本期暂不考虑一键补发" placement="top">
-            <span class="inline-flex">
-              <el-button link type="warning" disabled>一键补发</el-button>
-            </span>
-          </el-tooltip>
-          <el-tooltip v-if="canRefund(row.status)" content="本期暂不考虑退款" placement="top">
-            <span class="inline-flex">
-              <el-button link type="danger" disabled>退款</el-button>
-            </span>
-          </el-tooltip>
-        </template>
-      </el-table-column>
+      <template v-if="isPlatform">
+        <el-table-column label="订单编号" prop="orderNo" min-width="170" />
+        <el-table-column label="下单时间" prop="createTime" min-width="170" />
+        <el-table-column label="商品总数" prop="qty" min-width="90" />
+        <el-table-column label="订单总价" min-width="110">
+          <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
+        </el-table-column>
+      </template>
+      <template v-else>
+        <el-table-column label="供应商订单编号" min-width="170">
+          <template #default="{ row }">{{ row.supplierOrderNo || row.orderNo }}</template>
+        </el-table-column>
+        <el-table-column label="关联平台订单" min-width="170">
+          <template #default="{ row }">
+            <el-button v-if="row.relatedPlatformOrderNo" link type="primary" @click="openPlatformDetail(row.relatedPlatformOrderNo)">
+              {{ row.relatedPlatformOrderNo }}
+            </el-button>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="下单时间" prop="createTime" min-width="170" />
+      </template>
     </el-table>
     <Pagination
       v-model:page="queryParams.pageNo"
@@ -121,20 +245,30 @@
       @pagination="getList"
     />
   </ContentWrap>
-  <OrderDetail ref="detailRef" />
+  <OrderPlatformDetail ref="platformDetailRef" @open-supplier="openSupplierDetail" />
+  <OrderSupplierDetail ref="supplierDetailRef" @open-platform="openPlatformDetail" />
+  <RouteRecordDialog ref="routeRecordRef" />
 </template>
 
 <script lang="ts" setup>
 import { OrderApi, OrderVO } from '@/api/order'
-import OrderDetail from '../platform/detail/index.vue'
+import OrderPlatformDetail from '../platform/detail/index.vue'
+import OrderSupplierDetail from '../supplier/detail/index.vue'
+import RouteRecordDialog from './RouteRecordDialog.vue'
 import {
   MOCK_DISTRIBUTORS,
   MOCK_SUPPLIERS,
   ORDER_BIZ_TYPE_OPTIONS,
   ORDER_STATUS_OPTIONS,
   ORDER_TAB_OPTIONS,
+  PLATFORM_STATUS_FILTER_OPTIONS,
+  SUPPLIER_STATUS_OPTIONS,
+  SUPPLY_MODE_OPTIONS,
   canRefund,
   canResend,
+  canRouteRecord,
+  canSupplierRefund,
+  formatAmount,
   formatMoney,
   getOptionLabel,
   getOptionType
@@ -143,16 +277,19 @@ import {
 defineOptions({ name: 'OrderListPage' })
 
 const props = defineProps({
-  source: { type: String as PropType<'PLATFORM' | 'SUPPLIER'>, default: 'PLATFORM' },
-  showTabs: { type: Boolean, default: true }
+  source: { type: String as PropType<'PLATFORM' | 'SUPPLIER'>, default: 'PLATFORM' }
 })
 
+const isPlatform = computed(() => props.source === 'PLATFORM')
 const message = useMessage()
 const loading = ref(false)
 const list = ref<OrderVO[]>([])
+const expandRowKeys = ref<string[]>([])
 const total = ref(0)
 const queryFormRef = ref()
-const detailRef = ref()
+const platformDetailRef = ref()
+const supplierDetailRef = ref()
+const routeRecordRef = ref()
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
@@ -162,6 +299,11 @@ const queryParams = reactive({
   productName: undefined as string | undefined,
   distributorNames: [] as string[],
   supplierNames: [] as string[],
+  supplierName: undefined as string | undefined,
+  statuses: [] as any[],
+  status: undefined as any,
+  buyerKeyword: undefined as string | undefined,
+  supplyMode: undefined as any,
   createFrom: undefined as string | undefined,
   createTo: undefined as string | undefined
 })
@@ -174,17 +316,45 @@ const createRange = computed<string[]>({
   }
 })
 
+const formatBuyer = (row: OrderVO) => {
+  if (!row.buyerId && !row.buyerName) return '-'
+  if (row.buyerId && row.buyerName) return `${row.buyerId}-${row.buyerName}`
+  return row.buyerName || row.buyerId || '-'
+}
+
 const getList = async () => {
   loading.value = true
   try {
+    const bizTypes = isPlatform.value
+      ? queryParams.bizType
+        ? [queryParams.bizType]
+        : queryParams.bizTypes
+      : queryParams.bizType
+        ? [queryParams.bizType]
+        : queryParams.bizTypes?.length
+          ? queryParams.bizTypes
+          : undefined
     const data = await OrderApi.getOrderPage({
-      ...queryParams,
-      bizType: queryParams.bizType || undefined,
-      bizTypes: props.showTabs ? undefined : queryParams.bizTypes,
-      source: props.source
+      pageNo: queryParams.pageNo,
+      pageSize: queryParams.pageSize,
+      orderNo: queryParams.orderNo,
+      productName: queryParams.productName,
+      createFrom: queryParams.createFrom,
+      createTo: queryParams.createTo,
+      source: props.source,
+      bizTypes,
+      distributorNames: isPlatform.value ? queryParams.distributorNames : undefined,
+      supplierNames: isPlatform.value ? queryParams.supplierNames : undefined,
+      supplierName: isPlatform.value ? undefined : queryParams.supplierName,
+      statuses: isPlatform.value ? queryParams.statuses : undefined,
+      status: isPlatform.value ? undefined : queryParams.status,
+      buyerKeyword: isPlatform.value ? queryParams.buyerKeyword : undefined,
+      supplyMode: isPlatform.value ? undefined : queryParams.supplyMode
     })
     list.value = data.list || []
     total.value = data.total || 0
+    await nextTick()
+    expandRowKeys.value = list.value.map((item) => item.orderNo)
   } finally {
     loading.value = false
   }
@@ -195,15 +365,35 @@ const handleQuery = () => {
   getList()
 }
 
+const handleTabChange = (name: string | number) => {
+  queryParams.bizType = name as any
+  queryParams.bizTypes = name ? [name] : []
+  handleQuery()
+}
+
+const syncTabByTypes = (val: any) => {
+  const values = Array.isArray(val) ? val : val ? [val] : []
+  queryParams.bizTypes = values
+  queryParams.bizType = values.length === 1 ? values[0] : ''
+}
+
+const handleBizTypesChange = (val: any) => {
+  syncTabByTypes(val)
+  handleQuery()
+}
+
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
   queryParams.bizType = ''
+  queryParams.bizTypes = []
   queryParams.createFrom = undefined
   queryParams.createTo = undefined
   handleQuery()
 }
 
-const openDetail = (orderNo: string) => detailRef.value.open(orderNo)
+const openPlatformDetail = (orderNo: string) => platformDetailRef.value.open(orderNo)
+const openSupplierDetail = (orderNo: string) => supplierDetailRef.value.open(orderNo)
+const openRouteRecord = (orderNo: string) => routeRecordRef.value.open(orderNo)
 
 const handleExport = async () => {
   try {
@@ -213,17 +403,29 @@ const handleExport = async () => {
       bizType: queryParams.bizType || undefined,
       source: props.source
     })
-    const header = ['订单编号', '下单时间', '商品总数', '订单总价', '订单状态', '分销商', '供应商']
+    const header = isPlatform.value
+      ? ['订单编号', '下单时间', '商品总数', '订单总价', '订单状态', '分销商', '供应商']
+      : ['供应商订单编号', '关联平台订单', '下单时间', '供应商', '供货模式', '订单状态']
     const body = (rows as OrderVO[]).map((item) =>
-      [
-        item.orderNo,
-        item.createTime || '',
-        item.qty,
-        item.amount,
-        getOptionLabel(ORDER_STATUS_OPTIONS, item.status),
-        item.distributorName || '',
-        item.supplierName || ''
-      ].join(',')
+      (isPlatform.value
+        ? [
+            item.orderNo,
+            item.createTime || '',
+            item.qty,
+            item.amount,
+            getOptionLabel(ORDER_STATUS_OPTIONS, item.status),
+            item.distributorName || '',
+            item.supplierName || ''
+          ]
+        : [
+            item.supplierOrderNo || item.orderNo,
+            item.relatedPlatformOrderNo || '',
+            item.createTime || '',
+            item.supplierName || '',
+            getOptionLabel(SUPPLY_MODE_OPTIONS, item.supplyMode),
+            getOptionLabel(SUPPLIER_STATUS_OPTIONS, item.status)
+          ]
+      ).join(',')
     )
     const blob = new Blob(['\uFEFF' + [header.join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -238,3 +440,15 @@ const handleExport = async () => {
 
 onMounted(getList)
 </script>
+
+<style scoped lang="scss">
+.order-list-table {
+  :deep(.order-summary-row > td.el-table__cell) {
+    background-color: var(--el-fill-color-light);
+  }
+
+  :deep(.el-table__body tr.order-summary-row:hover > td.el-table__cell) {
+    background-color: var(--el-fill-color);
+  }
+}
+</style>
