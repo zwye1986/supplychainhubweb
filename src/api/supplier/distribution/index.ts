@@ -6,6 +6,7 @@ export type {
   AddBuyerProductsReqVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
+  BuyerChildItem,
   BuyerDetail,
   BuyerInvoiceView,
   BuyerListItem,
@@ -43,6 +44,7 @@ import type {
   AddBuyerProductsReqVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
+  BuyerChildItem,
   BuyerDetail,
   BuyerInvoiceView,
   BuyerListItem,
@@ -98,7 +100,7 @@ const buildBuyerPageParams = (params: DistributorPageParam = {}) => {
 }
 
 export const DistributorApi = {
-  /** 分页查询分销商：GET /supply-chain/buyers */
+  /** 分页查询分销商：GET /supply-chain/buyers。默认按组织树返回，根列表只有一级，children 嵌套二/三级；pageNo/pageSize/total 只计一级 */
   getDistributorPage: async (params: DistributorPageParam) => {
     return await request.get<{ list: BuyerListItem[]; total: number }>({
       url: '/supply-chain/buyers',
@@ -287,6 +289,14 @@ export const DistributorApi = {
       url: '/scm/distributor/product/create-batch',
       data: { distributorId, products }
     })
+  },
+
+  /** 查询分销商全部下级：GET /buyers/{buyerCode}/children，直属+孙级扁平列表，排除归档，按创建时间倒序 */
+  getBuyerChildren: async (buyerCode: string) => {
+    const data = await request.get<BuyerChildItem[] | { list?: BuyerChildItem[] }>({
+      url: `/supply-chain/buyers/${buyerCode}/children`
+    })
+    return Array.isArray(data) ? data : data?.list || []
   },
 
   getChildren: async (distributorId: number) => {

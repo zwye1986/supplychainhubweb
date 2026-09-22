@@ -51,9 +51,19 @@
   </ContentWrap>
 
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" row-key="buyerCode" :stripe="true" :show-overflow-tooltip="true" @selection-change="handleSelectionChange">
+    <el-table
+      :key="tableRenderKey"
+      v-loading="loading"
+      :data="list"
+      row-key="buyerCode"
+      default-expand-all
+      :tree-props="{ children: 'children' }"
+      :stripe="true"
+      :show-overflow-tooltip="true"
+      @selection-change="handleSelectionChange"
+    >
       <el-table-column type="selection" width="48" />
-      <el-table-column label="分销商名称" align="center" prop="buyerName" min-width="160">
+      <el-table-column label="分销商名称" prop="buyerName" min-width="220">
         <template #default="{ row }">
           <el-link :underline="false" type="primary" @click="openDetail(row)">
             {{ getDistributorDisplayName(row) }}
@@ -153,6 +163,7 @@
   const loading = ref(true)
   const list = ref<BuyerListItem[]>([])
   const total = ref(0)
+  const tableRenderKey = ref(0)
   const queryFormRef = ref()
   const selectedList = ref<BuyerListItem[]>([])
   const formVisible = ref(false)
@@ -202,12 +213,24 @@
     return 'info'
   }
 
+  const normalizeBuyerTree = (items?: BuyerListItem[] | null): BuyerListItem[] => {
+    if (!items?.length) return []
+    return items.map((item) => {
+      const children = normalizeBuyerTree(item.children)
+      return {
+        ...item,
+        children: children.length ? children : undefined
+      }
+    })
+  }
+
   const getList = async () => {
     loading.value = true
     try {
       const data = await DistributorApi.getDistributorPage({ ...queryParams })
-      list.value = Array.isArray(data?.list) ? data.list : []
+      list.value = normalizeBuyerTree(Array.isArray(data?.list) ? data.list : [])
       total.value = Number(data?.total) || 0
+      tableRenderKey.value += 1
     } catch (error: any) {
       list.value = []
       total.value = 0

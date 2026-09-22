@@ -368,8 +368,9 @@
 
         <el-tab-pane label="分销层级" name="hierarchy" lazy>
           <HierarchyList
-            v-if="hasInternalId"
-            :distributor-id="distributorId"
+            v-if="buyerCode"
+            :buyer-code="buyerCode"
+            :buyer-name="displayName"
             @open-detail="handleOpenChildDetail"
           />
         </el-tab-pane>
@@ -410,8 +411,6 @@ const drawerVisible = computed({
 const loading = ref(false)
 const activeTab = ref('basic')
 const distributor = ref<DistributorVO>({} as DistributorVO)
-const distributorId = computed(() => distributor.value.id as number)
-const hasInternalId = computed(() => distributor.value.id != null)
 
 const displayName = computed(
   () => distributor.value.buyerName || distributor.value.name || ''

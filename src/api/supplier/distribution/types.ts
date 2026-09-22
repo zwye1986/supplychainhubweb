@@ -212,13 +212,28 @@ export interface BuyerProductListItem {
   skuName?: string
   spuCode?: string
   spuName?: string
+  coverUrl?: string
   categoryPath?: string
+  /** 市场价，单位 CNY 分 */
+  marketPriceCents?: number
+  marketPrice?: number
   /** 建议结算价，当前 L1，单位 CNY 分 */
   suggestPriceCents?: number
   /** 定价规则文案：模板 / 等于L1 / 自定义公式 */
   pricingRule?: string
+  /** 是否含税 */
+  taxIncluded?: boolean
   /** 有效 L2，单位 CNY 分 */
   distPriceCents?: number
+  /** 不含税分销价，单位 CNY 分 */
+  distPriceExclusiveCents?: number
+  distPriceExclusive?: number
+  taxRateCode?: string
+  taxRate?: number
+  taxRateDisplay?: string
+  /** 税额，单位 CNY 分 */
+  taxAmountCents?: number
+  taxAmount?: number
   /** 恰有一个未移除项目 listing 时的当前版本单价，单位 CNY 分 */
   projectPriceCents?: number
   /** 按 L3>L2>L1 解析的有效 B 端结算价，单位 CNY 分 */
@@ -571,7 +586,7 @@ export interface BuyerDetail {
   accountBalanceCents?: number
 }
 
-/** 分销商列表项（GET /supply-chain/buyers → BuyerListItem） */
+/** 分销商列表项（GET /supply-chain/buyers → BuyerListItem，组织树嵌套） */
 export interface BuyerListItem {
   id?: number
   buyerCode?: string
@@ -582,19 +597,37 @@ export interface BuyerListItem {
   status?: string
   /** 最后修改时间，Asia/Shanghai */
   updatedAt?: string
-  /** 可售品类枚举名 */
+  /** 本级及可见下级可售品类并集 */
   sellableCategories?: string[]
-  /** 商品类型 typeCode */
+  /** 本级及可见下级商品类型并集 */
   productTypes?: string[]
+  /** 本级及可见下级合作模式并集 */
   cooperationModes?: string[]
-  /** 未归档关联项目数 */
+  /** 本级及可见下级未归档项目数合计 */
   projectCount?: number
-  /** 有效分销 SKU 商品数 */
+  /** 本级及可见下级有效分销商品数合计 */
   skuCount?: number
-  /** 合作时间，取档案合作开始时间 */
+  /** 合作时间，取档案合作开始时间；未填或年份不晚于1970时回落创建时间 */
   cooperationTime?: string
   primaryContactName?: string | null
   primaryContactMobile?: string | null
+  /** 直属下级。一级包含二级，二级包含三级，三级为空列表 */
+  children?: BuyerListItem[]
+}
+
+/** 分销商下级（GET /buyers/{buyerCode}/children → BuyerChildItem） */
+export interface BuyerChildItem {
+  buyerCode?: string
+  buyerName?: string
+  /** 组织等级：1一级 2二级 3三级 */
+  distributionLevel?: number
+  cooperationModes?: string[]
+  /** 未归档关联项目数 */
+  projectCount?: number
+  /** ACTIVE / SUSPENDED / BLACKLIST */
+  status?: string
+  /** 创建时间，Asia/Shanghai */
+  createdAt?: string
 }
 
 /** 分销商分页查询参数（GET /supply-chain/buyers） */

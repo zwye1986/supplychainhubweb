@@ -199,7 +199,7 @@ import {
 import {
   DistributorApi,
   type AddBuyerProductsReqVO,
-  type BuyerProductBatchPricingReqVO,
+  type BuyerProductCreatePricingReqVO,
   type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
@@ -529,35 +529,6 @@ const removeSelected = (skuCode: string) => {
   if (row) skuTableRef.value?.toggleRowSelection(row, false)
 }
 
-const normalizeCreatedCodes = (created: unknown): string[] => {
-  if (Array.isArray(created)) return created.map(String).filter(Boolean)
-  if (created && typeof created === 'object') {
-    const data = created as { list?: string[]; buyerProductCodes?: string[] }
-    if (Array.isArray(data.list)) return data.list.map(String).filter(Boolean)
-    if (Array.isArray(data.buyerProductCodes)) {
-      return data.buyerProductCodes.map(String).filter(Boolean)
-    }
-  }
-  return []
-}
-
-const resolveBuyerProductCodes = async (created: unknown) => {
-  const createdCodes = normalizeCreatedCodes(created)
-  if (createdCodes.length === selectedList.value.length) return createdCodes
-  const data = await DistributorApi.getBuyerProductPage(props.buyerCode, {
-    pageNo: 1,
-    pageSize: 500
-  })
-  const bySku = new Map(
-    (data?.list || [])
-      .filter((row) => row.platformSkuCode && row.buyerProductCode)
-      .map((row) => [row.platformSkuCode as string, row.buyerProductCode as string])
-  )
-  return selectedList.value
-    .map((item) => bySku.get(item.platformSkuCode))
-    .filter((code): code is string => !!code)
-}
-
 const toOptionalNumber = (value?: number | null) => {
   if (value == null || Number.isNaN(Number(value))) return undefined
   return Number(value)
@@ -576,13 +547,9 @@ const buildFormulaRule = (rule: DistPriceFormData['distributionRule']): DistForm
   }
 }
 
-const buildPricingPayload = (
-  buyerProductCodes: string[],
-  price: DistPriceFormData
-): BuyerProductBatchPricingReqVO => {
+const buildCreatePricing = (price: DistPriceFormData): BuyerProductCreatePricingReqVO => {
   const hidePercent = toOptionalNumber(price.distributionHideThresholdPercent)
-  const payload: BuyerProductBatchPricingReqVO = {
-    buyerProductCodes,
+  const payload: BuyerProductCreatePricingReqVO = {
     distributionInherited: false,
     distributionRule: buildFormulaRule(price.distributionRule),
     salesInherited: true,
@@ -594,23 +561,11 @@ const buildPricingPayload = (
   if (hidePercent != null) {
     payload.distributionHideThresholdPercent = hidePercent
   }
-  if (price.taxIncluded) {
+  if (price.taxIncluded && price.taxRateCode) {
     payload.taxRateCode = price.taxRateCode
   }
   return payload
 }
-
-const pricingGroupKey = (price: DistPriceFormData) =>
-  JSON.stringify({
-    mode: price.distributionRule.mode,
-    base: price.distributionRule.base,
-    percentage: price.distributionRule.percentage ?? null,
-    operator: price.distributionRule.operator,
-    operand: price.distributionRule.operand ?? null,
-    taxIncluded: price.taxIncluded,
-    taxRateCode: price.taxRateCode || '',
-    hide: toOptionalNumber(price.distributionHideThresholdPercent) ?? null
-  })
 
 const clearBatchPrice = () => {
   batchPrice.value = createPriceConfig()
@@ -655,32 +610,12 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const createPayload: AddBuyerProductsReqVO = {
-      items: selectedList.value.map((item) => ({ platformSkuCode: item.platformSkuCode }))
+      items: selectedList.value.map((item) => ({
+        platformSkuCode: item.platformSkuCode,
+        pricing: buildCreatePricing(item.price)
+      }))
     }
-    const created = await DistributorApi.createBuyerProducts(props.buyerCode, createPayload)
-    const buyerProductCodes = await resolveBuyerProductCodes(created)
-    if (buyerProductCodes.length !== selectedList.value.length) {
-      message.error('商品已关联，但未能取得分销商品编号，定价未保存')
-      emit('success')
-      dialogVisible.value = false
-      return
-    }
-    const groups = new Map<string, { codes: string[]; price: DistPriceFormData }>()
-    selectedList.value.forEach((item, index) => {
-      const key = pricingGroupKey(item.price)
-      const existing = groups.get(key)
-      if (existing) {
-        existing.codes.push(buyerProductCodes[index])
-        return
-      }
-      groups.set(key, { codes: [buyerProductCodes[index]], price: item.price })
-    })
-    for (const group of groups.values()) {
-      await DistributorApi.saveBuyerProductPricing(
-        props.buyerCode,
-        buildPricingPayload(group.codes, group.price)
-      )
-    }
+    await DistributorApi.createBuyerProducts(props.buyerCode, createPayload)
     message.success('添加成功')
     dialogVisible.value = false
     emit('success')

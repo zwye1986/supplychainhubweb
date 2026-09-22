@@ -1,80 +1,69 @@
 <template>
-  <ContentWrap v-loading="loading">
-    <el-alert
-      class="mb-16px"
-      type="info"
-      :closable="false"
-      title="展示当前分销商的下级分销链路及下级分销商列表。本页只读，维护操作请进入对应分销商详情。"
-    />
+  <div v-loading="loading" class="hierarchy-page">
+    <section class="hierarchy-section">
+      <div class="hierarchy-section__title">分销链路</div>
+      <div class="hierarchy-chain">
+        <el-tag class="hierarchy-chain__node" type="primary" effect="light" round>
+          {{ buyerName || buyerCode || '-' }}
+        </el-tag>
+      </div>
+    </section>
 
-    <el-empty v-if="!loading && !list.length" description="暂无下级分销商" />
-
-    <el-table v-else :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="分销商名称" min-width="160">
-        <template #default="{ row }">
-          <el-link :underline="false" type="primary" @click="openChildDetail(row)">
-            {{ row.buyerName || row.name }}
-          </el-link>
-        </template>
-      </el-table-column>
-      <el-table-column label="分销商编号" min-width="150">
-        <template #default="{ row }">
-          {{ row.buyerCode || row.code || '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column label="分销等级" min-width="120">
-        <template #default="{ row }">
-          {{ getDistributionLevelLabel(row.distributionLevel ?? row.level) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="合作模式" min-width="140">
-        <template #default="{ row }">
-          {{
-            (row.cooperationModes || row.cooperationMode || [])
-              .map((mode: string) => getCooperationModeLabel(mode))
-              .join('、') || '-'
-          }}
-        </template>
-      </el-table-column>
-      <el-table-column label="联系人" prop="contactName" min-width="100" />
-      <el-table-column label="手机号" prop="contactMobile" min-width="120" />
-      <el-table-column label="合作状态" prop="status" min-width="110">
-        <template #default="{ row }">
-          <el-tag :type="getDistributorStatusType(row.status)" size="small">
-            {{ getDistributorStatusLabel(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="分销商品SKU数" prop="skuCount" min-width="120" />
-      <el-table-column
-        label="创建时间"
-        prop="createTime"
-        :formatter="dateFormatter"
-        width="180"
-      />
-      <el-table-column label="操作" width="100" align="center" fixed="right">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="openChildDetail(row)">详情</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-  </ContentWrap>
+    <section class="hierarchy-section">
+      <div class="hierarchy-section__title">下级分销商（{{ list.length }}家）</div>
+      <el-empty v-if="!loading && !list.length" description="暂无下级分销商" :image-size="80" />
+      <div v-else class="hierarchy-table">
+        <el-table :data="list" :show-overflow-tooltip="true">
+          <el-table-column label="分销商名称" min-width="220">
+            <template #default="{ row }">
+              <span class="hierarchy-name" @click="openChildDetail(row)">
+                {{ row.buyerName || '-' }}
+              </span>
+              <span v-if="row.buyerCode" class="hierarchy-code">{{ row.buyerCode }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="等级" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag class="hierarchy-level" type="primary" effect="light" size="small" round>
+                {{ formatLevel(row.distributionLevel) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="合作模式" min-width="140">
+            <template #default="{ row }">
+              {{ formatCooperationModes(row.cooperationModes) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="关联项目" width="110">
+            <template #default="{ row }">{{ `${row.projectCount ?? 0}个` }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getDistributorStatusType(row.status)" effect="light" size="small" round>
+                {{ formatStatus(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { dateFormatter } from '@/utils/formatTime'
-import { DistributorApi, DistributorVO } from '@/api/supplier/distribution'
+import { DistributorApi, type BuyerChildItem } from '@/api/supplier/distribution'
+import { getDictLabel } from '@/utils/dict'
 import {
+  DistributorStatusEnum,
   getCooperationModeLabel,
-  getDistributionLevelLabel,
-  getDistributorStatusLabel,
   getDistributorStatusType
 } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'DistributorHierarchyList' })
 
 const props = defineProps<{
-  distributorId: number
+  buyerCode: string
+  buyerName?: string
 }>()
 
 const emit = defineEmits<{
@@ -82,19 +71,42 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const list = ref<DistributorVO[]>([])
+const list = ref<BuyerChildItem[]>([])
 
-const openChildDetail = (row: DistributorVO) => {
-  const code = row.buyerCode || row.code
-  if (!code) return
-  emit('open-detail', code)
+const STATUS_LABEL: Record<string, string> = {
+  [DistributorStatusEnum.NORMAL]: '正常合作',
+  [DistributorStatusEnum.PAUSED]: '暂停分销',
+  [DistributorStatusEnum.BLACKLIST]: '黑名单'
+}
+
+const formatLevel = (level?: number) => {
+  const value = Number(level)
+  return Number.isFinite(value) && value > 0 ? `${value}级` : '-'
+}
+
+const formatStatus = (status?: string) => {
+  if (!status) return '-'
+  return STATUS_LABEL[status] || getDictLabel('supply_chain_buyer_status', status) || status
+}
+
+const formatCooperationModes = (modes?: string[]) => {
+  if (!modes?.length) return '-'
+  return modes
+    .map((mode) => getDictLabel('supply_chain_cooperation_mode', mode) || getCooperationModeLabel(mode))
+    .filter(Boolean)
+    .join('、')
+}
+
+const openChildDetail = (row: BuyerChildItem) => {
+  if (!row.buyerCode) return
+  emit('open-detail', row.buyerCode)
 }
 
 const loadData = async () => {
-  if (!props.distributorId) return
+  if (!props.buyerCode) return
   loading.value = true
   try {
-    list.value = (await DistributorApi.getChildren(props.distributorId)) || []
+    list.value = (await DistributorApi.getBuyerChildren(props.buyerCode)) || []
   } catch {
     list.value = []
   } finally {
@@ -103,8 +115,83 @@ const loadData = async () => {
 }
 
 watch(
-  () => props.distributorId,
+  () => props.buyerCode,
   () => loadData(),
   { immediate: true }
 )
 </script>
+
+<style scoped>
+.hierarchy-page {
+  padding: 4px 0 12px;
+}
+
+.hierarchy-section + .hierarchy-section {
+  margin-top: 28px;
+}
+
+.hierarchy-section__title {
+  margin-bottom: 12px;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hierarchy-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hierarchy-chain__node {
+  --el-tag-bg-color: #eef4ff;
+  --el-tag-border-color: transparent;
+  --el-tag-text-color: var(--el-color-primary);
+  font-size: 13px;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.hierarchy-table {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+}
+
+.hierarchy-table :deep(.el-table) {
+  --el-table-header-bg-color: #f5f7fa;
+  --el-table-header-text-color: var(--el-text-color-regular);
+  --el-table-border-color: var(--el-border-color-extra-light);
+}
+
+.hierarchy-table :deep(.el-table th.el-table__cell) {
+  font-weight: 500;
+}
+
+.hierarchy-table :deep(.el-table td.el-table__cell),
+.hierarchy-table :deep(.el-table th.el-table__cell) {
+  border-right: none;
+}
+
+.hierarchy-name {
+  color: var(--el-color-primary);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.hierarchy-name:hover {
+  text-decoration: underline;
+}
+
+.hierarchy-code {
+  margin-left: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.hierarchy-level {
+  --el-tag-bg-color: #f0f0ff;
+  --el-tag-border-color: transparent;
+  --el-tag-text-color: #6b6bd6;
+}
+</style>
