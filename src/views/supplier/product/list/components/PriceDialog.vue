@@ -67,8 +67,10 @@ const submit = async () => {
     distributionRule: values.distributionRule,
     salesRule: values.salesRule,
     serviceFeeRule: values.serviceFeeRule,
-    taxIncluded: values.taxIncluded,
-    taxRateCode: values.taxRateCode
+    taxIncluded: values.taxIncluded
+  }
+  if (values.taxIncluded) {
+    payload.taxRateCode = values.taxRateCode
   }
   if (values.distributionHideThresholdPercent != null) {
     payload.distributionHideThresholdPercent = values.distributionHideThresholdPercent

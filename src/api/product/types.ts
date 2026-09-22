@@ -40,7 +40,8 @@ export interface PlatformSkuBatchPricingReqVO {
   distributionHideThresholdPercent?: number
   salesHideThresholdPercent?: number
   taxIncluded: boolean
-  taxRateCode: string
+  /** 含税时必填；不含税不要传 */
+  taxRateCode?: string
 }
 
 /** GET /supply-chain/products/skus/{skuCode}/pricing 定价状态 */
@@ -106,6 +107,8 @@ export interface ProductManagementSkuItem {
   skuCode?: string
   skuName?: string
   marketPrice?: number
+  suggestedSalePrice?: number
+  suggestedSalePriceCents?: number
   supplyPrice?: number
   supplyPriceExclusive?: number
   taxIncluded?: boolean

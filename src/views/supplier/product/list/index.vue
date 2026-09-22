@@ -19,6 +19,16 @@
           <el-option v-for="item in brandList" :key="item.brandCode" :label="item.brandName" :value="item.brandCode!" />
         </el-select>
       </el-form-item>
+      <el-form-item label="商品状态" prop="status">
+        <el-select v-model="queryParams.status" clearable>
+          <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="兑换方式" prop="fulfillmentType">
+        <el-select v-model="queryParams.fulfillmentType" clearable>
+          <el-option v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="市场价">
         <el-input v-model="queryParams.marketPriceMin" placeholder="最低价" class="!w-100px" />
         <span class="mx-8px">~</span>
@@ -34,16 +44,7 @@
           <el-option v-for="item in supplierOptions" :key="item.supplierCode" :label="item.supplierName" :value="item.supplierCode!" />
         </el-select>
       </el-form-item>
-      <el-form-item label="兑换方式" prop="fulfillmentType">
-        <el-select v-model="queryParams.fulfillmentType" clearable>
-          <el-option v-for="dict in getStrDictOptions('supply_chain_fulfillment_type')" :key="dict.value" :label="dict.label" :value="dict.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="商品状态" prop="status">
-        <el-select v-model="queryParams.status" clearable>
-            <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
-        </el-select>
-      </el-form-item>
+
       <el-form-item label="更新时间">
         <el-date-picker v-model="updatedRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" start-placeholder="开始时间" end-placeholder="结束时间" />
       </el-form-item>
@@ -93,34 +94,6 @@
           <div class="text-12px text-gray-500">{{ row.skuCode }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="商品类型" min-width="110">
-        <template #default="{ row }">
-          <ProductType :model-value="row.productType" :multiple="false" text />
-        </template>
-      </el-table-column>
-      <el-table-column label="商品分类" prop="primaryCategoryName" min-width="120" />
-      <el-table-column label="品牌" prop="brandName" min-width="100" />
-      <el-table-column label="市场价（元）" min-width="110" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
-      </el-table-column>
-      <el-table-column label="销售建议价（元）" min-width="130" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.suggestedSalePrice) }}</template>
-      </el-table-column>
-      <el-table-column label="供应价（元）" min-width="110" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
-      </el-table-column>
-      <!-- <el-table-column label="不含税供应价（元）" min-width="140" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.supplyPriceExclusive) }}</template>
-      </el-table-column> -->
-      <el-table-column label="税率" min-width="110" align="right">
-        <template #default="{ row }">{{ row.taxRateDisplay || '—' }}</template>
-      </el-table-column>
-      <el-table-column label="税额(元)" min-width="100" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.taxAmount) }}</template>
-      </el-table-column>
-      <el-table-column label="供应商" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">{{ formatSuppliers(row.suppliers) }}</template>
-      </el-table-column>
       <el-table-column label="总库存" min-width="80" align="right">
         <template #default="{ row }">{{ row.totalInventory ?? 0 }}</template>
       </el-table-column>
@@ -138,6 +111,35 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="商品类型" min-width="110">
+        <template #default="{ row }">
+          <ProductType :model-value="row.productType" :multiple="false" text />
+        </template>
+      </el-table-column>
+      <el-table-column label="商品分类" prop="primaryCategoryName" min-width="120" />
+      <el-table-column label="品牌" prop="brandName" min-width="100" />
+      <el-table-column label="市场价（元）" min-width="110" align="right">
+        <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
+      </el-table-column>
+      <el-table-column label="销售建议价（元）" min-width="150" align="right">
+        <template #default="{ row }">{{ formatCentsYuan(row.suggestedSalePrice) }}</template>
+      </el-table-column>
+      <el-table-column label="供应价（元）" min-width="110" align="right">
+        <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
+      </el-table-column>
+      <!-- <el-table-column label="不含税供应价（元）" min-width="140" align="right">
+        <template #default="{ row }">{{ formatCentsYuan(row.supplyPriceExclusive) }}</template>
+      </el-table-column> -->
+      <el-table-column label="税率" min-width="110" align="right">
+        <template #default="{ row }">{{ row.taxRateDisplay || '—' }}</template>
+      </el-table-column>
+      <el-table-column label="税额(元)" min-width="100" align="right">
+        <template #default="{ row }">{{ formatCentsYuan(row.taxAmount) }}</template>
+      </el-table-column>
+      <el-table-column label="供应商" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">{{ formatSuppliers(row.suppliers) }}</template>
+      </el-table-column>
+
       <el-table-column label="下架方式" min-width="100">
         <template #default="{ row }">
           <el-tag v-if="row.status === PRODUCT_STATUS.OFF_SHELF" size="small" type="warning">
@@ -149,10 +151,10 @@
       <el-table-column label="更新时间" min-width="170">
         <template #default="{ row }">{{ row.updatedAt || '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" fixed="right" width="200">
+      <el-table-column label="操作" fixed="right" width="240">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.spuCode)">详情</el-button>
-          <el-button link type="primary" @click="openPriceDialog(row.spuCode)">定价</el-button>
+          <el-button link type="primary" @click="openSkuPriceDialog(row.skuCode)">定价</el-button>
           <el-button v-if="row.status === PRODUCT_STATUS.DRAFT" link type="danger" @click="handleDelete(row)">
             删除
           </el-button>
@@ -247,6 +249,7 @@
           skuName: sku.skuName,
           skuCode: sku.skuCode,
           marketPrice: sku.marketPrice,
+          suggestedSalePrice: sku.suggestedSalePrice ?? sku.suggestedSalePriceCents,
           supplyPrice: sku.supplyPrice,
           supplyPriceExclusive: sku.supplyPriceExclusive,
           taxRateDisplay: sku.taxRateDisplay,
@@ -255,6 +258,7 @@
           totalInventory: sku.totalInventory,
           fulfillmentType: sku.fulfillmentType,
           fulfillmentTypeDisplay: sku.fulfillmentTypeDisplay,
+          status: sku.status == null || sku.status === '' ? sku.status : Number(sku.status),
           _rowspan: index === 0 ? skus.length : 0,
           _rowKey: `${spu.spuCode}-${sku.skuCode || index}`
         })
@@ -279,7 +283,8 @@
   )
 
   const spanMethod = ({ row, columnIndex }: { row: any; columnIndex: number }) => {
-    if ([0, 1, 3, 4, 5, 15, 16, 17, 18].includes(columnIndex)) {
+    // SPU 级合并：勾选、商品名称、兑换方式、更新时间；总库存 / 商品状态 / 操作按 SKU 分行
+    if ([0, 1, 4, 16].includes(columnIndex)) {
       return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
     }
   }
@@ -308,9 +313,10 @@
         productType: queryParams.productType,
         categoryId: queryParams.categoryId,
         brandId: queryParams.brandId,
-        status: queryParams.status != null && queryParams.status !== '' && /^\d+$/.test(queryParams.status)
-          ? Number(queryParams.status)
-          : queryParams.status,
+        status:
+          queryParams.status != null && queryParams.status !== '' && /^\d+$/.test(queryParams.status)
+            ? Number(queryParams.status)
+            : queryParams.status,
         fulfillmentType: queryParams.fulfillmentType,
         supplierCode: queryParams.supplierCode,
         marketPriceMin: toFen(queryParams.marketPriceMin),
@@ -366,6 +372,14 @@
     if (spuCode) {
       await detailRef.value?.reload?.(spuCode)
     }
+  }
+
+  const openSkuPriceDialog = (skuCode?: string) => {
+    if (!skuCode) {
+      message.warning('缺少 SKU 编号，无法定价')
+      return
+    }
+    priceRef.value.open([skuCode], false)
   }
 
   const openPriceDialog = (spuCode?: string) => {

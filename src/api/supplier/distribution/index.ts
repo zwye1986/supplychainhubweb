@@ -10,6 +10,7 @@ export type {
   BuyerInvoiceView,
   BuyerListItem,
   BuyerProductBatchPricingReqVO,
+  BuyerProductCreatePricingReqVO,
   BuyerProductItemReqVO,
   BuyerSaveReqVO,
   DistributorContactVO,
@@ -250,7 +251,7 @@ export const DistributorApi = {
     })
   },
 
-  /** 新增分销商品：POST /buyers/{buyerCode}/products，返回 buyerProductCode[] */
+  /** 从标品关联分销商品：POST /buyers/{buyerCode}/products，返回 BPD_ 编号列表 */
   createBuyerProducts: async (buyerCode: string, data: AddBuyerProductsReqVO) => {
     return await request.post<string[]>({
       url: `/supply-chain/buyers/${buyerCode}/products`,

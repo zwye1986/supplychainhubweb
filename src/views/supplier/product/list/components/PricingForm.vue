@@ -189,7 +189,7 @@ interface PricingFormValues {
   salesRule: FormulaRuleReqVO
   serviceFeeRule: ServiceFeeRuleReqVO
   taxIncluded: boolean
-  taxRateCode: string
+  taxRateCode?: string
   distributionHideThresholdPercent?: number
   salesHideThresholdPercent?: number
 }
@@ -401,8 +401,10 @@ const getValues = (): PricingFormValues => {
         ? formData.serviceFeeRule.copy || undefined
         : formData.serviceFeeRule.copy
     },
-    taxIncluded: formData.taxIncluded,
-    taxRateCode: formData.taxRateCode
+    taxIncluded: formData.taxIncluded
+  }
+  if (formData.taxIncluded) {
+    values.taxRateCode = formData.taxRateCode
   }
   const distributionHide = toOptionalNumber(formData.distributionHideThresholdPercent)
   const salesHide = toOptionalNumber(formData.salesHideThresholdPercent)

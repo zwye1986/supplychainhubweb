@@ -258,16 +258,6 @@ export interface PatchBuyerProductReqVO {
   displayThresholdPercent?: number
 }
 
-/** 新增分销商品（单行），定价走 PUT /products/pricing */
-export interface BuyerProductItemReqVO {
-  platformSkuCode: string
-}
-
-/** 批量新增分销商品 */
-export interface AddBuyerProductsReqVO {
-  items: BuyerProductItemReqVO[]
-}
-
 /** 分销价 / 销售价公式（FormulaRuleReqVO） */
 export interface DistFormulaRuleReqVO {
   /** DIRECT_MARKET_PRICE 直接等于市场价，CUSTOM 自定义 */
@@ -291,9 +281,11 @@ export interface DistServiceFeeRuleReqVO {
   copy?: string
 }
 
-/** 分销商 SKU 通用批量定价（BuyerProductBatchPricingReqVO） */
-export interface BuyerProductBatchPricingReqVO {
-  buyerProductCodes: string[]
+/**
+ * 分销商通用定价（新增行内 pricing / PUT /products/pricing 共用字段）
+ * 省略则继承商品默认定价；覆盖时与关联同一事务。
+ */
+export interface BuyerProductCreatePricingReqVO {
   /** true 时继承商品默认分销价 */
   distributionInherited?: boolean
   distributionRule?: DistFormulaRuleReqVO
@@ -314,6 +306,30 @@ export interface BuyerProductBatchPricingReqVO {
   /** 是否含税；覆盖时须与 taxRateCode 同时提交 */
   taxIncluded?: boolean
   taxRateCode?: string
+}
+
+/** 新增分销商品（单行）。pricing 省略则只关联并继承默认定价 */
+export interface BuyerProductItemReqVO {
+  platformSkuCode: string
+  /** FOLLOW_TEMPLATE（默认，继承 L1）/ EQUAL_L1 / CUSTOM */
+  l2AdjustMode?: string
+  /** CUSTOM 时的整数百分比，100 等于当前 L1 结算分 */
+  percent?: number
+  /** CUSTOM 时在百分比结果上加减的 CNY 分，可为负 */
+  amountCents?: number
+  /** 利润空间低于该百分比时 C 端隐藏，0～100 整数；省略则落空 */
+  displayThresholdPercent?: number
+  pricing?: BuyerProductCreatePricingReqVO
+}
+
+/** 从标品批量关联分销商品 */
+export interface AddBuyerProductsReqVO {
+  items: BuyerProductItemReqVO[]
+}
+
+/** 分销商 SKU 通用批量定价（PUT /buyers/{buyerCode}/products/pricing） */
+export interface BuyerProductBatchPricingReqVO extends BuyerProductCreatePricingReqVO {
+  buyerProductCodes: string[]
 }
 
 /** 分销商品（SKU 级，三级定价，mock / 项目选品兼容） */
