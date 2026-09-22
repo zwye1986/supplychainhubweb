@@ -4,6 +4,7 @@
     :title="pageTitle"
     width="720px"
     append-to-body
+    destroy-on-close
     :before-close="handleClosed"
   >
     <el-form
@@ -22,12 +23,8 @@
           show-word-limit
         />
       </el-form-item>
-      <el-form-item label="项目编号" prop="projectCode">
-        <el-input :model-value="formData.projectCode" placeholder="保存后系统自动生成" readonly>
-          <template v-if="!formData.projectCode" #suffix>
-            <span class="text-12px text-gray-400">如 PRJ_</span>
-          </template>
-        </el-input>
+      <el-form-item label="项目编号">
+        <el-input :model-value="formData.projectCode" placeholder="系统保存后自动生成" disabled />
       </el-form-item>
       <el-form-item label="关联分销商" prop="buyerCode">
         <el-select
@@ -36,6 +33,7 @@
           clearable
           placeholder="请选择关联分销商"
           class="!w-full"
+          :disabled="isEdit && formData.status !== ProjectStatusEnum.DRAFT"
         >
           <el-option
             v-for="item in buyerOptions"
@@ -78,7 +76,12 @@
       </el-form-item>
       <el-form-item label="项目状态" prop="status">
         <el-radio-group v-model="formData.status">
-          <el-radio v-for="item in PROJECT_STATUS_OPTIONS" :key="item.value" :value="item.value">
+          <el-radio
+            v-for="item in statusOptions"
+            :key="item.value"
+            :label="item.value"
+            :value="item.value"
+          >
             {{ item.label }}
           </el-radio>
         </el-radio-group>
@@ -106,6 +109,7 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
 import { DistributorApi, ProjectApi, ProjectSaveReqVO, ProjectVO } from '@/api/supplier/distribution'
+import { getStrDictOptions } from '@/utils/dict'
 import {
   PROJECT_STATUS_OPTIONS,
   PROJECT_TYPE_OPTIONS,
@@ -142,6 +146,15 @@ const buyerOptions = ref<{ buyerCode: string; buyerName: string }[]>([])
 const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view'))
 
+const statusOptions = computed(() => {
+  const dict = getStrDictOptions('supply_chain_project_status')
+  const all = dict.length ? dict : PROJECT_STATUS_OPTIONS
+  if (isEdit.value) return all
+  return all.filter(
+    (item) => item.value === ProjectStatusEnum.DRAFT || item.value === ProjectStatusEnum.ACTIVE
+  )
+})
+
 const createDefaultForm = (): ProjectFormData => ({
   projectCode: undefined,
   projectName: '',
@@ -177,9 +190,9 @@ watch(
   () => [props.modelValue, props.projectCode, props.mode] as const,
   async ([visible]) => {
     if (!visible) return
-    resetForm()
+    await resetForm()
     await loadBuyerOptions()
-    if (props.projectCode) {
+    if (props.projectCode && props.mode !== 'create') {
       await loadDetail(props.projectCode)
     }
   }
@@ -199,9 +212,10 @@ const loadBuyerOptions = async () => {
   }
 }
 
-const resetForm = () => {
+const resetForm = async () => {
   formData.value = createDefaultForm()
-  formRef.value?.resetFields()
+  await nextTick()
+  formRef.value?.clearValidate()
 }
 
 const loadDetail = async (projectCode: string) => {
@@ -211,6 +225,8 @@ const loadDetail = async (projectCode: string) => {
     formData.value = {
       ...createDefaultForm(),
       ...data,
+      projectCode: data.projectCode || projectCode,
+      status: data.status || ProjectStatusEnum.DRAFT,
       settlementPartyType: data.settlementPartyType || SettlementPartyTypeEnum.DISTRIBUTOR,
       period: data.startDate && data.endDate ? [data.startDate, data.endDate] : []
     }

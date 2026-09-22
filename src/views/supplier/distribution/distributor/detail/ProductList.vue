@@ -35,7 +35,7 @@
       <el-table-column label="SKU编号" prop="platformSkuCode" min-width="120" />
       <el-table-column label="类型/分类" min-width="160">
         <template #default="{ row }">
-          {{ row.categoryPath || '-' }}
+          {{ getProductTypeLabel(row) }}
         </template>
       </el-table-column>
       <el-table-column label="销售建议价（元）" min-width="130" align="right">
@@ -93,66 +93,24 @@
 
     <ProductSelectDialog
       ref="selectDialogRef"
-      :distributor-id="distributorId"
+      :buyer-code="buyerCode"
+      :product-type-items="productTypeItems"
       @success="getList"
     />
 
-    <Dialog v-model="adjustVisible" title="改价" width="560px">
-      <el-alert class="mb-12px" type="info" :closable="false">
-        <div class="leading-22px">
-          <div>跟随模板：清除手工 L2 覆盖，改回模板价。</div>
-          <div>等于 L1 / 自定义公式：当前商品必须已有 L1 建议价。</div>
-          <div>自定义公式：销售建议价 × 百分比 + 金额；百分比 100 等于 L1。</div>
-        </div>
-      </el-alert>
-      <el-form
+    <Dialog v-model="adjustVisible" title="改价" width="720px">
+      <div class="mb-12px text-14px">
+        <span class="text-gray-500">商品：</span>
+        {{ [adjustRow?.spuName, adjustRow?.skuName].filter(Boolean).join(' / ') || '-' }}
+      </div>
+      <div v-if="adjustRow?.pricingRule" class="mb-12px text-13px text-gray-500">
+        当前规则：{{ adjustRow.pricingRule }}
+      </div>
+      <DistributionPriceForm
         ref="adjustFormRef"
-        :model="adjustForm"
-        :rules="adjustRules"
-        label-width="120px"
-      >
-        <el-form-item label="商品">
-          {{ [adjustRow?.spuName, adjustRow?.skuName].filter(Boolean).join(' / ') || '-' }}
-        </el-form-item>
-        <el-form-item label="销售建议价">
-          {{ formatCentsYuan(adjustRow?.suggestPriceCents) }}
-        </el-form-item>
-        <el-form-item label="当前规则">
-          {{ adjustRow?.pricingRule || '-' }}
-        </el-form-item>
-        <el-form-item label="调价方式" prop="l2AdjustMode">
-          <el-radio-group v-model="adjustForm.l2AdjustMode" @change="handleAdjustModeChange">
-            <el-radio
-              v-for="item in DIST_L2_ADJUST_MODE_OPTIONS"
-              :key="item.value"
-              :value="item.value"
-            >
-              {{ item.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item
-          v-if="adjustForm.l2AdjustMode === DistL2AdjustModeEnum.CUSTOM"
-          label="分销价公式"
-          required
-        >
-          <div class="flex w-full flex-wrap items-center gap-6px">
-            <span class="whitespace-nowrap text-12px">销售建议价</span>
-            <el-form-item prop="percent" class="!mb-0">
-              <el-input-number :controls="false" v-model="adjustForm.percent" :min="1" :precision="0" class="!w-110px" />
-            </el-form-item>
-            <span>%</span>
-            <span>+</span>
-            <el-form-item prop="amountYuan" class="!mb-0">
-              <el-input-number :controls="false" v-model="adjustForm.amountYuan" :precision="2" class="!w-110px" />
-            </el-form-item>
-            <span>元</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="预估 L2">
-          {{ previewL2Text }}
-        </el-form-item>
-      </el-form>
+        v-model="adjustPrice"
+        :sale-price-tip="adjustSalePriceTip"
+      />
       <template #footer>
         <el-button @click="adjustVisible = false">取 消</el-button>
         <el-button type="primary" :loading="adjustSaving" @click="submitAdjust">确 定</el-button>
@@ -162,26 +120,23 @@
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance, FormRules } from 'element-plus'
 import {
   BuyerProductListItem,
   DistributorApi,
-  PatchBuyerProductReqVO
+  type BuyerProductBatchPricingReqVO,
+  type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
-import {
-  DIST_L2_ADJUST_MODE_OPTIONS,
-  DIST_PRODUCT_TYPE_OPTIONS,
-  DistL2AdjustModeEnum,
-  formatCentsYuan,
-  yuanToCents
-} from '@/views/supplier/utils/constants'
+import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import DistributionPriceForm, {
+  type DistPriceFormData
+} from './DistributionPriceForm.vue'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 
 defineOptions({ name: 'DistributorProductList' })
 
 const props = defineProps<{
   buyerCode: string
-  distributorId?: number
+  productTypeItems?: Array<{ id: string; name: string }>
 }>()
 
 const message = useMessage()
@@ -192,12 +147,30 @@ const activeTag = ref('')
 const selectDialogRef = ref<InstanceType<typeof ProductSelectDialog>>()
 const adjustVisible = ref(false)
 const adjustSaving = ref(false)
-const adjustFormRef = ref<FormInstance>()
+const adjustFormRef = ref<InstanceType<typeof DistributionPriceForm>>()
 const adjustRow = ref<BuyerProductListItem>()
-const adjustForm = reactive({
-  l2AdjustMode: DistL2AdjustModeEnum.FOLLOW_TEMPLATE as string,
-  percent: 100 as number | undefined,
-  amountYuan: 0 as number | undefined
+const DEFAULT_SALE_PRICE_TIP = '销售建议价=市场价*0.5%+0元'
+
+const createPriceConfig = (): DistPriceFormData => ({
+  distributionRule: {
+    mode: 'CUSTOM',
+    base: 'SUGGESTED_SALE_PRICE',
+    percentage: undefined,
+    operator: 'MULTIPLY',
+    operand: undefined
+  },
+  taxIncluded: true,
+  taxRateCode: '',
+  distributionHideThresholdPercent: undefined
+})
+
+const adjustPrice = ref<DistPriceFormData>(createPriceConfig())
+
+const adjustSalePriceTip = computed(() => {
+  const cents = adjustRow.value?.suggestPriceCents
+  if (cents == null) return DEFAULT_SALE_PRICE_TIP
+  const price = formatCentsYuan(cents)
+  return price === '-' ? DEFAULT_SALE_PRICE_TIP : `销售建议价=${price}元`
 })
 
 const queryParams = reactive({
@@ -205,10 +178,27 @@ const queryParams = reactive({
   pageSize: 20
 })
 
-const categoryTags = [
+const productTypeCodes = computed(() =>
+  [...new Set((props.productTypeItems || []).map((item) => String(item.id || '').trim()).filter(Boolean))]
+)
+
+const categoryTags = computed(() => [
   { value: '', label: '全部商品' },
-  ...DIST_PRODUCT_TYPE_OPTIONS.map((item) => ({ value: item.value, label: item.label }))
-]
+  ...(props.productTypeItems || []).map((item) => ({
+    value: item.id,
+    label: item.name || item.id
+  }))
+])
+
+const queryProductTypes = computed(() =>
+  activeTag.value ? [activeTag.value] : productTypeCodes.value
+)
+
+const getProductTypeLabel = (row: BuyerProductListItem) => {
+  const typeName =
+    props.productTypeItems?.find((item) => item.id === row.productType)?.name || row.productType
+  return [typeName, row.productClassification].filter(Boolean).join(' / ') || '-'
+}
 
 const PRICE_SOURCE_LABEL: Record<string, string> = {
   L1: '平台默认定价',
@@ -221,48 +211,86 @@ const getPriceSourceLabel = (value?: string) => {
   return PRICE_SOURCE_LABEL[value] || value
 }
 
-const inferL2AdjustMode = (pricingRule?: string) => {
-  const text = pricingRule || ''
-  if (text.includes('自定义') || /×\s*\d+\s*%/.test(text)) return DistL2AdjustModeEnum.CUSTOM
-  if (text.includes('等于L1') || text.includes('等于 L1')) return DistL2AdjustModeEnum.EQUAL_L1
-  return DistL2AdjustModeEnum.FOLLOW_TEMPLATE
+const inferPriceFromRow = (row: BuyerProductListItem): DistPriceFormData => {
+  const price = createPriceConfig()
+  if (row.displayThresholdPercent != null) {
+    price.distributionHideThresholdPercent = row.displayThresholdPercent
+  }
+  const text = row.pricingRule || ''
+  if (text.includes('市场价') && (text.includes('=') || text.includes('等于'))) {
+    price.distributionRule.mode = 'DIRECT_MARKET_PRICE'
+    return price
+  }
+  const percentMatch = text.match(/×\s*([\d.]+)\s*%/)
+  if (percentMatch) {
+    price.distributionRule.mode = 'CUSTOM'
+    price.distributionRule.base = text.includes('供应')
+      ? 'SUPPLY_PRICE'
+      : text.includes('市场')
+        ? 'MARKET_PRICE'
+        : 'SUGGESTED_SALE_PRICE'
+    price.distributionRule.percentage = Number(percentMatch[1])
+    const amountMatch = text.match(/([+-])\s*([\d.]+)/)
+    if (amountMatch) {
+      price.distributionRule.operator = amountMatch[1] === '-' ? 'SUBTRACT' : 'ADD'
+      price.distributionRule.operand = Number(amountMatch[2])
+    } else {
+      price.distributionRule.operator = 'ADD'
+      price.distributionRule.operand = 0
+    }
+    return price
+  }
+  if (text.includes('等于L1') || text.includes('等于 L1') || text.includes('销售建议价')) {
+    price.distributionRule.mode = 'CUSTOM'
+    price.distributionRule.base = 'SUGGESTED_SALE_PRICE'
+    price.distributionRule.percentage = 100
+    price.distributionRule.operator = 'ADD'
+    price.distributionRule.operand = 0
+  }
+  return price
 }
 
-const parseCustomFormula = (pricingRule?: string) => {
-  const percentMatch = pricingRule?.match(/×\s*(\d+)\s*%/)
-  const amountMatch = pricingRule?.match(/([+-])\s*([\d.]+)/)
-  const amountYuan = amountMatch
-    ? Number(amountMatch[2]) * (amountMatch[1] === '-' ? -1 : 1)
-    : 0
+const toOptionalNumber = (value?: number | null) => {
+  if (value == null || Number.isNaN(Number(value))) return undefined
+  return Number(value)
+}
+
+const buildFormulaRule = (rule: DistPriceFormData['distributionRule']): DistFormulaRuleReqVO => {
+  if (rule.mode === 'DIRECT_MARKET_PRICE') {
+    return { mode: 'DIRECT_MARKET_PRICE' }
+  }
   return {
-    percent: percentMatch ? Number(percentMatch[1]) : 100,
-    amountYuan
+    mode: 'CUSTOM',
+    base: rule.base,
+    percentage: Number(rule.percentage),
+    operator: rule.operator,
+    operand: rule.operand ?? 0
   }
 }
 
-const previewL2Text = computed(() => {
-  const suggest = adjustRow.value?.suggestPriceCents
-  if (adjustForm.l2AdjustMode === DistL2AdjustModeEnum.FOLLOW_TEMPLATE) return '-'
-  if (suggest == null) return '-'
-  if (adjustForm.l2AdjustMode === DistL2AdjustModeEnum.EQUAL_L1) {
-    return formatCentsYuan(suggest)
+const buildPricingPayload = (
+  buyerProductCode: string,
+  price: DistPriceFormData
+): BuyerProductBatchPricingReqVO => {
+  const hidePercent = toOptionalNumber(price.distributionHideThresholdPercent)
+  const payload: BuyerProductBatchPricingReqVO = {
+    buyerProductCodes: [buyerProductCode],
+    distributionInherited: false,
+    distributionRule: buildFormulaRule(price.distributionRule),
+    salesInherited: true,
+    serviceFeeInherited: true,
+    hideInherited: hidePercent == null,
+    taxInherited: false,
+    taxIncluded: price.taxIncluded
   }
-  const percent = Number(adjustForm.percent)
-  if (!percent) return '-'
-  const amountCents = yuanToCents(adjustForm.amountYuan) ?? 0
-  return formatCentsYuan(Math.round((suggest * percent) / 100) + amountCents)
-})
-
-const adjustRules = computed<FormRules>(() => {
-  const isCustom = adjustForm.l2AdjustMode === DistL2AdjustModeEnum.CUSTOM
-  return {
-    l2AdjustMode: [{ required: true, message: '请选择调价方式', trigger: 'change' }],
-    percent: isCustom
-      ? [{ required: true, message: '请输入百分比', trigger: 'change' }]
-      : [],
-    amountYuan: []
+  if (hidePercent != null) {
+    payload.distributionHideThresholdPercent = hidePercent
   }
-})
+  if (price.taxIncluded) {
+    payload.taxRateCode = price.taxRateCode
+  }
+  return payload
+}
 
 const getList = async () => {
   if (!props.buyerCode) return
@@ -270,7 +298,8 @@ const getList = async () => {
   try {
     const data = await DistributorApi.getBuyerProductPage(props.buyerCode, {
       pageNo: queryParams.pageNo,
-      pageSize: queryParams.pageSize
+      pageSize: queryParams.pageSize,
+      productType: queryProductTypes.value
     })
     list.value = data?.list || []
     total.value = data?.total || 0
@@ -292,25 +321,13 @@ const openSelectDialog = () => {
   selectDialogRef.value?.open()
 }
 
-const handleAdjustModeChange = () => {
-  if (adjustForm.l2AdjustMode === DistL2AdjustModeEnum.CUSTOM) {
-    if (adjustForm.percent == null) adjustForm.percent = 100
-    if (adjustForm.amountYuan == null) adjustForm.amountYuan = 0
-  }
-  nextTick(() => adjustFormRef.value?.clearValidate())
-}
-
 const openAdjust = (row: BuyerProductListItem) => {
   if (!row.buyerProductCode) {
     message.error('缺少分销商品编号，无法改价')
     return
   }
   adjustRow.value = row
-  const mode = inferL2AdjustMode(row.pricingRule)
-  const formula = parseCustomFormula(row.pricingRule)
-  adjustForm.l2AdjustMode = mode
-  adjustForm.percent = mode === DistL2AdjustModeEnum.CUSTOM ? formula.percent : 100
-  adjustForm.amountYuan = mode === DistL2AdjustModeEnum.CUSTOM ? formula.amountYuan : 0
+  adjustPrice.value = inferPriceFromRow(row)
   adjustVisible.value = true
   nextTick(() => adjustFormRef.value?.clearValidate())
 }
@@ -322,23 +339,12 @@ const submitAdjust = async () => {
     return
   }
   await adjustFormRef.value?.validate()
-  const needL1 =
-    adjustForm.l2AdjustMode === DistL2AdjustModeEnum.EQUAL_L1 ||
-    adjustForm.l2AdjustMode === DistL2AdjustModeEnum.CUSTOM
-  if (needL1 && adjustRow.value?.suggestPriceCents == null) {
-    message.error('当前商品没有 L1 建议价，无法按等于 L1 或自定义公式改价')
-    return
-  }
-  const payload: PatchBuyerProductReqVO = {
-    l2AdjustMode: adjustForm.l2AdjustMode
-  }
-  if (adjustForm.l2AdjustMode === DistL2AdjustModeEnum.CUSTOM) {
-    payload.percent = adjustForm.percent
-    payload.amountCents = yuanToCents(adjustForm.amountYuan) ?? 0
-  }
   adjustSaving.value = true
   try {
-    await DistributorApi.patchBuyerProduct(props.buyerCode, buyerProductCode, payload)
+    await DistributorApi.saveBuyerProductPricing(
+      props.buyerCode,
+      buildPricingPayload(buyerProductCode, adjustPrice.value)
+    )
     message.success('改价成功')
     adjustVisible.value = false
     await getList()
@@ -361,7 +367,7 @@ const handleDelete = async (row: BuyerProductListItem) => {
 }
 
 watch(
-  () => props.buyerCode,
+  () => [props.buyerCode, productTypeCodes.value.join(',')] as const,
   () => {
     queryParams.pageNo = 1
     getList()

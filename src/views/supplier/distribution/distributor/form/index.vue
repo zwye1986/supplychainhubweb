@@ -4,6 +4,7 @@
     :title="pageTitle"
     width="1100px"
     append-to-body
+    destroy-on-close
     :before-close="handleClosed"
   >
     <el-form
@@ -22,12 +23,8 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="分销商编号" prop="buyerCode">
-            <el-input :model-value="formData.buyerCode" placeholder="保存后系统自动生成" readonly>
-              <template v-if="!formData.buyerCode" #suffix>
-                <span class="text-12px text-gray-400">BYR_xxx</span>
-              </template>
-            </el-input>
+          <el-form-item label="分销商编号">
+            <el-input :model-value="formData.buyerCode" placeholder="系统保存后自动生成" disabled />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -160,8 +157,8 @@
       <el-divider content-position="left">分销信息</el-divider>
       <el-row :gutter="20">
         <el-col :span="24">
-          <el-form-item label="分销品类" prop="categoryL1Ids">
-            <el-checkbox-group v-model="formData.categoryL1Ids">
+          <el-form-item label="分销品类" prop="sellableCategories">
+            <el-checkbox-group v-model="formData.sellableCategories">
               <el-checkbox
                 v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
                 :key="dict.value"
@@ -433,7 +430,8 @@ import {
   BuyerSaveReqVO,
   DistributorApi,
   DistributorContactVO,
-  DistributorVO
+  DistributorVO,
+  toProductTypeCodes
 } from '@/api/supplier/distribution'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { DistributorStatusEnum, yuanToCents } from '@/views/supplier/utils/constants'
@@ -488,7 +486,7 @@ const createDefaultForm = (): DistributorFormModel => ({
   parentBuyerCode: undefined,
   cooperationModes: [],
   distributorType: undefined,
-  categoryL1Ids: [],
+  sellableCategories: [],
   productTypes: [],
   supplyPreference: undefined,
   legalEntityName: '',
@@ -513,45 +511,6 @@ const createDefaultForm = (): DistributorFormModel => ({
 const formData = ref<DistributorFormModel>(createDefaultForm())
 
 const isL1Distributor = computed(() => formData.value.distributionLevel === '1')
-
-/** 先用本地数据验证新增回显，后端就绪后改为 false */
-const USE_FORM_MOCK = true
-
-const firstDictValues = (dictType: string, count = 2) =>
-  getStrDictOptions(dictType)
-    .slice(0, count)
-    .map((item) => item.value)
-
-const applyMockForm = () => {
-  formData.value = {
-    ...createDefaultForm(),
-    buyerName: '华东福利分销中心',
-    status: 'ACTIVE',
-    distributionLevel: '1',
-    cooperationModes: firstDictValues('supply_chain_cooperation_mode'),
-    distributorType: firstDictValues('supply_chain_distributor_type', 1)[0],
-    categoryL1Ids: firstDictValues('supply_chain_sellable_category'),
-    productTypes: [],
-    supplyPreference: firstDictValues('supply_chain_supply_preference', 1)[0],
-    legalEntityName: '上海华东福利科技有限公司',
-    creditCode: '91310000MA1DIST001',
-    legalPersonName: '李伟',
-    legalPersonMobile: '13900010001',
-    contactAddress: '上海市浦东新区世纪大道100号',
-    settlementMethod: firstDictValues('supply_chain_settlement_method', 1)[0],
-    settlementCycleDays: 30,
-    integrationModes: firstDictValues('supply_chain_integration_mode'),
-    cooperationStartedAt: '2026-07-01T10:00:00',
-    cooperationNote: '一级分销商，覆盖华东区域企业客户',
-    bankName: '工商银行上海分行',
-    bankAccount: '6222020000000000001',
-    contacts: [
-      { name: '李伟', mobile: '13900010001', email: 'liwei@hdfl.com' },
-      { name: '王芳', mobile: '13900010002', email: 'wangfang@hdfl.com' }
-    ]
-  }
-  openingBalanceYuan.value = 10000
-}
 
 const licenseFileKeysModel = computed<string[]>({
   get: () => formData.value.licenseFileKeys || [],
@@ -583,7 +542,7 @@ const formRules = reactive<FormRules>({
     }
   ],
   cooperationModes: [{ required: true, message: '请选择合作模式', trigger: 'change', type: 'array' }],
-  categoryL1Ids: [{ required: true, message: '请选择分销品类', trigger: 'change', type: 'array' }],
+  sellableCategories: [{ required: true, message: '请选择分销品类', trigger: 'change', type: 'array' }],
   productTypes: [{ required: true, message: '请选择商品类型', trigger: 'change', type: 'array' }],
   legalEntityName: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
   creditCode: [
@@ -618,11 +577,9 @@ watch(
   () => [props.modelValue, props.buyerCode, props.mode] as const,
   async ([visible]) => {
     if (!visible) return
-    resetForm()
-    if (props.buyerCode) {
+    await resetForm()
+    if (props.buyerCode && props.mode !== 'create') {
       await loadDetail(props.buyerCode)
-    } else if (USE_FORM_MOCK) {
-      applyMockForm()
     }
     await loadParentOptions()
   }
@@ -668,11 +625,12 @@ const removeContact = (index: number) => {
   formData.value.contacts?.splice(index, 1)
 }
 
-const resetForm = () => {
+const resetForm = async () => {
   formData.value = createDefaultForm()
   openingBalanceYuan.value = undefined
   parentOptions.value = []
-  formRef.value?.resetFields()
+  await nextTick()
+  formRef.value?.clearValidate()
 }
 
 const toFileArray = (value?: string | string[] | null) => {
@@ -737,12 +695,18 @@ const normalizeIntegrationModes = (modes?: string[]) => {
   return (modes || []).map((mode) => aliases[mode] || mode.toUpperCase()).filter(Boolean)
 }
 
-const namedRefIds = (refs?: { id?: number; name?: string }[], fallback?: Array<string | number>) => {
-  const ids = (refs || [])
-    .map((item) => item?.id)
-    .filter((id): id is number => typeof id === 'number')
-  if (ids.length) return ids
-  return fallback || []
+const toSellableCategories = (
+  data: BuyerDetail & Partial<DistributorVO>
+): string[] => {
+  const fromEnums = (data.sellableCategories || []).map(String).filter(Boolean)
+  if (fromEnums.length) return [...new Set(fromEnums)]
+  const fromIds = (data.categoryL1Ids || []).map(String).filter(Boolean)
+  if (fromIds.length) return [...new Set(fromIds)]
+  const fromRefs = (data.categoryL1s || data.categories || [])
+    .map((item) => String(item?.id ?? item?.name ?? '').trim())
+    .filter(Boolean)
+  if (fromRefs.length) return [...new Set(fromRefs)]
+  return [...new Set((data.category || []).map(String).filter(Boolean))]
 }
 
 const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): DistributorFormModel => {
@@ -759,10 +723,8 @@ const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): Distributo
     parentBuyerCode: data.parentBuyerCode || undefined,
     cooperationModes: normalizeCooperationModes(data.cooperationModes || data.cooperationMode),
     distributorType: normalizeDistributorType(data.distributorType),
-    categoryL1Ids: data.categoryL1Ids?.length
-      ? data.categoryL1Ids
-      : namedRefIds(data.categoryL1s || data.categories, data.category),
-    productTypes: data.productTypes || [],
+    sellableCategories: toSellableCategories(data),
+    productTypes: toProductTypeCodes(data.productTypes),
     supplyPreference: data.supplyPreference,
     legalEntityName: data.legalEntityName || data.companyName || '',
     creditCode: data.creditCode || data.socialCreditCode || '',
@@ -834,7 +796,7 @@ const buildSavePayload = (): BuyerSaveReqVO => {
     idBackFileKey: toSingleFile(formData.value.idBackFileKey) || undefined,
     qualificationFileKeys,
     qualificationFileKey: qualificationFileKeys[0],
-    categoryL1Ids: formData.value.categoryL1Ids || [],
+    sellableCategories: formData.value.sellableCategories || [],
     productTypes: formData.value.productTypes || []
   }
   if (!isEdit.value) {
@@ -852,20 +814,20 @@ const submitForm = async () => {
   formLoading.value = true
   try {
     const payload = buildSavePayload()
+    let savedCode = formData.value.buyerCode || props.buyerCode
     if (isEdit.value) {
-      const buyerCode = formData.value.buyerCode || props.buyerCode
-      if (!buyerCode) {
+      if (!savedCode) {
         message.error('缺少分销商编号，无法保存')
         return
       }
-      await DistributorApi.updateDistributor(buyerCode, payload)
+      await DistributorApi.updateDistributor(savedCode, payload)
       message.success(t('common.updateSuccess'))
     } else {
-      await DistributorApi.createDistributor(payload)
+      savedCode = (await DistributorApi.createDistributor(payload)) || savedCode
       message.success(t('common.createSuccess'))
     }
     dialogVisible.value = false
-    emit('success')
+    emit('success', savedCode)
   } catch (error: any) {
     if (error?.message) {
       message.error(error.message)

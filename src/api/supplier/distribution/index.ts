@@ -1,11 +1,16 @@
 import request from '@/config/axios'
+import qs from 'qs'
 import { DistributorMockApi } from './mock'
 
 export type {
+  AddBuyerProductsReqVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
   BuyerDetail,
   BuyerInvoiceView,
+  BuyerListItem,
+  BuyerProductBatchPricingReqVO,
+  BuyerProductItemReqVO,
   BuyerSaveReqVO,
   DistributorContactVO,
   DistributorInvoiceVO,
@@ -14,11 +19,13 @@ export type {
   DistributorVO,
   DistributorPageParam,
   DistPlatformSkuVO,
+  DistFormulaRuleReqVO,
   InvoiceSaveReqVO,
   BuyerProductListItem,
   BuyerProductPageParam,
   PatchBuyerProductReqVO,
   NamedRef,
+  ProductTypeRef,
   PatchProjectListingReqVO,
   ProjectDetail,
   ProjectListingListItem,
@@ -29,11 +36,16 @@ export type {
   ProjectVO
 } from './types'
 
+export { toProductTypeCodes, toProductTypeItems } from './types'
+
 import type {
+  AddBuyerProductsReqVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
   BuyerDetail,
   BuyerInvoiceView,
+  BuyerListItem,
+  BuyerProductBatchPricingReqVO,
   BuyerSaveReqVO,
   DistributorPageParam,
   DistributorProductVO,
@@ -51,10 +63,47 @@ import type {
 /** 关联项目、分销层级、新增商品、项目选品等尚未接真实接口时使用 */
 export const USE_DISTRIBUTOR_MOCK = true
 
+const compactArray = <T>(values?: T[] | null) =>
+  values?.length ? values.filter((item) => item !== undefined && item !== null && item !== '') : undefined
+
+const serializeBuyerQuery = (query: Record<string, unknown>) =>
+  qs.stringify(query, { arrayFormat: 'repeat', skipNulls: true, allowDots: true })
+
+const buildBuyerPageParams = (params: DistributorPageParam = {}) => {
+  const distributionLevels = compactArray(params.distributionLevels)
+    ?.map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item > 0)
+  const query: Record<string, unknown> = {}
+  if (params.view) {
+    query.view = params.view
+  } else {
+    query.pageNo = params.pageNo || 1
+    query.pageSize = params.pageSize || 20
+  }
+  if (params.buyerName?.trim()) query.buyerName = params.buyerName.trim()
+  if (params.buyerCode?.trim()) query.buyerCode = params.buyerCode.trim()
+  if (distributionLevels?.length) query.distributionLevels = distributionLevels
+  if (compactArray(params.cooperationModes)) query.cooperationModes = compactArray(params.cooperationModes)
+  if (compactArray(params.sellableCategories)) {
+    query.sellableCategories = compactArray(params.sellableCategories)
+  }
+  if (compactArray(params.status)) query.status = compactArray(params.status)
+  if (params.updatedFrom) query.updatedFrom = params.updatedFrom
+  if (params.updatedTo) query.updatedTo = params.updatedTo
+  if (params.excludeBuyerCode) query.excludeBuyerCode = params.excludeBuyerCode
+  const forLevel = params.forLevel != null ? Number(params.forLevel) : undefined
+  if (forLevel != null && Number.isInteger(forLevel) && forLevel > 0) query.forLevel = forLevel
+  return query
+}
+
 export const DistributorApi = {
   /** 分页查询分销商：GET /supply-chain/buyers */
-  getDistributorPage: async (params: DistributorPageParam | any) => {
-    return await request.get({ url: '/supply-chain/buyers', params })
+  getDistributorPage: async (params: DistributorPageParam) => {
+    return await request.get<{ list: BuyerListItem[]; total: number }>({
+      url: '/supply-chain/buyers',
+      params: buildBuyerPageParams(params),
+      paramsSerializer: serializeBuyerQuery
+    })
   },
 
   /** 获取分销商名称列表（供下拉选择，view=simple） */
@@ -87,14 +136,15 @@ export const DistributorApi = {
   },
 
   /** 上级下拉：GET /buyers?view=parent-options */
-  getParentOptions: async (params?: { excludeBuyerCode?: string; forLevel?: string }) => {
+  getParentOptions: async (params?: { excludeBuyerCode?: string; forLevel?: number | string }) => {
     const data = await request.get({
       url: '/supply-chain/buyers',
-      params: {
+      params: buildBuyerPageParams({
         view: 'parent-options',
         excludeBuyerCode: params?.excludeBuyerCode,
-        forLevel: params?.forLevel
-      }
+        forLevel: params?.forLevel != null ? Number(params.forLevel) : undefined
+      }),
+      paramsSerializer: serializeBuyerQuery
     })
     const list = Array.isArray(data) ? data : data?.list || []
     return list.map(
@@ -162,9 +212,22 @@ export const DistributorApi = {
 
   /** 分页查询分销商品：GET /buyers/{buyerCode}/products，只返回未移除行，金额单位 CNY 分 */
   getBuyerProductPage: async (buyerCode: string, params?: BuyerProductPageParam) => {
+    const productType = compactArray(
+      Array.isArray(params?.productType)
+        ? params.productType
+        : params?.productType
+          ? [params.productType]
+          : undefined
+    )?.map(String)
+    const query: Record<string, unknown> = {
+      pageNo: params?.pageNo || 1,
+      pageSize: params?.pageSize || 20
+    }
+    if (productType?.length) query.productType = productType
     return await request.get<{ list: BuyerProductListItem[]; total: number }>({
       url: `/supply-chain/buyers/${buyerCode}/products`,
-      params
+      params: query,
+      paramsSerializer: serializeBuyerQuery
     })
   },
 
@@ -183,6 +246,25 @@ export const DistributorApi = {
   ) => {
     return await request.patch<boolean>({
       url: `/supply-chain/buyers/${buyerCode}/products/${buyerProductCode}`,
+      data
+    })
+  },
+
+  /** 新增分销商品：POST /buyers/{buyerCode}/products，返回 buyerProductCode[] */
+  createBuyerProducts: async (buyerCode: string, data: AddBuyerProductsReqVO) => {
+    return await request.post<string[]>({
+      url: `/supply-chain/buyers/${buyerCode}/products`,
+      data
+    })
+  },
+
+  /**
+   * 批量保存分销商通用定价：PUT /buyers/{buyerCode}/products/pricing
+   * 仅更新路径分销商下选中商品的通用定价版本；单事务全量成功或回滚，税务仅用于结算展示。
+   */
+  saveBuyerProductPricing: async (buyerCode: string, data: BuyerProductBatchPricingReqVO) => {
+    return await request.put<boolean>({
+      url: `/supply-chain/buyers/${buyerCode}/products/pricing`,
       data
     })
   },
@@ -296,7 +378,7 @@ export const ProjectApi = {
     return await request.post<string>({ url: '/supply-chain/projects', data })
   },
 
-  /** 编辑项目：文档未单独列出更新接口，创建后如需改档案按 buyers 同构 PUT /projects/{projectCode} */
+  /** 编辑项目：PUT /projects/{projectCode}，可改状态；非草稿改 buyerCode 会拒绝 */
   updateProject: async (projectCode: string, data: ProjectSaveReqVO) => {
     return await request.put<boolean>({ url: `/supply-chain/projects/${projectCode}`, data })
   },

@@ -90,7 +90,18 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="商品类型">
-          <ProductType :model-value="productTypes" text />
+          <template v-if="productTypeItems.length">
+            <el-tag
+              v-for="item in productTypeItems"
+              :key="item.id"
+              class="m-2px"
+              size="small"
+              type="success"
+            >
+              {{ item.name }}
+            </el-tag>
+          </template>
+          <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="主联系人">
           {{
@@ -182,7 +193,18 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="商品类型">
-                  <ProductType :model-value="productTypes" text />
+                  <template v-if="productTypeItems.length">
+                    <el-tag
+                      v-for="item in productTypeItems"
+                      :key="item.id"
+                      class="m-2px"
+                      size="small"
+                      type="success"
+                    >
+                      {{ item.name }}
+                    </el-tag>
+                  </template>
+                  <span v-else>-</span>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -340,7 +362,7 @@
           <ProductList
             v-if="buyerCode"
             :buyer-code="buyerCode"
-            :distributor-id="distributorId"
+            :product-type-items="productTypeItems"
           />
         </el-tab-pane>
 
@@ -357,7 +379,12 @@
 </template>
 
 <script lang="ts" setup>
-import { DistributorApi, DistributorVO, NamedRef } from '@/api/supplier/distribution'
+import {
+  DistributorApi,
+  DistributorVO,
+  NamedRef,
+  toProductTypeItems
+} from '@/api/supplier/distribution'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 import InvoiceInfo from './InvoiceInfo.vue'
@@ -433,11 +460,14 @@ const sellableCategories = computed(() => {
   )
 })
 
-const productTypes = computed(() =>
-  distributor.value.productTypes?.length
-    ? distributor.value.productTypes
-    : namedRefValues(distributor.value.categoryL2s, distributor.value.productType)
-)
+const productTypeItems = computed(() => {
+  if (distributor.value.productTypes?.length) {
+    return toProductTypeItems(distributor.value.productTypes)
+  }
+  return toProductTypeItems(
+    namedRefValues(distributor.value.categoryL2s, distributor.value.productType)
+  )
+})
 
 const licenseFileKeys = computed(
   () => distributor.value.licenseFileKeys || distributor.value.businessLicenseUrls || []
@@ -465,11 +495,16 @@ const accountBalanceText = computed(() => {
   return Number(distributor.value.accountBalance).toFixed(2)
 })
 
-const getDetail = async () => {
-  if (!props.buyerCode) return
+let fetchSeq = 0
+
+const getDetail = async (buyerCode?: string) => {
+  const code = buyerCode || props.buyerCode
+  if (!code) return
+  const seq = ++fetchSeq
   loading.value = true
   try {
-    const data = await DistributorApi.getDistributor(props.buyerCode)
+    const data = await DistributorApi.getDistributor(code)
+    if (seq !== fetchSeq) return
     distributor.value = {
       ...data,
       contacts: data.contacts || [],
@@ -483,7 +518,7 @@ const getDetail = async () => {
       qualificationFileKeys: data.qualificationFileKeys || []
     }
   } finally {
-    loading.value = false
+    if (seq === fetchSeq) loading.value = false
   }
 }
 
@@ -493,7 +528,8 @@ watch(
     if (!visible || !props.buyerCode) return
     activeTab.value = 'basic'
     getDetail()
-  }
+  },
+  { flush: 'post' }
 )
 
 const openEdit = () => {
@@ -533,6 +569,8 @@ const handleStatusChange = async (status: string) => {
 }
 
 const handleClosed = () => {
+  if (props.modelValue) return
+  fetchSeq++
   distributor.value = {} as DistributorVO
   activeTab.value = 'basic'
 }

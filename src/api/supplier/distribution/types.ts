@@ -38,6 +38,8 @@ export interface BuyerSaveReqVO {
   qualificationFileKey?: string
   licenseFileKeys?: string[]
   qualificationFileKeys?: string[]
+  /** 可售品类枚举名 */
+  sellableCategories?: string[]
   categoryL1Ids?: Array<string | number>
   /** 商品类型，接口 typeCode */
   productTypes?: string[]
@@ -137,7 +139,7 @@ export interface ProjectSaveReqVO {
   endDate?: string
   settlementPartyType?: string
   description?: string
-  /** 创建时允许 DRAFT 或 ACTIVE，空视为草稿 */
+  /** 创建允许 DRAFT / ACTIVE，空视为草稿；编辑可通过 PUT 整档替换修改状态 */
   status?: string
 }
 
@@ -228,12 +230,20 @@ export interface BuyerProductListItem {
   projectNames?: string[]
   /** 利润空间低于该百分比时 C 端隐藏，本批不消费 */
   displayThresholdPercent?: number
+  /** 可售品类封闭枚举名 */
+  sellableCategory?: string
+  /** 动态商品类型编码 */
+  productType?: string
+  /** 商品分类封闭枚举名 */
+  productClassification?: string
 }
 
 /** 分销商品分页查询 */
 export interface BuyerProductPageParam {
   pageNo?: number
   pageSize?: number
+  /** 动态商品类型编码，可多选；重复键 productType=A&productType=B */
+  productType?: string | string[]
 }
 
 /** 改分销商品 L2 覆盖（PatchBuyerProductReqVO） */
@@ -246,6 +256,64 @@ export interface PatchBuyerProductReqVO {
   amountCents?: number
   /** 利润空间低于该百分比时 C 端隐藏，本批不消费 */
   displayThresholdPercent?: number
+}
+
+/** 新增分销商品（单行），定价走 PUT /products/pricing */
+export interface BuyerProductItemReqVO {
+  platformSkuCode: string
+}
+
+/** 批量新增分销商品 */
+export interface AddBuyerProductsReqVO {
+  items: BuyerProductItemReqVO[]
+}
+
+/** 分销价 / 销售价公式（FormulaRuleReqVO） */
+export interface DistFormulaRuleReqVO {
+  /** DIRECT_MARKET_PRICE 直接等于市场价，CUSTOM 自定义 */
+  mode: string
+  /** MARKET_PRICE / SUGGESTED_SALE_PRICE / SUPPLY_PRICE；CUSTOM 必填 */
+  base?: string
+  /** 大于 0 且最多 2 位小数 */
+  percentage?: number
+  /** ADD / SUBTRACT / MULTIPLY / DIVIDE；CUSTOM 必填 */
+  operator?: string
+  /** 加减单位元最多 2 位；乘除为系数最多 4 位；不得为负 */
+  operand?: number
+}
+
+/** 服务费覆盖规则（ServiceFeeRuleReqVO） */
+export interface DistServiceFeeRuleReqVO {
+  percentage?: number
+  operator: string
+  operand?: number
+  hideCopy?: boolean
+  copy?: string
+}
+
+/** 分销商 SKU 通用批量定价（BuyerProductBatchPricingReqVO） */
+export interface BuyerProductBatchPricingReqVO {
+  buyerProductCodes: string[]
+  /** true 时继承商品默认分销价 */
+  distributionInherited?: boolean
+  distributionRule?: DistFormulaRuleReqVO
+  /** true 时继承商品默认销售价 */
+  salesInherited?: boolean
+  salesRule?: DistFormulaRuleReqVO
+  /** true 时继承商品默认服务费 */
+  serviceFeeInherited?: boolean
+  serviceFeeRule?: DistServiceFeeRuleReqVO
+  /** true 时继承商品默认利润隐藏阈值 */
+  hideInherited?: boolean
+  /** 分销区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+  distributionHideThresholdPercent?: number
+  /** 销售区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+  salesHideThresholdPercent?: number
+  /** true 时继承商品默认税务且不得携带税务字段 */
+  taxInherited?: boolean
+  /** 是否含税；覆盖时须与 taxRateCode 同时提交 */
+  taxIncluded?: boolean
+  taxRateCode?: string
 }
 
 /** 分销商品（SKU 级，三级定价，mock / 项目选品兼容） */
@@ -297,10 +365,53 @@ export interface ProjectProductVO extends DistributorProductVO {
   projectId?: number
 }
 
-/** 命名引用（类目等） */
+/** 命名引用（类目 / 商品类型等） */
 export interface NamedRef {
-  id?: number
+  id?: string | number
   name?: string
+}
+
+/** 商品类型：详情现为 { id, name }，兼容旧 string[] */
+export type ProductTypeRef = string | NamedRef
+
+export const toProductTypeCodes = (values?: ProductTypeRef[] | null): string[] => {
+  if (!values?.length) return []
+  return [
+    ...new Set(
+      values
+        .map((item) => {
+          if (item == null) return ''
+          if (typeof item === 'string' || typeof item === 'number') return String(item).trim()
+          return String(item.id ?? '').trim()
+        })
+        .filter(Boolean)
+    )
+  ]
+}
+
+export const toProductTypeItems = (
+  values?: ProductTypeRef[] | null
+): Array<{ id: string; name: string }> => {
+  if (!values?.length) return []
+  const items: Array<{ id: string; name: string }> = []
+  const seen = new Set<string>()
+  values.forEach((item) => {
+    if (item == null) return
+    if (typeof item === 'string' || typeof item === 'number') {
+      const id = String(item).trim()
+      if (!id || seen.has(id)) return
+      seen.add(id)
+      items.push({ id, name: id })
+      return
+    }
+    const id = String(item.id ?? '').trim()
+    const name = String(item.name ?? id).trim()
+    const key = id || name
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    items.push({ id: key, name: name || id })
+  })
+  return items
 }
 
 /** 分销商（列表字段对齐 GET /supply-chain/buyers） */
@@ -322,8 +433,8 @@ export interface DistributorVO {
   categories?: NamedRef[]
   /** 可售品类（详情） */
   categoryL1s?: NamedRef[]
-  /** 商品类型，接口 typeCode */
-  productTypes?: string[]
+  /** 商品类型，详情现为 { id, name }，兼容旧 typeCode 数组 */
+  productTypes?: ProductTypeRef[]
   /** 商品类型（详情） */
   categoryL2s?: NamedRef[]
   skuCount?: number
@@ -431,7 +542,8 @@ export interface BuyerDetail {
   qualificationFileKeys?: string[]
   integrationModes?: string[]
   cooperationModes?: string[]
-  productTypes?: string[]
+  /** 商品类型，详情现为 { id, name } */
+  productTypes?: ProductTypeRef[]
   sellableCategories?: string[]
   categoryL1Ids?: Array<string | number>
   categoryL1s?: NamedRef[]
@@ -443,25 +555,57 @@ export interface BuyerDetail {
   accountBalanceCents?: number
 }
 
-/** 分销商分页查询参数（对齐 GET /supply-chain/buyers） */
-export interface DistributorPageParam {
-  pageNo: number
-  pageSize: number
+/** 分销商列表项（GET /supply-chain/buyers → BuyerListItem） */
+export interface BuyerListItem {
+  id?: number
+  buyerCode?: string
   buyerName?: string
+  /** 组织等级：1一级 2二级 3三级 */
+  distributionLevel?: number
+  /** ACTIVE / SUSPENDED / BLACKLIST */
+  status?: string
+  /** 最后修改时间，Asia/Shanghai */
+  updatedAt?: string
+  /** 可售品类枚举名 */
+  sellableCategories?: string[]
+  /** 商品类型 typeCode */
+  productTypes?: string[]
+  cooperationModes?: string[]
+  /** 未归档关联项目数 */
+  projectCount?: number
+  /** 有效分销 SKU 商品数 */
+  skuCount?: number
+  /** 合作时间，取档案合作开始时间 */
+  cooperationTime?: string
+  primaryContactName?: string | null
+  primaryContactMobile?: string | null
+}
+
+/** 分销商分页查询参数（GET /supply-chain/buyers） */
+export interface DistributorPageParam {
+  pageNo?: number
+  pageSize?: number
+  /** 采购商标准名称，模糊 */
+  buyerName?: string
+  /** 采购商永久业务编码 */
   buyerCode?: string
   /** 组织等级，可多选：1 / 2 / 3 */
   distributionLevels?: number[]
   /** 合作模式枚举名，可多选 */
   cooperationModes?: string[]
-  /** 可售品类内部主键，可多选 */
-  categoryL1Ids?: Array<string | number>
-  /** 管理状态枚举名：ACTIVE / SUSPENDED / BLACKLIST */
+  /** 可售品类枚举名，可多选 */
+  sellableCategories?: string[]
+  /** 管理状态枚举名，可多选：ACTIVE / SUSPENDED / BLACKLIST */
   status?: string[]
+  /** 最后修改时间起，Asia/Shanghai */
   updatedFrom?: string
+  /** 最后修改时间止，Asia/Shanghai */
   updatedTo?: string
   /** simple 名称下拉；parent-options 上级下拉 */
   view?: string
+  /** 上级下拉排除的分销商编码及其子孙 */
   excludeBuyerCode?: string
+  /** 上级下拉目标等级：2 只要一级，3 只要二级 */
   forLevel?: number
 }
 

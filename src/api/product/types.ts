@@ -117,6 +117,7 @@ export interface ProductManagementSkuItem {
   fulfillmentType?: string
   fulfillmentTypeDisplay?: string
   status?: number
+  suggestedSalePriceRule?: SuggestedSalePriceRule
 }
 
 /** 管理端列表 SPU 聚合项 */

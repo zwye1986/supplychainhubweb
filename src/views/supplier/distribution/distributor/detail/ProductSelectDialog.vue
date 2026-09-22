@@ -1,37 +1,74 @@
 <template>
-  <Dialog v-model="dialogVisible" title="新增分销商品" width="1200px" :scroll="true" max-height="70vh">
-    <div class="mb-12px flex items-center justify-between">
-      <el-alert
-        class="!mb-0 flex-1"
-        type="info"
-        :closable="false"
-        title="从平台标品（SPU→SKU）中选择商品关联至该分销商。"
-      />
-      <el-tag class="ml-12px" type="primary" size="large">已选商品 {{ selectedList.length }}</el-tag>
-    </div>
-
-    <div class="mb-12px flex flex-wrap gap-8px">
-      <el-check-tag
-        v-for="tag in filterTags"
-        :key="tag.value"
-        :checked="activeTag === tag.value"
-        @change="handleTagChange(tag.value)"
-      >
-        {{ tag.label }}
-      </el-check-tag>
-    </div>
+  <Dialog
+    v-model="dialogVisible"
+    title="新增分销商品"
+    width="1600px"
+    :scroll="true"
+        max-height="78vh"
+  >
+    <el-alert
+      class="mb-12px"
+      type="info"
+      :closable="false"
+      title="从平台标品（SPU→SKU）中选择商品关联至该分销商。根据分销商已配置的商品类型筛选。"
+    />
 
     <el-row :gutter="16">
-      <el-col :span="13">
+      <el-col :span="12">
         <ContentWrap class="!mb-0">
+          <div class="filter-pill-wrap mb-12px">
+            <button
+              v-show="tabOverflow"
+              type="button"
+              class="filter-pill-arrow"
+              :disabled="!canScrollLeft"
+              @click="scrollTabs(-1)"
+            >
+              <Icon icon="ep:arrow-left" />
+            </button>
+            <div
+              ref="tabScrollRef"
+              class="filter-pill-scroll"
+              @scroll="updateTabScroll"
+              @wheel.prevent="onTabWheel"
+            >
+              <button
+                v-for="tag in categoryTabs"
+                :key="tag.value"
+                type="button"
+                class="filter-pill"
+                :class="{ 'is-active': queryParams.tabCode === tag.value }"
+                @click="handleTabChange(tag.value)"
+              >
+                {{ tag.label }}
+              </button>
+            </div>
+            <button
+              v-show="tabOverflow"
+              type="button"
+              class="filter-pill-arrow"
+              :disabled="!canScrollRight"
+              @click="scrollTabs(1)"
+            >
+              <Icon icon="ep:arrow-right" />
+            </button>
+          </div>
           <el-form :inline="true" :model="queryParams" class="-mb-10px">
             <el-form-item label="名称/编号">
               <el-input
                 v-model="queryParams.keyword"
-                placeholder="按商品名称或SPU编号搜索"
+                placeholder="按名称/编号搜索"
                 clearable
-                class="!w-200px"
+                class="!w-180px"
                 @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+            <el-form-item label="商品分类">
+              <ProductCategory
+                v-model="queryParams.categoryId"
+                node-key="id"
+                placeholder="请选择"
+                class="!w-140px"
               />
             </el-form-item>
             <el-form-item>
@@ -41,19 +78,40 @@
           </el-form>
 
           <el-table
-            ref="tableRef"
+            ref="skuTableRef"
             v-loading="loading"
             :data="skuList"
-            row-key="skuId"
+            :span-method="spanMethod"
+            border
+            row-key="_rowKey"
             height="420"
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="45" :reserve-selection="true" />
-            <el-table-column label="SPU" prop="spuName" min-width="130" />
-            <el-table-column label="SKU" prop="skuName" min-width="100" />
-            <el-table-column label="编号" prop="skuCode" min-width="110" />
-            <el-table-column label="分类" prop="categoryName" min-width="90" />
-            <el-table-column label="建议价" prop="marketPrice" min-width="90" align="right" />
+            <el-table-column label="商品名称(SPU)" min-width="160">
+              <template #default="{ row }">
+                <div>{{ row.spuName || '-' }}</div>
+                <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="SKU规格" min-width="120">
+              <template #default="{ row }">{{ row.skuName || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="类型/分类" min-width="160">
+              <template #default="{ row }">
+                {{ getSkuTypeCategoryPath(row) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="市场价（元）" min-width="110" align="right">
+              <template #default="{ row }">
+                {{ formatCentsYuan(row.marketPrice) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="供应价（元）" min-width="110" align="right">
+              <template #default="{ row }">
+                {{ formatCentsYuan(row.supplyPrice) }}
+              </template>
+            </el-table-column>
           </el-table>
           <Pagination
             v-model:page="queryParams.pageNo"
@@ -65,149 +123,58 @@
         </ContentWrap>
       </el-col>
 
-      <el-col :span="11">
-        <ContentWrap class="!mb-0">
-          <div class="mb-10px text-14px font-600">批量配置</div>
-          <el-alert
-            class="mb-10px"
-            type="warning"
-            :closable="false"
-            title="乘以系数，请设置百分比大于100，否则会出现亏本情况。单品牌利润空间=（商品分销价-供应价）/供应价×100%。"
-          />
-          <el-form label-width="100px" size="small" class="mb-10px">
-            <el-form-item label="调价方式">
-              <el-radio-group v-model="batchConfig.adjustMode">
-                <el-radio
-                  v-for="item in DIST_PRICE_ADJUST_MODE_OPTIONS"
-                  :key="item.value"
-                  :value="item.value"
-                >
-                  {{ item.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item
-              v-if="batchConfig.adjustMode === DistPriceAdjustModeEnum.CUSTOM"
-              label="分销价公式"
-            >
-              <div class="flex w-full items-center gap-6px">
-                <span class="whitespace-nowrap text-12px">销售建议价</span>
-                <el-input-number
-                  :controls="false"
-                  v-model="batchConfig.adjustPercent"
-                  :min="1"
-                  :precision="0"
-                  class="!w-90px"
-                />
-                <span>%</span>
-                <span>×</span>
-                <el-input-number
-                  :controls="false"
-                  v-model="batchConfig.adjustAmount"
-                  :min="0"
-                  :precision="2"
-                  class="!w-90px"
-                />
-                <span>元</span>
-              </div>
-            </el-form-item>
-            <el-form-item label="商品展示阈值">
-              <div class="flex w-full items-center gap-6px">
-                <span class="whitespace-nowrap text-12px">利润空间低于</span>
-                <el-input-number
-                  :controls="false"
-                  v-model="batchConfig.displayThreshold"
-                  :min="0"
-                  :max="100"
-                  :precision="0"
-                  class="!w-100px"
-                />
-                <span>% 时自动隐藏</span>
-              </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button @click="clearSelected">清空</el-button>
-              <el-button type="primary" @click="applyBatch">应用</el-button>
-            </el-form-item>
-          </el-form>
+      <el-col :span="12">
+        <ContentWrap class="right-panel !mb-0">
+          <div class="right-panel__scroll">
+            <div class="mb-12px text-14px font-600">
+              已选商品
+              <span class="text-[var(--el-color-primary)]">{{ selectedList.length }}</span>
+            </div>
 
-          <div class="mb-8px text-14px font-600">已选商品（{{ selectedList.length }}）</div>
-          <el-scrollbar height="240px">
+            <div class="batch-config">
+              <div class="batch-config__title">
+                批量配置分销价
+                <span class="batch-config__hint">对已选数据一键应用一下设置</span>
+              </div>
+              <DistributionPriceForm
+                ref="batchFormRef"
+                v-model="batchPrice"
+                :sale-price-tip="batchSalePriceTip"
+              />
+              <div class="batch-config__actions">
+                <el-button @click="clearBatchPrice">清空</el-button>
+                <el-button type="primary" @click="applyBatchPrice">应用</el-button>
+              </div>
+            </div>
+
             <div
-              v-for="item in selectedList"
-              :key="item.skuId"
-              class="mb-10px rounded-6px border border-solid border-[var(--el-border-color)] p-10px"
+              v-for="group in selectedGroups"
+              :key="group.spuCode || group.spuName"
+              class="selected-spu mb-12px"
             >
-              <div class="mb-6px flex items-center justify-between">
-                <span class="text-13px font-600">{{ item.spuName }} / {{ item.skuName }}</span>
-                <el-button link type="danger" @click="removeSelected(item.skuId!)">移除</el-button>
+              <div class="selected-spu__header">
+                <span class="truncate font-600">{{ group.spuName }}</span>
+                <span class="selected-spu__count">{{ group.items.length }}个SKU</span>
               </div>
-              <div class="mb-6px text-12px text-gray-500">
-                销售建议价：¥{{ formatPrice(item.suggestPrice) }} ｜ 供应价：¥{{
-                  formatPrice(item.supplyPrice)
-                }}
+              <div v-for="item in group.items" :key="item.platformSkuCode" class="selected-sku">
+                <div class="selected-sku__header">
+                  <span class="selected-sku__name" :title="item.platformSkuName || item.platformSkuCode">
+                    {{ item.platformSkuName || item.platformSkuCode }}
+                  </span>
+                  <el-button link type="danger" @click="removeSelected(item.platformSkuCode)">
+                    移除
+                  </el-button>
+                </div>
+                <div class="selected-sku__price-title">分销价</div>
+                <DistributionPriceForm
+                  :ref="(el) => setSkuFormRef(item.platformSkuCode, el)"
+                  v-model="item.price"
+                  :sale-price-tip="formatSuggestTip(item)"
+                />
               </div>
-              <el-form label-width="90px" size="small">
-                <el-form-item label="调价方式">
-                  <el-radio-group v-model="item.adjustMode" @change="() => syncDistPrice(item)">
-                    <el-radio
-                      v-for="opt in DIST_PRICE_ADJUST_MODE_OPTIONS"
-                      :key="opt.value"
-                      :value="opt.value"
-                    >
-                      {{ opt.label }}
-                    </el-radio>
-                  </el-radio-group>
-                </el-form-item>
-                <el-form-item
-                  v-if="item.adjustMode === DistPriceAdjustModeEnum.CUSTOM"
-                  label="公式"
-                >
-                  <div class="flex w-full items-center gap-4px">
-                    <el-input-number
-                      :controls="false"
-                      v-model="item.adjustPercent"
-                      :min="1"
-                      :precision="0"
-                      class="!w-80px"
-                      @change="() => syncDistPrice(item)"
-                    />
-                    <span>%</span>
-                    <el-input-number
-                      :controls="false"
-                      v-model="item.adjustAmount"
-                      :min="0"
-                      :precision="2"
-                      class="!w-80px"
-                      @change="() => syncDistPrice(item)"
-                    />
-                    <span>元</span>
-                  </div>
-                </el-form-item>
-                <el-form-item label="分销价">
-                  <el-input-number
-                    :controls="false"
-                    v-model="item.distPrice"
-                    :min="0"
-                    :precision="2"
-                    class="!w-full"
-                    @change="() => syncFinalPrice(item)"
-                  />
-                </el-form-item>
-                <el-form-item label="展示阈值">
-                  <el-input-number
-                    :controls="false"
-                    v-model="item.displayThreshold"
-                    :min="0"
-                    :max="100"
-                    :precision="0"
-                    class="!w-full"
-                  />
-                </el-form-item>
-              </el-form>
             </div>
             <el-empty v-if="!selectedList.length" description="请从左侧选择商品" :image-size="60" />
-          </el-scrollbar>
+          </div>
         </ContentWrap>
       </el-col>
     </el-row>
@@ -221,20 +188,31 @@
 
 <script lang="ts" setup>
 import {
-  DistPlatformSkuVO,
-  DistributorApi,
-  DistributorProductVO
-} from '@/api/supplier/distribution'
+  ProductApi,
+  ProductManagementSkuItem,
+  ProductManagementSpuItem,
+  ProductTypeApi,
+  PRODUCT_STATUS,
+  type ProductTypeVO,
+  type SuggestedSalePriceRule
+} from '@/api/product'
 import {
-  DIST_PRICE_ADJUST_MODE_OPTIONS,
-  DIST_PRODUCT_TYPE_OPTIONS,
-  DistPriceAdjustModeEnum
-} from '@/views/supplier/utils/constants'
+  DistributorApi,
+  type AddBuyerProductsReqVO,
+  type BuyerProductBatchPricingReqVO,
+  type DistFormulaRuleReqVO
+} from '@/api/supplier/distribution'
+import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import DistributionPriceForm, {
+  type DistPriceFormData
+} from './DistributionPriceForm.vue'
 
 defineOptions({ name: 'DistributorProductSelectDialog' })
 
 const props = defineProps<{
-  distributorId: number
+  buyerCode: string
+  productTypes?: string[]
+  productTypeItems?: Array<{ id: string; name: string }>
 }>()
 
 const emit = defineEmits<{
@@ -245,91 +223,253 @@ const message = useMessage()
 const dialogVisible = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
-const skuList = ref<DistPlatformSkuVO[]>([])
+const skuList = ref<SelectSkuRow[]>([])
 const total = ref(0)
-const selectedList = ref<DistributorProductVO[]>([])
-const activeTag = ref('')
-const tableRef = ref()
+const selectedList = ref<SelectedSkuItem[]>([])
+const skuTableRef = ref()
+const batchFormRef = ref<InstanceType<typeof DistributionPriceForm>>()
+const skuFormRefs = new Map<string, InstanceType<typeof DistributionPriceForm>>()
+const typeList = ref<ProductTypeVO[]>([])
+const DEFAULT_SALE_PRICE_TIP = '销售建议价=市场价*0.5%+0元'
+
+type SelectSkuRow = {
+  _rowKey: string
+  _rowspan: number
+  spuCode?: string
+  spuName?: string
+  skuCode?: string
+  skuName?: string
+  productType?: string
+  productTypeName?: string
+  primaryCategoryName?: string
+  marketPrice?: number
+  supplyPrice?: number
+  suggestedSalePriceRule?: SuggestedSalePriceRule
+}
+
+type SelectedSkuItem = {
+  platformSkuCode: string
+  platformSkuName?: string
+  platformSpuCode?: string
+  platformSpuName?: string
+  suggestedSalePriceRule?: SuggestedSalePriceRule
+  price: DistPriceFormData
+}
+
+const createPriceConfig = (): DistPriceFormData => ({
+  distributionRule: {
+    mode: 'CUSTOM',
+    base: 'SUGGESTED_SALE_PRICE',
+    percentage: undefined,
+    operator: 'MULTIPLY',
+    operand: undefined
+  },
+  taxIncluded: true,
+  taxRateCode: '',
+  distributionHideThresholdPercent: undefined
+})
+
+const clonePriceConfig = (src: DistPriceFormData): DistPriceFormData => ({
+  distributionRule: { ...src.distributionRule },
+  taxIncluded: src.taxIncluded,
+  taxRateCode: src.taxRateCode,
+  distributionHideThresholdPercent: src.distributionHideThresholdPercent
+})
+
+const batchPrice = ref<DistPriceFormData>(createPriceConfig())
+const batchSalePriceTip = DEFAULT_SALE_PRICE_TIP
+
+const setSkuFormRef = (skuCode: string, el: unknown) => {
+  if (el) skuFormRefs.set(skuCode, el as InstanceType<typeof DistributionPriceForm>)
+  else skuFormRefs.delete(skuCode)
+}
+
+const formatSuggestTip = (item: SelectedSkuItem) => {
+  const rule = item.suggestedSalePriceRule
+  if (!rule?.mode) return DEFAULT_SALE_PRICE_TIP
+  if (rule.mode === 'MARKET' || rule.mode === 'DIRECT_MARKET_PRICE') {
+    return '销售建议价=市场价'
+  }
+  if (rule.mode === 'FIXED') {
+    const price = formatCentsYuan(rule.fixedPriceCents)
+    return price === '-' ? DEFAULT_SALE_PRICE_TIP : `销售建议价=${price}元`
+  }
+  const baseLabel = rule.base === 'SUPPLY_PRICE' ? '供应价' : '市场价'
+  const operator =
+    rule.operator === 'ADD' ? '+' : rule.operator === 'SUBTRACT' ? '-' : rule.operator === 'DIVIDE' ? '/' : '*'
+  return `销售建议价=${baseLabel}*${rule.percentage ?? 0}%${operator}${rule.operand ?? 0}元`
+}
 
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 10,
+  pageSize: 20,
+  tabCode: 'ALL',
   keyword: undefined as string | undefined,
-  categoryCode: undefined as string | undefined
+  categoryId: undefined as number | undefined
 })
 
-const batchConfig = reactive({
-  adjustMode: DistPriceAdjustModeEnum.SUGGEST as number,
-  adjustPercent: 120,
-  adjustAmount: 0,
-  displayThreshold: 20
+const allowedTypeCodes = computed(() => {
+  const fromItems = (props.productTypeItems || [])
+    .map((item) => String(item.id || '').trim())
+    .filter(Boolean)
+  if (fromItems.length) return [...new Set(fromItems)]
+  return [...new Set((props.productTypes || []).map((item) => String(item).trim()).filter(Boolean))]
 })
 
-const filterTags = [
-  { value: '', label: '全部商品' },
-  ...DIST_PRODUCT_TYPE_OPTIONS.map((item) => ({ value: item.value, label: item.label }))
-]
-
-const formatPrice = (value?: number) => {
-  if (value === undefined || value === null) return '-'
-  return Number(value).toFixed(2)
-}
-
-const calcDistPrice = (item: DistributorProductVO) => {
-  const suggest = item.suggestPrice || 0
-  if (item.adjustMode === DistPriceAdjustModeEnum.SUGGEST) {
-    return Number(suggest.toFixed(2))
+const categoryTabs = computed(() => {
+  const tabs = [{ value: 'ALL', label: '全部商品' }]
+  if (props.productTypeItems?.length) {
+    props.productTypeItems.forEach((item) => {
+      const value = String(item.id || '').trim()
+      if (!value) return
+      tabs.push({ value, label: item.name || value })
+    })
+    return tabs
   }
-  const percent = item.adjustPercent || 100
-  const amount = item.adjustAmount || 0
-  // 自定义：销售建议价 * percent% ，再叠加金额（金额为附加项）
-  return Number(((suggest * percent) / 100 + amount).toFixed(2))
+  const source = allowedTypeCodes.value.length
+    ? typeList.value.filter((item) => item.typeCode && allowedTypeCodes.value.includes(item.typeCode))
+    : typeList.value
+  source.forEach((item) => {
+    if (!item.typeCode) return
+    tabs.push({ value: item.typeCode, label: item.typeName || item.typeCode })
+  })
+  if (allowedTypeCodes.value.length) {
+    allowedTypeCodes.value.forEach((code) => {
+      if (tabs.some((tab) => tab.value === code)) return
+      tabs.push({ value: code, label: code })
+    })
+  }
+  return tabs
+})
+
+const tabScrollRef = ref<HTMLElement>()
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+const tabOverflow = computed(() => canScrollLeft.value || canScrollRight.value)
+
+const getSkuTypeCategoryPath = (row: SelectSkuRow) => {
+  const typeName = row.productTypeName || ''
+  const categoryName = row.primaryCategoryName || ''
+  if (typeName && categoryName) return `${typeName}/${categoryName}`
+  return typeName || categoryName || '-'
 }
 
-const buildPricingRule = (item: DistributorProductVO) => {
-  if (item.adjustMode === DistPriceAdjustModeEnum.SUGGEST) return '按分销价=销售建议价'
-  const percent = item.adjustPercent ?? 100
-  const amount = item.adjustAmount ?? 0
-  return amount
-    ? `销售建议价 × ${percent}% + ${amount}`
-    : `销售建议价 × ${percent}%`
+const updateTabScroll = () => {
+  const el = tabScrollRef.value
+  if (!el) {
+    canScrollLeft.value = false
+    canScrollRight.value = false
+    return
+  }
+  canScrollLeft.value = el.scrollLeft > 2
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
 }
 
-const syncDistPrice = (item: DistributorProductVO) => {
-  item.distPrice = calcDistPrice(item)
-  item.pricingRule = buildPricingRule(item)
-  syncFinalPrice(item)
+const scrollTabs = (direction: -1 | 1) => {
+  tabScrollRef.value?.scrollBy({ left: direction * 200, behavior: 'smooth' })
 }
 
-const syncFinalPrice = (item: DistributorProductVO) => {
-  item.finalPrice = item.projectPrice ?? item.distPrice
-  item.priceSource = item.projectPriceCovered ? '项目专属价' : '分销商基础价'
+const scrollActiveTabIntoView = async () => {
+  await nextTick()
+  const wrap = tabScrollRef.value
+  const active = wrap?.querySelector('.filter-pill.is-active') as HTMLElement | null
+  if (!wrap || !active) return
+  const wrapRect = wrap.getBoundingClientRect()
+  const activeRect = active.getBoundingClientRect()
+  const padding = 24
+  if (activeRect.right > wrapRect.right - padding) {
+    wrap.scrollBy({ left: activeRect.right - wrapRect.right + 80, behavior: 'smooth' })
+    return
+  }
+  if (activeRect.left < wrapRect.left + padding) {
+    wrap.scrollBy({ left: activeRect.left - wrapRect.left - 80, behavior: 'smooth' })
+  }
+}
+
+const onTabWheel = (event: WheelEvent) => {
+  const el = tabScrollRef.value
+  if (!el) return
+  el.scrollLeft += event.deltaY || event.deltaX
+  updateTabScroll()
 }
 
 const open = async () => {
   dialogVisible.value = true
   selectedList.value = []
-  activeTag.value = ''
-  queryParams.categoryCode = undefined
   queryParams.keyword = undefined
+  queryParams.categoryId = undefined
+  queryParams.tabCode = 'ALL'
   queryParams.pageNo = 1
-  nextTick(() => tableRef.value?.clearSelection?.())
+  queryParams.pageSize = 20
+  if (!typeList.value.length) {
+    typeList.value = await ProductTypeApi.getTypeList()
+  }
+  batchPrice.value = createPriceConfig()
+  await nextTick()
+  batchFormRef.value?.clearValidate()
+  skuFormRefs.clear()
+  skuTableRef.value?.clearSelection?.()
   await getSkuList()
+  await nextTick()
+  updateTabScroll()
 }
 defineExpose({ open })
+
+const flattenProductPage = (spus: ProductManagementSpuItem[]): SelectSkuRow[] => {
+  const rows: SelectSkuRow[] = []
+  spus.forEach((spu) => {
+    const skus = spu.skus?.length ? spu.skus : ([{}] as ProductManagementSkuItem[])
+    skus.forEach((sku, index) => {
+      rows.push({
+        _rowKey: `${spu.spuCode || ''}-${sku.skuCode || index}`,
+        _rowspan: index === 0 ? skus.length : 0,
+        spuCode: spu.spuCode,
+        spuName: spu.spuName,
+        skuCode: sku.skuCode,
+        skuName: sku.skuName,
+        productType: spu.productType,
+        productTypeName: spu.productTypeName,
+        primaryCategoryName: spu.primaryCategoryName,
+        marketPrice: sku.marketPrice,
+        supplyPrice: sku.supplyPrice,
+        suggestedSalePriceRule: sku.suggestedSalePriceRule
+      })
+    })
+  })
+  return rows
+}
+
+const spanMethod = ({ row, columnIndex }: { row: SelectSkuRow; columnIndex: number }) => {
+  if (columnIndex !== 1) return
+  return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
+}
 
 const getSkuList = async () => {
   loading.value = true
   try {
-    const data = await DistributorApi.getPlatformSkuPage(queryParams)
-    skuList.value = data.list || []
-    total.value = data.total || 0
+    const data = await ProductApi.getProductPage({
+      pageNo: queryParams.pageNo,
+      pageSize: queryParams.pageSize,
+      keyword: queryParams.keyword,
+      categoryId: queryParams.categoryId,
+      tabCode: queryParams.tabCode === 'ALL' ? undefined : queryParams.tabCode,
+      status: PRODUCT_STATUS.ON_SHELF
+    })
+    skuList.value = flattenProductPage(data?.list || [])
+    total.value = data?.total || 0
   } catch {
     skuList.value = []
     total.value = 0
   } finally {
     loading.value = false
   }
+}
+
+const handleTabChange = (tabCode: string) => {
+  if (queryParams.tabCode === tabCode) return
+  queryParams.tabCode = tabCode
+  scrollActiveTabIntoView()
+  handleQuery()
 }
 
 const handleQuery = () => {
@@ -339,124 +479,208 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryParams.keyword = undefined
-  queryParams.categoryCode = activeTag.value || undefined
+  queryParams.categoryId = undefined
+  queryParams.tabCode = 'ALL'
   handleQuery()
 }
 
-const handleTagChange = (value: string) => {
-  activeTag.value = value
-  // 快捷筛选按商品类型；平台标品 mock 用 categoryCode 近似过滤
-  queryParams.categoryCode = value || undefined
-  handleQuery()
-}
-
-const handleSelectionChange = (rows: DistPlatformSkuVO[]) => {
-  const map = new Map(selectedList.value.map((item) => [item.skuId, item]))
-  rows.forEach((row) => {
-    if (!map.has(row.skuId)) {
-      const item: DistributorProductVO = {
-        spuId: row.spuId,
-        spuName: row.spuName,
-        skuId: row.skuId,
-        skuName: row.skuName,
-        skuCode: row.skuCode,
-        categoryCode: row.categoryCode,
-        categoryName: row.categoryName,
-        productType: row.productType,
-        productCategory: row.productCategory,
-        suggestPrice: row.marketPrice,
-        supplyPrice: row.supplyPrice,
-        adjustMode: DistPriceAdjustModeEnum.SUGGEST,
-        adjustPercent: 120,
-        adjustAmount: 0,
-        displayThreshold: 20,
-        projectPriceCovered: false,
-        projectNames: []
-      }
-      syncDistPrice(item)
-      map.set(row.skuId, item)
+const selectedGroups = computed(() => {
+  const groups: { spuCode: string; spuName: string; items: SelectedSkuItem[] }[] = []
+  const indexMap = new Map<string, number>()
+  selectedList.value.forEach((item) => {
+    const key = item.platformSpuCode || item.platformSpuName || item.platformSkuCode || ''
+    const existing = indexMap.get(key)
+    if (existing == null) {
+      indexMap.set(key, groups.length)
+      groups.push({
+        spuCode: item.platformSpuCode || '',
+        spuName: item.platformSpuName || '-',
+        items: [item]
+      })
+      return
     }
+    groups[existing].items.push(item)
   })
-  const selectedIds = new Set(rows.map((item) => item.skuId))
-  selectedList.value = [...map.values()].filter((item) => selectedIds.has(item.skuId!))
+  return groups
+})
+
+const handleSelectionChange = (rows: SelectSkuRow[]) => {
+  const map = new Map(selectedList.value.map((item) => [item.platformSkuCode, item]))
+  rows.forEach((row) => {
+    const skuCode = row.skuCode
+    if (!skuCode || map.has(skuCode)) return
+    map.set(skuCode, {
+      platformSkuCode: skuCode,
+      platformSpuCode: row.spuCode,
+      platformSpuName: row.spuName,
+      platformSkuName: row.skuName,
+      suggestedSalePriceRule: row.suggestedSalePriceRule,
+      price: clonePriceConfig(batchPrice.value)
+    })
+  })
+  const selectedCodes = new Set(rows.map((item) => item.skuCode).filter(Boolean))
+  selectedList.value = [...map.values()].filter((item) => selectedCodes.has(item.platformSkuCode))
 }
 
-const removeSelected = (skuId: number) => {
-  selectedList.value = selectedList.value.filter((item) => item.skuId !== skuId)
+const removeSelected = (skuCode: string) => {
+  selectedList.value = selectedList.value.filter((item) => item.platformSkuCode !== skuCode)
+  const selection = skuTableRef.value?.getSelectionRows?.() || []
+  const row = selection.find((item: SelectSkuRow) => item.skuCode === skuCode)
+  if (row) skuTableRef.value?.toggleRowSelection(row, false)
 }
 
-const clearSelected = () => {
-  selectedList.value = []
-  tableRef.value?.clearSelection?.()
+const normalizeCreatedCodes = (created: unknown): string[] => {
+  if (Array.isArray(created)) return created.map(String).filter(Boolean)
+  if (created && typeof created === 'object') {
+    const data = created as { list?: string[]; buyerProductCodes?: string[] }
+    if (Array.isArray(data.list)) return data.list.map(String).filter(Boolean)
+    if (Array.isArray(data.buyerProductCodes)) {
+      return data.buyerProductCodes.map(String).filter(Boolean)
+    }
+  }
+  return []
 }
 
-const applyBatch = () => {
+const resolveBuyerProductCodes = async (created: unknown) => {
+  const createdCodes = normalizeCreatedCodes(created)
+  if (createdCodes.length === selectedList.value.length) return createdCodes
+  const data = await DistributorApi.getBuyerProductPage(props.buyerCode, {
+    pageNo: 1,
+    pageSize: 500
+  })
+  const bySku = new Map(
+    (data?.list || [])
+      .filter((row) => row.platformSkuCode && row.buyerProductCode)
+      .map((row) => [row.platformSkuCode as string, row.buyerProductCode as string])
+  )
+  return selectedList.value
+    .map((item) => bySku.get(item.platformSkuCode))
+    .filter((code): code is string => !!code)
+}
+
+const toOptionalNumber = (value?: number | null) => {
+  if (value == null || Number.isNaN(Number(value))) return undefined
+  return Number(value)
+}
+
+const buildFormulaRule = (rule: DistPriceFormData['distributionRule']): DistFormulaRuleReqVO => {
+  if (rule.mode === 'DIRECT_MARKET_PRICE') {
+    return { mode: 'DIRECT_MARKET_PRICE' }
+  }
+  return {
+    mode: 'CUSTOM',
+    base: rule.base,
+    percentage: Number(rule.percentage),
+    operator: rule.operator,
+    operand: rule.operand ?? 0
+  }
+}
+
+const buildPricingPayload = (
+  buyerProductCodes: string[],
+  price: DistPriceFormData
+): BuyerProductBatchPricingReqVO => {
+  const hidePercent = toOptionalNumber(price.distributionHideThresholdPercent)
+  const payload: BuyerProductBatchPricingReqVO = {
+    buyerProductCodes,
+    distributionInherited: false,
+    distributionRule: buildFormulaRule(price.distributionRule),
+    salesInherited: true,
+    serviceFeeInherited: true,
+    hideInherited: hidePercent == null,
+    taxInherited: false,
+    taxIncluded: price.taxIncluded
+  }
+  if (hidePercent != null) {
+    payload.distributionHideThresholdPercent = hidePercent
+  }
+  if (price.taxIncluded) {
+    payload.taxRateCode = price.taxRateCode
+  }
+  return payload
+}
+
+const pricingGroupKey = (price: DistPriceFormData) =>
+  JSON.stringify({
+    mode: price.distributionRule.mode,
+    base: price.distributionRule.base,
+    percentage: price.distributionRule.percentage ?? null,
+    operator: price.distributionRule.operator,
+    operand: price.distributionRule.operand ?? null,
+    taxIncluded: price.taxIncluded,
+    taxRateCode: price.taxRateCode || '',
+    hide: toOptionalNumber(price.distributionHideThresholdPercent) ?? null
+  })
+
+const clearBatchPrice = () => {
+  batchPrice.value = createPriceConfig()
+  nextTick(() => batchFormRef.value?.clearValidate())
+}
+
+const applyBatchPrice = async () => {
   if (!selectedList.value.length) {
     message.warning('请先选择商品')
     return
   }
-  if (
-    batchConfig.adjustMode === DistPriceAdjustModeEnum.CUSTOM &&
-    (batchConfig.adjustPercent || 0) <= 100
-  ) {
-    message.warning('自定义模式下百分比 ≤ 100 可能出现亏本')
-  }
+  await batchFormRef.value?.validate()
+  const next = clonePriceConfig(batchPrice.value)
   selectedList.value.forEach((item) => {
-    item.adjustMode = batchConfig.adjustMode
-    item.displayThreshold = batchConfig.displayThreshold
-    if (batchConfig.adjustMode === DistPriceAdjustModeEnum.CUSTOM) {
-      item.adjustPercent = batchConfig.adjustPercent
-      item.adjustAmount = batchConfig.adjustAmount
-    }
-    syncDistPrice(item)
+    item.price = clonePriceConfig(next)
   })
-  message.success('批量配置已应用')
-}
-
-const validateSelected = async () => {
-  if (!selectedList.value.length) {
-    message.warning('请至少选择一个SKU')
-    return false
-  }
-  for (const item of selectedList.value) {
-    if (
-      item.displayThreshold == null ||
-      item.displayThreshold < 0 ||
-      item.displayThreshold > 100 ||
-      !Number.isInteger(item.displayThreshold)
-    ) {
-      message.warning(`SKU「${item.skuName}」利润空间阈值需为 0-100 的整数`)
-      return false
-    }
-    if (item.adjustMode === DistPriceAdjustModeEnum.CUSTOM) {
-      if (!item.adjustPercent || item.adjustPercent <= 0) {
-        message.warning(`SKU「${item.skuName}」请设置有效百分比`)
-        return false
-      }
-      if (item.adjustPercent <= 100) {
-        try {
-          await message.confirm(
-            `SKU「${item.skuName}」自定义百分比 ≤ 100，可能出现亏本，是否继续？`,
-            '亏本风险提示'
-          )
-        } catch {
-          return false
-        }
-      }
-    }
-    if (!item.distPrice || item.distPrice <= 0) {
-      message.warning(`SKU「${item.skuName}」分销价必须大于 0`)
-      return false
-    }
-  }
-  return true
+  await nextTick()
+  selectedList.value.forEach((item) => {
+    skuFormRefs.get(item.platformSkuCode)?.clearValidate()
+  })
+  message.success('已应用到已选商品')
 }
 
 const handleSubmit = async () => {
-  if (!(await validateSelected())) return
+  if (!selectedList.value.length) {
+    message.warning('请至少选择一个SKU')
+    return
+  }
+  if (!props.buyerCode) {
+    message.error('缺少分销商编号，暂无法保存分销商品')
+    return
+  }
+  await nextTick()
+  for (const item of selectedList.value) {
+    const form = skuFormRefs.get(item.platformSkuCode)
+    if (!form) {
+      message.error(`请完善 ${item.platformSkuName || item.platformSkuCode} 的分销价`)
+      return
+    }
+    await form.validate()
+  }
   submitting.value = true
   try {
-    await DistributorApi.createProducts(props.distributorId, selectedList.value)
+    const createPayload: AddBuyerProductsReqVO = {
+      items: selectedList.value.map((item) => ({ platformSkuCode: item.platformSkuCode }))
+    }
+    const created = await DistributorApi.createBuyerProducts(props.buyerCode, createPayload)
+    const buyerProductCodes = await resolveBuyerProductCodes(created)
+    if (buyerProductCodes.length !== selectedList.value.length) {
+      message.error('商品已关联，但未能取得分销商品编号，定价未保存')
+      emit('success')
+      dialogVisible.value = false
+      return
+    }
+    const groups = new Map<string, { codes: string[]; price: DistPriceFormData }>()
+    selectedList.value.forEach((item, index) => {
+      const key = pricingGroupKey(item.price)
+      const existing = groups.get(key)
+      if (existing) {
+        existing.codes.push(buyerProductCodes[index])
+        return
+      }
+      groups.set(key, { codes: [buyerProductCodes[index]], price: item.price })
+    })
+    for (const group of groups.values()) {
+      await DistributorApi.saveBuyerProductPricing(
+        props.buyerCode,
+        buildPricingPayload(group.codes, group.price)
+      )
+    }
     message.success('添加成功')
     dialogVisible.value = false
     emit('success')
@@ -465,3 +689,168 @@ const handleSubmit = async () => {
   }
 }
 </script>
+
+<style scoped>
+.right-panel__scroll {
+  max-height: 640px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.filter-pill-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-pill-scroll {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.filter-pill-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-pill-arrow {
+  display: flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--el-color-primary-light-5);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--el-color-primary);
+  cursor: pointer;
+}
+
+.filter-pill-arrow:hover:not(:disabled) {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.filter-pill-arrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.filter-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 18px;
+  border: 1px solid var(--el-color-primary-light-5);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--el-color-primary);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.filter-pill:hover {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.filter-pill.is-active {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
+  font-weight: 500;
+}
+
+.batch-config {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+}
+
+.batch-config__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-config__hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.batch-config__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.selected-spu {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+}
+
+.selected-spu__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--el-fill-color-light);
+}
+
+.selected-spu__count {
+  flex: none;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.selected-sku {
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.selected-sku__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.selected-sku__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-sku__price-title {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+</style>
