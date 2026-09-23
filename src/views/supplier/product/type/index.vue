@@ -116,7 +116,7 @@
   const openForm = (typeCode?: string) => typeFormRef.value?.open(typeCode)
   const goProduct = (typeCode?: string) => {
     if (!typeCode) return
-    router.push({ path: '/product/list', query: { typeCode } })
+    router.push({ path: '/supplier/product/list', query: { productType: typeCode } })
   }
 
   const handleDelete = async (row: ProductTypeVO) => {

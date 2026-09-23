@@ -196,6 +196,7 @@
   defineOptions({ name: 'SupplierProductList' })
 
   const route = useRoute()
+  const router = useRouter()
   const message = useMessage()
 
   const loading = ref(false)
@@ -347,7 +348,25 @@
     queryParams.marketPriceMax = undefined
     queryParams.supplyPriceMin = undefined
     queryParams.supplyPriceMax = undefined
+    if (route.query.productType || route.query.typeCode) {
+      router.replace({ path: route.path })
+    }
     handleQuery()
+  }
+
+  /** 从路由带入商品类型，同时选中对应页签和「商品类型」筛选 */
+  const syncProductTypeFromRoute = () => {
+    const raw = route.query.productType || route.query.typeCode
+    if (!raw) {
+      if (route.query.tabCode) queryParams.tabCode = String(route.query.tabCode)
+      return false
+    }
+    const typeCode = String(raw)
+    if (queryParams.productType === typeCode && queryParams.tabCode === typeCode) return false
+    queryParams.productType = typeCode
+    queryParams.tabCode = typeCode
+    queryParams.pageNo = 1
+    return true
   }
 
   const handleSelectionChange = (val: any[]) => {
@@ -424,9 +443,19 @@
     } catch {}
   }
 
+  watch(
+    () => route.query.productType || route.query.typeCode,
+    () => {
+      if (syncProductTypeFromRoute()) getList()
+    }
+  )
+
+  onActivated(() => {
+    if (syncProductTypeFromRoute()) getList()
+  })
+
   onMounted(async () => {
-    if (route.query.typeCode) queryParams.tabCode = String(route.query.typeCode)
-    if (route.query.tabCode) queryParams.tabCode = String(route.query.tabCode)
+    syncProductTypeFromRoute()
     brandList.value = await ProductBrandApi.getBrandList()
     typeList.value = await ProductTypeApi.getTypeList()
     try {
