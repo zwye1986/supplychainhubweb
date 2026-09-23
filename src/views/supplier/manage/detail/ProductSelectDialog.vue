@@ -599,7 +599,9 @@ const getSkuList = async () => {
       keyword: queryParams.keyword,
       categoryId,
       tabCode: queryParams.tabCode === 'ALL' ? undefined : queryParams.tabCode,
-      status: PRODUCT_STATUS.ON_SHELF
+      status: PRODUCT_STATUS.ON_SHELF,
+      excludeAddedSupplierOffers: true,
+      supplierCode: props.supplierCode
     })
     skuList.value = flattenProductPage(data?.list || [])
     total.value = data?.total || 0
