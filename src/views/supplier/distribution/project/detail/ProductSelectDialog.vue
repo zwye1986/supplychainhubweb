@@ -26,7 +26,7 @@
             <el-table-column label="平台SKU编码" prop="platformSkuCode" min-width="140" />
             <el-table-column label="销售建议价" min-width="110" align="right">
               <template #default="{ row }">
-                {{ formatCentsYuan(row.suggestPriceCents) }}
+                {{ formatCentsYuan(row.suggestedSalePriceCents) }}
               </template>
             </el-table-column>
             <el-table-column label="分销商基础价" min-width="120" align="right">
@@ -52,7 +52,7 @@
             class="mb-10px"
             type="warning"
             :closable="false"
-            title="自定义公式为销售建议价 × 百分比 + 金额。百分比 100 等于 L1；百分比 ≤ 100 可能亏本。"
+            title="自定义公式为平台默认分销价 × 百分比 + 金额。百分比 100 等于平台基价；百分比 ≤ 100 可能亏本。"
           />
           <el-form label-width="100px" size="small" class="mb-10px">
             <el-form-item label="调价方式">
@@ -71,7 +71,7 @@
               label="项目价公式"
             >
               <div class="flex w-full items-center gap-6px">
-                <span class="whitespace-nowrap text-12px">销售建议价</span>
+                <span class="whitespace-nowrap text-12px">平台默认分销价</span>
                 <el-input-number
                   :controls="false"
                   v-model="batchConfig.percent"
@@ -110,7 +110,8 @@
                 </el-button>
               </div>
               <div class="mb-6px text-12px text-gray-500">
-                {{ item.platformSkuCode }} ｜ 建议价：{{ formatCentsYuan(item.suggestPriceCents) }} ｜
+                {{ item.platformSkuCode }} ｜ 销售建议价：{{ formatCentsYuan(item.suggestedSalePriceCents) }} ｜
+                平台默认分销价：{{ formatCentsYuan(item.platformBasePriceCents) }} ｜
                 分销价：{{ formatCentsYuan(item.distPriceCents) }}
               </div>
               <el-form label-width="90px" size="small">
@@ -223,14 +224,14 @@ const previewItemPrice = (item: SelectedProjectProduct) => {
   if (item.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
     return formatCentsYuan(item.distPriceCents)
   }
-  if (item.suggestPriceCents == null) return '-'
+  if (item.platformBasePriceCents == null) return '-'
   if (item.l3AdjustMode === ProjectL3AdjustModeEnum.EQUAL_L1) {
-    return formatCentsYuan(item.suggestPriceCents)
+    return formatCentsYuan(item.platformBasePriceCents)
   }
   const percent = Number(item.percent)
   if (!percent) return '-'
   const amountCents = yuanToCents(item.amountYuan) ?? 0
-  return formatCentsYuan(Math.round((item.suggestPriceCents * percent) / 100) + amountCents)
+  return formatCentsYuan(Math.round((item.platformBasePriceCents * percent) / 100) + amountCents)
 }
 
 const open = async () => {
@@ -316,6 +317,17 @@ const validateSelected = async () => {
   for (const item of selectedList.value) {
     if (!item.platformSkuCode) {
       message.warning('存在缺少平台SKU编码的商品，无法发布')
+      return false
+    }
+    if (item.distPriceCents == null && item.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
+      message.warning(`SKU「${item.skuName}」缺少有效分销价，无法沿用分销商基础价`)
+      return false
+    }
+    if (
+      item.l3AdjustMode !== ProjectL3AdjustModeEnum.FOLLOW_L2 &&
+      item.platformBasePriceCents == null
+    ) {
+      message.warning(`SKU「${item.skuName}」缺少平台默认分销价，无法按当前方式调价`)
       return false
     }
     if (item.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {

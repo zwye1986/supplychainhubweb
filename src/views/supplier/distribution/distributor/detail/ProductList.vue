@@ -131,7 +131,7 @@
   const adjustPrice = ref<DistPriceFormData>(createPriceConfig())
 
   const adjustSalePriceTip = computed(() => {
-    const cents = adjustRow.value?.suggestPriceCents
+    const cents = adjustRow.value?.suggestedSalePriceCents
     if (cents == null) return DEFAULT_SALE_PRICE_TIP
     const price = formatCentsYuan(cents)
     return price === '-' ? DEFAULT_SALE_PRICE_TIP : `销售建议价=${price}元`

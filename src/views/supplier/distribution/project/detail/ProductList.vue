@@ -21,7 +21,7 @@
       <el-table-column label="平台SKU编码" prop="platformSkuCode" min-width="140" />
       <el-table-column label="销售建议价（元）" min-width="130" align="right">
         <template #default="{ row }">
-          {{ formatCentsYuan(row.suggestPriceCents) }}
+          {{ formatCentsYuan(row.suggestedSalePriceCents) }}
         </template>
       </el-table-column>
       <el-table-column label="分销商基础价（元）" min-width="140" align="right">
@@ -76,8 +76,8 @@
       <el-alert class="mb-12px" type="info" :closable="false">
         <div class="leading-22px">
           <div>沿用分销商基础价：不写 L3，跟随当前有效 L2。</div>
-          <div>等于 L1 / 自定义公式：会发新版本。金额单位按元录入，提交时转为分。</div>
-          <div>自定义公式：销售建议价 × 百分比 + 金额；百分比 100 等于 L1。</div>
+          <div>等于平台默认分销价 / 自定义公式：会发新版本。金额单位按元录入，提交时转为分。</div>
+          <div>自定义公式：平台默认分销价 × 百分比 + 金额；百分比 100 等于平台基价。</div>
         </div>
       </el-alert>
       <el-form ref="adjustFormRef" :model="adjustForm" :rules="adjustRules" label-width="120px">
@@ -85,7 +85,10 @@
           {{ adjustRow?.skuName || '-' }}
         </el-form-item>
         <el-form-item label="销售建议价">
-          {{ formatCentsYuan(adjustRow?.suggestPriceCents) }}
+          {{ formatCentsYuan(adjustRow?.suggestedSalePriceCents) }}
+        </el-form-item>
+        <el-form-item label="平台默认分销价">
+          {{ formatCentsYuan(adjustRow?.platformBasePriceCents) }}
         </el-form-item>
         <el-form-item label="当前分销价">
           {{ formatCentsYuan(adjustRow?.distPriceCents) }}
@@ -107,7 +110,7 @@
           required
         >
           <div class="flex w-full flex-wrap items-center gap-6px">
-            <span class="whitespace-nowrap text-12px">销售建议价</span>
+            <span class="whitespace-nowrap text-12px">平台默认分销价</span>
             <el-form-item prop="percent" class="!mb-0">
               <el-input-number :controls="false" v-model="adjustForm.percent" :min="1" :precision="0" class="!w-110px" />
             </el-form-item>
@@ -181,9 +184,9 @@ const queryParams = reactive({
 const inferL3AdjustMode = (row: ProjectListingListItem) => {
   if (!row.projectPriceCovered) return ProjectL3AdjustModeEnum.FOLLOW_L2
   if (
-    row.suggestPriceCents != null &&
+    row.platformBasePriceCents != null &&
     row.projectPriceCents != null &&
-    row.projectPriceCents === row.suggestPriceCents
+    row.projectPriceCents === row.platformBasePriceCents
   ) {
     return ProjectL3AdjustModeEnum.EQUAL_L1
   }
@@ -191,7 +194,7 @@ const inferL3AdjustMode = (row: ProjectListingListItem) => {
 }
 
 const previewL3Text = computed(() => {
-  const suggest = adjustRow.value?.suggestPriceCents
+  const suggest = adjustRow.value?.platformBasePriceCents
   if (adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
     return formatCentsYuan(adjustRow.value?.distPriceCents)
   }
@@ -261,8 +264,9 @@ const openAdjust = (row: ProjectListingListItem) => {
   adjustRow.value = row
   const mode = inferL3AdjustMode(row)
   adjustForm.l3AdjustMode = mode
-  if (mode === ProjectL3AdjustModeEnum.CUSTOM && row.suggestPriceCents != null) {
-    const diffCents = (row.projectPriceCents ?? row.suggestPriceCents) - row.suggestPriceCents
+  if (mode === ProjectL3AdjustModeEnum.CUSTOM && row.platformBasePriceCents != null) {
+    const diffCents =
+      (row.projectPriceCents ?? row.platformBasePriceCents) - row.platformBasePriceCents
     adjustForm.percent = 100
     adjustForm.amountYuan = Number((diffCents / 100).toFixed(2))
   } else {
@@ -283,8 +287,8 @@ const submitAdjust = async () => {
   const needL1 =
     adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.EQUAL_L1 ||
     adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM
-  if (needL1 && adjustRow.value?.suggestPriceCents == null) {
-    message.error('当前商品没有 L1 建议价，无法按等于 L1 或自定义公式改价')
+  if (needL1 && adjustRow.value?.platformBasePriceCents == null) {
+    message.error('当前商品没有平台默认分销价，无法按等于平台价或自定义公式改价')
     return
   }
   const payload: PatchProjectListingReqVO = {

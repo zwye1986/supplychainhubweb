@@ -539,7 +539,7 @@ export const ProjectL3AdjustModeEnum = {
 
 export const PROJECT_L3_ADJUST_MODE_OPTIONS = [
   { value: ProjectL3AdjustModeEnum.FOLLOW_L2, label: '沿用分销商基础价' },
-  { value: ProjectL3AdjustModeEnum.EQUAL_L1, label: '等于L1' },
+  { value: ProjectL3AdjustModeEnum.EQUAL_L1, label: '等于平台默认分销价' },
   { value: ProjectL3AdjustModeEnum.CUSTOM, label: '自定义公式' }
 ]
 

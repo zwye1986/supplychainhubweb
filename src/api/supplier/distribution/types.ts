@@ -169,7 +169,11 @@ export interface ProjectListingListItem {
   skuName?: string
   /** 建议结算价，当前 L1，单位 CNY 分 */
   suggestPriceCents?: number
-  /** 当前有效 L2，单位 CNY 分 */
+  /** 平台 SKU 销售建议价，单位 CNY 分 */
+  suggestedSalePriceCents?: number
+  /** 项目旧调价模式的 B 端平台基价，单位 CNY 分 */
+  platformBasePriceCents?: number
+  /** 当前有效分销价，优先通用版本，单位 CNY 分 */
   distPriceCents?: number
   /** 当前版本为 L3 时的冻结单价，单位 CNY 分 */
   projectPriceCents?: number
@@ -186,7 +190,7 @@ export interface ProjectProductItemReqVO {
   platformSkuCode: string
   /** L3 调价方式：FOLLOW_L2 / EQUAL_L1 / CUSTOM，默认 FOLLOW_L2 */
   l3AdjustMode?: string
-  /** CUSTOM 时的整数百分比，100 等于 L1 */
+  /** CUSTOM 时的整数百分比，100 等于项目调价所用的平台基价 */
   percent?: number
   /** CUSTOM 时加减的 CNY 分 */
   amountCents?: number
@@ -219,6 +223,10 @@ export interface BuyerProductListItem {
   marketPrice?: number
   /** 建议结算价，当前 L1，单位 CNY 分 */
   suggestPriceCents?: number
+  /** 平台 SKU 销售建议价，单位 CNY 分 */
+  suggestedSalePriceCents?: number
+  /** 项目旧调价模式的 B 端平台基价，单位 CNY 分 */
+  platformBasePriceCents?: number
   /** 定价规则文案：模板 / 等于L1 / 自定义公式 */
   pricingRule?: string
   /** 是否含税 */
