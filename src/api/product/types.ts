@@ -154,6 +154,8 @@ export interface ProductManagementPageParam {
   supplyPriceMin?: number
   supplyPriceMax?: number
   supplierCode?: string
+  /** 分销商编号，新增分销商品时按分销商过滤可关联标品 */
+  buyerCode?: string
   updateTimeStart?: string
   updateTimeEnd?: string
   pageNo?: number
