@@ -97,7 +97,7 @@ const buildFormulaRule = (rule: ProjectFormulaForm): DistFormulaRuleReqVO => {
   }
 }
 
-/** 单个配置只覆盖分销价；销售价、服务费固定继承分销商 */
+/** 单个配置只覆盖分销价。销售价、服务费非必传，请求中不带这两组字段 */
 export const buildProjectProductPricing = (
   listingCode: string,
   form: ProjectPricingFormData
@@ -109,8 +109,6 @@ export const buildProjectProductPricing = (
   const payload: ProjectProductBatchPricingReqVO = {
     listingCodes: [listingCode],
     distributionInherited: configured ? false : true,
-    salesInherited: true,
-    serviceFeeInherited: true,
     hideInherited: !hideOn,
     taxInherited: !taxOn
   }

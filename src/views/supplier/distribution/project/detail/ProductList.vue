@@ -78,7 +78,7 @@
         {{ adjustRow?.skuName || '-' }}
       </div>
       <div class="mb-12px text-13px text-gray-500">
-        分销价会覆盖分销商配置。销售价、服务费继承分销商配置。利润隐藏、税务未填写时继续继承。
+        分销价会覆盖分销商配置。利润隐藏、税务未填写时继续继承。
       </div>
       <ProjectPricingForm ref="adjustFormRef" v-model="adjustPrice" />
       <template #footer>
