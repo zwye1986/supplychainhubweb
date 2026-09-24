@@ -91,7 +91,8 @@
   } from '@/api/supplier/distribution'
   import { DICT_TYPE, getDictLabel } from '@/utils/dict'
   import { formatCentsYuan } from '@/views/supplier/utils/constants'
-  import DistributionPriceForm, { type DistPriceFormData } from './DistributionPriceForm.vue'
+  import DistributionPriceForm from './DistributionPriceForm.vue'
+  import type { DistPriceFormData } from './distributionPrice'
   import ProductSelectDialog from './ProductSelectDialog.vue'
 
   type BuyerProductTableRow = BuyerProductListItem & { _rowspan?: number }

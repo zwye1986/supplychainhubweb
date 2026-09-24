@@ -51,9 +51,9 @@
           <span v-else>{{ getPriceSourceLabel(row.priceSource) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" align="center" fixed="right">
+      <el-table-column label="操作" width="180" align="center" fixed="right" :show-overflow-tooltip="false">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openAdjust(row)">改价</el-button>
+          <el-button link type="primary" @click="openAdjust(row)">配置专属价</el-button>
           <el-button link type="danger" @click="handleDelete(row)">移除</el-button>
         </template>
       </el-table-column>
@@ -72,60 +72,15 @@
       @success="handleProductChange"
     />
 
-    <Dialog v-model="adjustVisible" title="改价" width="560px">
-      <el-alert class="mb-12px" type="info" :closable="false">
-        <div class="leading-22px">
-          <div>沿用分销商基础价：不写 L3，跟随当前有效 L2。</div>
-          <div>等于平台默认分销价 / 自定义公式：会发新版本。金额单位按元录入，提交时转为分。</div>
-          <div>自定义公式：平台默认分销价 × 百分比 + 金额；百分比 100 等于平台基价。</div>
-        </div>
-      </el-alert>
-      <el-form ref="adjustFormRef" :model="adjustForm" :rules="adjustRules" label-width="120px">
-        <el-form-item label="商品">
-          {{ adjustRow?.skuName || '-' }}
-        </el-form-item>
-        <el-form-item label="销售建议价">
-          {{ formatCentsYuan(adjustRow?.suggestedSalePriceCents) }}
-        </el-form-item>
-        <el-form-item label="平台默认分销价">
-          {{ formatCentsYuan(adjustRow?.platformBasePriceCents) }}
-        </el-form-item>
-        <el-form-item label="当前分销价">
-          {{ formatCentsYuan(adjustRow?.distPriceCents) }}
-        </el-form-item>
-        <el-form-item label="调价方式" prop="l3AdjustMode">
-          <el-radio-group v-model="adjustForm.l3AdjustMode" @change="handleAdjustModeChange">
-            <el-radio
-              v-for="item in PROJECT_L3_ADJUST_MODE_OPTIONS"
-              :key="item.value"
-              :value="item.value"
-            >
-              {{ item.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item
-          v-if="adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM"
-          label="项目价公式"
-          required
-        >
-          <div class="flex w-full flex-wrap items-center gap-6px">
-            <span class="whitespace-nowrap text-12px">平台默认分销价</span>
-            <el-form-item prop="percent" class="!mb-0">
-              <el-input-number :controls="false" v-model="adjustForm.percent" :min="1" :precision="0" class="!w-110px" />
-            </el-form-item>
-            <span>%</span>
-            <span>+</span>
-            <el-form-item prop="amountYuan" class="!mb-0">
-              <el-input-number :controls="false" v-model="adjustForm.amountYuan" :precision="2" class="!w-110px" />
-            </el-form-item>
-            <span>元</span>
-          </div>
-        </el-form-item>
-        <el-form-item label="预估 L3">
-          {{ previewL3Text }}
-        </el-form-item>
-      </el-form>
+    <Dialog v-model="adjustVisible" title="配置项目专属价" width="980px" :scroll="true" max-height="70vh">
+      <div class="mb-12px text-14px">
+        <span class="text-gray-500">商品：</span>
+        {{ adjustRow?.skuName || '-' }}
+      </div>
+      <div class="mb-12px text-13px text-gray-500">
+        分销价会覆盖分销商配置。销售价、服务费继承分销商配置。利润隐藏、税务未填写时继续继承。
+      </div>
+      <ProjectPricingForm ref="adjustFormRef" v-model="adjustPrice" />
       <template #footer>
         <el-button @click="adjustVisible = false">取 消</el-button>
         <el-button type="primary" :loading="adjustSaving" @click="submitAdjust">确 定</el-button>
@@ -135,20 +90,16 @@
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance, FormRules } from 'element-plus'
-import {
-  PatchProjectListingReqVO,
-  ProjectApi,
-  ProjectListingListItem
-} from '@/api/supplier/distribution'
-import {
-  PROJECT_L3_ADJUST_MODE_OPTIONS,
-  ProjectL3AdjustModeEnum,
-  formatCentsYuan,
-  getPriceSourceLabel,
-  yuanToCents
-} from '@/views/supplier/utils/constants'
+import { ProjectApi, ProjectListingListItem } from '@/api/supplier/distribution'
+import { formatCentsYuan, getPriceSourceLabel } from '@/views/supplier/utils/constants'
 import ProductSelectDialog from './ProductSelectDialog.vue'
+import ProjectPricingForm from './ProjectPricingForm.vue'
+import {
+  buildProjectProductPricing,
+  createEmptyProjectPricing,
+  isProjectPricingConfigured,
+  type ProjectPricingFormData
+} from './projectPricing'
 
 defineOptions({ name: 'ProjectProductList' })
 
@@ -168,53 +119,13 @@ const total = ref(0)
 const selectDialogRef = ref<InstanceType<typeof ProductSelectDialog>>()
 const adjustVisible = ref(false)
 const adjustSaving = ref(false)
-const adjustFormRef = ref<FormInstance>()
+const adjustFormRef = ref<InstanceType<typeof ProjectPricingForm>>()
 const adjustRow = ref<ProjectListingListItem>()
-const adjustForm = reactive({
-  l3AdjustMode: ProjectL3AdjustModeEnum.FOLLOW_L2 as string,
-  percent: 100 as number | undefined,
-  amountYuan: 0 as number | undefined
-})
+const adjustPrice = ref<ProjectPricingFormData>(createEmptyProjectPricing())
 
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20
-})
-
-const inferL3AdjustMode = (row: ProjectListingListItem) => {
-  if (!row.projectPriceCovered) return ProjectL3AdjustModeEnum.FOLLOW_L2
-  if (
-    row.platformBasePriceCents != null &&
-    row.projectPriceCents != null &&
-    row.projectPriceCents === row.platformBasePriceCents
-  ) {
-    return ProjectL3AdjustModeEnum.EQUAL_L1
-  }
-  return ProjectL3AdjustModeEnum.CUSTOM
-}
-
-const previewL3Text = computed(() => {
-  const suggest = adjustRow.value?.platformBasePriceCents
-  if (adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
-    return formatCentsYuan(adjustRow.value?.distPriceCents)
-  }
-  if (suggest == null) return '-'
-  if (adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.EQUAL_L1) {
-    return formatCentsYuan(suggest)
-  }
-  const percent = Number(adjustForm.percent)
-  if (!percent) return '-'
-  const amountCents = yuanToCents(adjustForm.amountYuan) ?? 0
-  return formatCentsYuan(Math.round((suggest * percent) / 100) + amountCents)
-})
-
-const adjustRules = computed<FormRules>(() => {
-  const isCustom = adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM
-  return {
-    l3AdjustMode: [{ required: true, message: '请选择调价方式', trigger: 'change' }],
-    percent: isCustom ? [{ required: true, message: '请输入百分比', trigger: 'change' }] : [],
-    amountYuan: []
-  }
 })
 
 const getList = async () => {
@@ -248,31 +159,13 @@ const handleProductChange = async () => {
   emit('success')
 }
 
-const handleAdjustModeChange = () => {
-  if (adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {
-    if (adjustForm.percent == null) adjustForm.percent = 100
-    if (adjustForm.amountYuan == null) adjustForm.amountYuan = 0
-  }
-  nextTick(() => adjustFormRef.value?.clearValidate())
-}
-
 const openAdjust = (row: ProjectListingListItem) => {
   if (!row.listingCode) {
     message.error('缺少项目商品编号，无法改价')
     return
   }
   adjustRow.value = row
-  const mode = inferL3AdjustMode(row)
-  adjustForm.l3AdjustMode = mode
-  if (mode === ProjectL3AdjustModeEnum.CUSTOM && row.platformBasePriceCents != null) {
-    const diffCents =
-      (row.projectPriceCents ?? row.platformBasePriceCents) - row.platformBasePriceCents
-    adjustForm.percent = 100
-    adjustForm.amountYuan = Number((diffCents / 100).toFixed(2))
-  } else {
-    adjustForm.percent = 100
-    adjustForm.amountYuan = 0
-  }
+  adjustPrice.value = createEmptyProjectPricing()
   adjustVisible.value = true
   nextTick(() => adjustFormRef.value?.clearValidate())
 }
@@ -283,25 +176,15 @@ const submitAdjust = async () => {
     message.error('缺少项目商品编号，无法改价')
     return
   }
-  await adjustFormRef.value?.validate()
-  const needL1 =
-    adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.EQUAL_L1 ||
-    adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM
-  if (needL1 && adjustRow.value?.platformBasePriceCents == null) {
-    message.error('当前商品没有平台默认分销价，无法按等于平台价或自定义公式改价')
-    return
+  const configured = isProjectPricingConfigured(adjustPrice.value)
+  if (configured) {
+    await adjustFormRef.value?.validate()
   }
-  const payload: PatchProjectListingReqVO = {
-    l3AdjustMode: adjustForm.l3AdjustMode
-  }
-  if (adjustForm.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {
-    payload.percent = adjustForm.percent
-    payload.amountCents = yuanToCents(adjustForm.amountYuan) ?? 0
-  }
+  const payload = buildProjectProductPricing(listingCode, adjustPrice.value)
   adjustSaving.value = true
   try {
-    await ProjectApi.patchProduct(props.projectCode, listingCode, payload)
-    message.success('改价成功')
+    await ProjectApi.saveProductPricing(props.projectCode, payload)
+    message.success(configured ? '项目专属价已保存' : '未配置项目专属价，将按分销商分销价结算')
     adjustVisible.value = false
     await handleProductChange()
   } finally {

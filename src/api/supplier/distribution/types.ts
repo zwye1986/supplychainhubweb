@@ -47,14 +47,12 @@ export interface BuyerSaveReqVO {
   openingBalanceCents?: number
 }
 
-/** 批量暂停或恢复（BatchStatusReqVO） */
+/** 批量暂停或恢复（BuyerBatchStatusReqVO） */
 export interface BatchStatusReqVO {
-  /** 文档字段名为 supplierCodes，值为分销商 buyerCode */
-  supplierCodes: string[]
-  /** 合作状态，优先于 targetStatus：仅 ACTIVE / SUSPENDED */
-  status?: string
-  /** 兼容字段，status 为空时使用 */
-  targetStatus?: string
+  /** 采购商永久业务编码列表 */
+  buyerCodes: string[]
+  /** 管理状态，仅 ACTIVE / SUSPENDED */
+  status: string
 }
 
 /** 开票信息视图（GET/PUT /buyers/{buyerCode}/invoice） */
@@ -185,7 +183,7 @@ export interface ProjectListingListItem {
   projectPriceCovered?: boolean
 }
 
-/** 从分销商品发布到项目（单行） */
+/** 从分销商品发布到项目（单行）。pricing 省略则不写项目专属价，按分销商分销价结算 */
 export interface ProjectProductItemReqVO {
   platformSkuCode: string
   /** L3 调价方式：FOLLOW_L2 / EQUAL_L1 / CUSTOM，默认 FOLLOW_L2 */
@@ -194,6 +192,8 @@ export interface ProjectProductItemReqVO {
   percent?: number
   /** CUSTOM 时加减的 CNY 分 */
   amountCents?: number
+  /** 与分销价同一套公式；填写后覆盖项目专属价 */
+  pricing?: BuyerProductCreatePricingReqVO
 }
 
 /** 从分销商品批量发布到项目 */
@@ -201,11 +201,51 @@ export interface AddProjectProductsReqVO {
   items: ProjectProductItemReqVO[]
 }
 
-/** 改项目商品 L3 覆盖（PatchProjectListingReqVO） */
+/** 改项目商品 L3 覆盖（PatchProjectListingReqVO）。pricing 省略且 l3AdjustMode=FOLLOW_L2 表示不配置专属价 */
 export interface PatchProjectListingReqVO {
-  l3AdjustMode: string
+  l3AdjustMode?: string
   percent?: number
   amountCents?: number
+  pricing?: BuyerProductCreatePricingReqVO
+}
+
+/** 项目利润隐藏阈值。hideInherited=false 时提交 */
+export interface ProjectHideRuleReqVO {
+  /** 分销区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+  distributionThresholdPercent?: number
+  /** 销售区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+  salesThresholdPercent?: number
+}
+
+/** 项目税务。taxInherited=false 时 taxIncluded 与 taxRateCode 需同时提交 */
+export interface ProjectTaxMetadataReqVO {
+  taxIncluded?: boolean
+  /** system 动态字典 supply_chain_tax_rate 的启用值 */
+  taxRateCode?: string
+}
+
+/**
+ * 批量保存项目综合定价（PUT /projects/{projectCode}/products/pricing）
+ * 五组配置可分别继承分销商；未配置的组传 inherited=true 且不带规则。
+ */
+export interface ProjectProductBatchPricingReqVO {
+  /** 当前项目下的项目商品编码列表 */
+  listingCodes: string[]
+  /** true 时继承分销商分销价；false 时必须提交 distributionRule */
+  distributionInherited?: boolean
+  distributionRule?: DistFormulaRuleReqVO
+  /** true 时继承分销商销售价；false 时必须提交 salesRule */
+  salesInherited?: boolean
+  salesRule?: DistFormulaRuleReqVO
+  /** true 时继承分销商服务费；false 时必须提交 serviceFeeRule */
+  serviceFeeInherited?: boolean
+  serviceFeeRule?: DistServiceFeeRuleReqVO
+  /** true 时继承分销商利润隐藏阈值；false 时必须提交 hideRule */
+  hideInherited?: boolean
+  hideRule?: ProjectHideRuleReqVO
+  /** true 时继承分销商税务；false 时须同时提交 taxIncluded 与 taxRateCode */
+  taxInherited?: boolean
+  taxMetadata?: ProjectTaxMetadataReqVO
 }
 
 /** 分销商品列表项（GET /buyers/{buyerCode}/products） */

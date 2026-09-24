@@ -203,9 +203,8 @@ import {
   type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
-import DistributionPriceForm, {
-  type DistPriceFormData
-} from './DistributionPriceForm.vue'
+import DistributionPriceForm from './DistributionPriceForm.vue'
+import type { DistPriceFormData } from './distributionPrice'
 
 defineOptions({ name: 'DistributorProductSelectDialog' })
 

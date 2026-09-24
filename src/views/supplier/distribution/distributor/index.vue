@@ -344,10 +344,10 @@
       )
       return
     }
-    const supplierCodes = targetList
+    const buyerCodes = targetList
       .map((row) => getDistributorBizCode(row))
       .filter((code): code is string => !!code)
-    if (!supplierCodes.length) {
+    if (!buyerCodes.length) {
       message.error('选中分销商缺少编号，无法批量变更状态')
       return
     }
@@ -356,7 +356,7 @@
         `确认批量${actionText}选中的 ${targetList.length} 家分销商吗？`,
         `批量${actionText}确认`
       )
-      await DistributorApi.batchUpdateDistributorStatus(supplierCodes, status)
+      await DistributorApi.batchUpdateDistributorStatus(buyerCodes, status)
       message.success(`批量${actionText}成功`)
       await getList()
     } catch {}

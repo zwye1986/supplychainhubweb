@@ -1,17 +1,14 @@
 <template>
-  <Dialog v-model="dialogVisible" title="新增分销商品" width="1200px" :scroll="true" max-height="70vh">
-    <div class="mb-12px flex items-center justify-between">
-      <el-alert
-        class="!mb-0 flex-1"
-        type="info"
-        :closable="false"
-        title="只能选择该项目所属分销商的未移除分销商品。默认沿用分销商基础价（FOLLOW_L2）。"
-      />
-      <el-tag class="ml-12px" type="primary" size="large">已选商品 {{ selectedList.length }}</el-tag>
-    </div>
+  <Dialog v-model="dialogVisible" title="新增分销商品" width="1600px" :scroll="true" max-height="78vh">
+    <el-alert
+      class="mb-12px"
+      type="info"
+      :closable="false"
+      title="只能选择该项目所属分销商的未移除分销商品。项目专属价可不配置，不填则按分销商分销价结算。"
+    />
 
     <el-row :gutter="16">
-      <el-col :span="13">
+      <el-col :span="12">
         <ContentWrap class="!mb-0">
           <el-table
             ref="tableRef"
@@ -22,14 +19,21 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="45" :reserve-selection="true" />
-            <el-table-column label="SKU名称" prop="skuName" min-width="140" />
-            <el-table-column label="平台SKU编码" prop="platformSkuCode" min-width="140" />
-            <el-table-column label="销售建议价" min-width="110" align="right">
+            <el-table-column label="商品名称(SPU)" min-width="160">
               <template #default="{ row }">
-                {{ formatCentsYuan(row.suggestedSalePriceCents) }}
+                <div>{{ row.spuName || '-' }}</div>
+                <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="分销商基础价" min-width="120" align="right">
+            <el-table-column label="SKU规格" min-width="120">
+              <template #default="{ row }">{{ row.skuName || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="市场价（元）" min-width="110" align="right">
+              <template #default="{ row }">
+                {{ formatCentsYuan(row.marketPriceCents ?? row.marketPrice) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="分销价（元）" min-width="110" align="right">
               <template #default="{ row }">
                 {{ formatCentsYuan(row.distPriceCents) }}
               </template>
@@ -45,111 +49,62 @@
         </ContentWrap>
       </el-col>
 
-      <el-col :span="11">
-        <ContentWrap class="!mb-0">
-          <div class="mb-10px text-14px font-600">批量配置</div>
-          <el-alert
-            class="mb-10px"
-            type="warning"
-            :closable="false"
-            title="自定义公式为平台默认分销价 × 百分比 + 金额。百分比 100 等于平台基价；百分比 ≤ 100 可能亏本。"
-          />
-          <el-form label-width="100px" size="small" class="mb-10px">
-            <el-form-item label="调价方式">
-              <el-radio-group v-model="batchConfig.l3AdjustMode">
-                <el-radio
-                  v-for="item in PROJECT_L3_ADJUST_MODE_OPTIONS"
-                  :key="item.value"
-                  :value="item.value"
-                >
-                  {{ item.label }}
-                </el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item
-              v-if="batchConfig.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM"
-              label="项目价公式"
-            >
-              <div class="flex w-full items-center gap-6px">
-                <span class="whitespace-nowrap text-12px">平台默认分销价</span>
-                <el-input-number
-                  :controls="false"
-                  v-model="batchConfig.percent"
-                  :min="1"
-                  :precision="0"
-                  class="!w-90px"
-                />
-                <span>%</span>
-                <span>+</span>
-                <el-input-number
-                  :controls="false"
-                  v-model="batchConfig.amountYuan"
-                  :precision="2"
-                  class="!w-90px"
-                />
-                <span>元</span>
-              </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button @click="clearSelected">清空</el-button>
-              <el-button type="primary" @click="applyBatch">应用</el-button>
-            </el-form-item>
-          </el-form>
+      <el-col :span="12">
+        <ContentWrap class="right-panel !mb-0">
+          <div class="right-panel__scroll">
+            <div class="mb-12px text-14px font-600">
+              已选商品
+              <span class="text-[var(--el-color-primary)]">{{ selectedList.length }}</span>
+            </div>
 
-          <div class="mb-8px text-14px font-600">已选商品（{{ selectedList.length }}）</div>
-          <el-scrollbar height="240px">
+            <div class="batch-config">
+              <div class="batch-config__title">
+                批量配置项目专属价
+                <span class="batch-config__hint">对已选数据一键应用以下设置，可不填</span>
+              </div>
+              <DistributionPriceForm
+                ref="batchFormRef"
+                v-model="batchPrice"
+                optional
+                price-label="项目专属价"
+                :sale-price-tip="DEFAULT_SALE_PRICE_TIP"
+              />
+              <div class="batch-config__actions">
+                <el-button @click="clearBatchPrice">清空</el-button>
+                <el-button type="primary" @click="applyBatchPrice">应用</el-button>
+              </div>
+            </div>
+
             <div
-              v-for="item in selectedList"
-              :key="item.platformSkuCode"
-              class="mb-10px rounded-6px border border-solid border-[var(--el-border-color)] p-10px"
+              v-for="group in selectedGroups"
+              :key="group.spuCode || group.spuName"
+              class="selected-spu mb-12px"
             >
-              <div class="mb-6px flex items-center justify-between">
-                <span class="text-13px font-600">{{ item.skuName }}</span>
-                <el-button link type="danger" @click="removeSelected(item.platformSkuCode)">
-                  移除
-                </el-button>
+              <div class="selected-spu__header">
+                <span class="truncate font-600">{{ group.spuName }}</span>
+                <span class="selected-spu__count">{{ group.items.length }}个SKU</span>
               </div>
-              <div class="mb-6px text-12px text-gray-500">
-                {{ item.platformSkuCode }} ｜ 销售建议价：{{ formatCentsYuan(item.suggestedSalePriceCents) }} ｜
-                平台默认分销价：{{ formatCentsYuan(item.platformBasePriceCents) }} ｜
-                分销价：{{ formatCentsYuan(item.distPriceCents) }}
+              <div v-for="item in group.items" :key="item.platformSkuCode" class="selected-sku">
+                <div class="selected-sku__header">
+                  <span class="selected-sku__name" :title="item.skuName || item.platformSkuCode">
+                    {{ item.skuName || item.platformSkuCode }}
+                  </span>
+                  <el-button link type="danger" @click="removeSelected(item.platformSkuCode)">
+                    移除
+                  </el-button>
+                </div>
+                <div class="selected-sku__price-title">项目专属价</div>
+                <DistributionPriceForm
+                  :ref="(el) => setSkuFormRef(item.platformSkuCode, el)"
+                  v-model="item.price"
+                  optional
+                  price-label="项目专属价"
+                  :sale-price-tip="formatSuggestTip(item)"
+                />
               </div>
-              <el-form label-width="90px" size="small">
-                <el-form-item label="调价方式">
-                  <el-radio-group v-model="item.l3AdjustMode">
-                    <el-radio
-                      v-for="opt in PROJECT_L3_ADJUST_MODE_OPTIONS"
-                      :key="opt.value"
-                      :value="opt.value"
-                    >
-                      {{ opt.label }}
-                    </el-radio>
-                  </el-radio-group>
-                </el-form-item>
-                <el-form-item
-                  v-if="item.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM"
-                  label="公式"
-                >
-                  <div class="flex w-full items-center gap-4px">
-                    <el-input-number
-                      :controls="false"
-                      v-model="item.percent"
-                      :min="1"
-                      :precision="0"
-                      class="!w-80px"
-                    />
-                    <span>%</span>
-                    <el-input-number :controls="false" v-model="item.amountYuan" :precision="2" class="!w-80px" />
-                    <span>元</span>
-                  </div>
-                </el-form-item>
-                <el-form-item label="预估项目价">
-                  {{ previewItemPrice(item) }}
-                </el-form-item>
-              </el-form>
             </div>
             <el-empty v-if="!selectedList.length" description="请从左侧选择商品" :image-size="60" />
-          </el-scrollbar>
+          </div>
         </ContentWrap>
       </el-col>
     </el-row>
@@ -167,21 +122,24 @@ import {
   BuyerProductListItem,
   DistributorApi,
   ProjectApi,
-  ProjectProductItemReqVO
+  ProjectProductItemReqVO,
+  type BuyerProductCreatePricingReqVO,
+  type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
+import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import DistributionPriceForm from '@/views/supplier/distribution/distributor/detail/DistributionPriceForm.vue'
 import {
-  PROJECT_L3_ADJUST_MODE_OPTIONS,
-  ProjectL3AdjustModeEnum,
-  formatCentsYuan,
-  yuanToCents
-} from '@/views/supplier/utils/constants'
+  createEmptyDistPrice,
+  isDistPriceConfigured,
+  type DistPriceFormData
+} from '@/views/supplier/distribution/distributor/detail/distributionPrice'
 
 defineOptions({ name: 'ProjectProductSelectDialog' })
 
+const DEFAULT_SALE_PRICE_TIP = '销售建议价=市场价*0.5%+0元'
+
 interface SelectedProjectProduct extends BuyerProductListItem {
-  l3AdjustMode: string
-  percent?: number
-  amountYuan?: number
+  price: DistPriceFormData
 }
 
 const props = defineProps<{
@@ -201,37 +159,33 @@ const skuList = ref<BuyerProductListItem[]>([])
 const total = ref(0)
 const selectedList = ref<SelectedProjectProduct[]>([])
 const tableRef = ref()
+const batchFormRef = ref<InstanceType<typeof DistributionPriceForm>>()
+const skuFormRefs = new Map<string, InstanceType<typeof DistributionPriceForm>>()
+const batchPrice = ref<DistPriceFormData>(createEmptyDistPrice())
 
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10
 })
 
-const batchConfig = reactive({
-  l3AdjustMode: ProjectL3AdjustModeEnum.FOLLOW_L2 as string,
-  percent: 120,
-  amountYuan: 0
+const clonePrice = (src: DistPriceFormData): DistPriceFormData => ({
+  distributionRule: { ...src.distributionRule },
+  taxIncluded: src.taxIncluded,
+  taxRateCode: src.taxRateCode,
+  distributionHideThresholdPercent: src.distributionHideThresholdPercent
 })
 
-const createSelected = (row: BuyerProductListItem): SelectedProjectProduct => ({
-  ...row,
-  l3AdjustMode: ProjectL3AdjustModeEnum.FOLLOW_L2,
-  percent: 120,
-  amountYuan: 0
-})
+const setSkuFormRef = (skuCode: string | undefined, el: unknown) => {
+  if (!skuCode) return
+  if (el) skuFormRefs.set(skuCode, el as InstanceType<typeof DistributionPriceForm>)
+  else skuFormRefs.delete(skuCode)
+}
 
-const previewItemPrice = (item: SelectedProjectProduct) => {
-  if (item.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
-    return formatCentsYuan(item.distPriceCents)
-  }
-  if (item.platformBasePriceCents == null) return '-'
-  if (item.l3AdjustMode === ProjectL3AdjustModeEnum.EQUAL_L1) {
-    return formatCentsYuan(item.platformBasePriceCents)
-  }
-  const percent = Number(item.percent)
-  if (!percent) return '-'
-  const amountCents = yuanToCents(item.amountYuan) ?? 0
-  return formatCentsYuan(Math.round((item.platformBasePriceCents * percent) / 100) + amountCents)
+const formatSuggestTip = (item: SelectedProjectProduct) => {
+  const cents = item.suggestedSalePriceCents
+  if (cents == null) return DEFAULT_SALE_PRICE_TIP
+  const price = formatCentsYuan(cents)
+  return price === '-' ? DEFAULT_SALE_PRICE_TIP : `销售建议价=${price}元`
 }
 
 const open = async () => {
@@ -242,7 +196,11 @@ const open = async () => {
   dialogVisible.value = true
   selectedList.value = []
   queryParams.pageNo = 1
-  nextTick(() => tableRef.value?.clearSelection?.())
+  batchPrice.value = createEmptyDistPrice()
+  skuFormRefs.clear()
+  await nextTick()
+  batchFormRef.value?.clearValidate()
+  tableRef.value?.clearSelection?.()
   await getSkuList()
 }
 defineExpose({ open })
@@ -265,12 +223,34 @@ const getSkuList = async () => {
   }
 }
 
+const selectedGroups = computed(() => {
+  const groups: { spuCode: string; spuName: string; items: SelectedProjectProduct[] }[] = []
+  const indexMap = new Map<string, number>()
+  selectedList.value.forEach((item) => {
+    const key = item.spuCode || item.spuName || item.platformSkuCode || ''
+    const existing = indexMap.get(key)
+    if (existing == null) {
+      indexMap.set(key, groups.length)
+      groups.push({
+        spuCode: item.spuCode || '',
+        spuName: item.spuName || '-',
+        items: [item]
+      })
+      return
+    }
+    groups[existing].items.push(item)
+  })
+  return groups
+})
+
 const handleSelectionChange = (rows: BuyerProductListItem[]) => {
   const map = new Map(selectedList.value.map((item) => [item.platformSkuCode, item]))
   rows.forEach((row) => {
-    if (row.platformSkuCode && !map.has(row.platformSkuCode)) {
-      map.set(row.platformSkuCode, createSelected(row))
-    }
+    if (!row.platformSkuCode || map.has(row.platformSkuCode)) return
+    map.set(row.platformSkuCode, {
+      ...row,
+      price: clonePrice(batchPrice.value)
+    })
   })
   const selectedCodes = new Set(rows.map((item) => item.platformSkuCode).filter(Boolean))
   selectedList.value = [...map.values()].filter((item) => selectedCodes.has(item.platformSkuCode))
@@ -283,89 +263,95 @@ const removeSelected = (platformSkuCode?: string) => {
   if (row) tableRef.value?.toggleRowSelection?.(row, false)
 }
 
-const clearSelected = () => {
-  selectedList.value = []
-  tableRef.value?.clearSelection?.()
+const toOptionalNumber = (value?: number | null) => {
+  if (value == null || Number.isNaN(Number(value))) return undefined
+  return Number(value)
 }
 
-const applyBatch = () => {
+const buildFormulaRule = (rule: DistPriceFormData['distributionRule']): DistFormulaRuleReqVO => {
+  if (rule.mode === 'DIRECT_MARKET_PRICE') {
+    return { mode: 'DIRECT_MARKET_PRICE' }
+  }
+  return {
+    mode: 'CUSTOM',
+    base: rule.base,
+    percentage: Number(rule.percentage),
+    operator: rule.operator,
+    operand: rule.operand ?? 0
+  }
+}
+
+const buildPricing = (price: DistPriceFormData): BuyerProductCreatePricingReqVO => {
+  const hidePercent = toOptionalNumber(price.distributionHideThresholdPercent)
+  const payload: BuyerProductCreatePricingReqVO = {
+    distributionInherited: false,
+    distributionRule: buildFormulaRule(price.distributionRule),
+    salesInherited: true,
+    serviceFeeInherited: true,
+    hideInherited: hidePercent == null,
+    taxInherited: false,
+    taxIncluded: price.taxIncluded
+  }
+  if (hidePercent != null) {
+    payload.distributionHideThresholdPercent = hidePercent
+  }
+  if (price.taxIncluded && price.taxRateCode) {
+    payload.taxRateCode = price.taxRateCode
+  }
+  return payload
+}
+
+const clearBatchPrice = () => {
+  batchPrice.value = createEmptyDistPrice()
+  nextTick(() => batchFormRef.value?.clearValidate())
+}
+
+const applyBatchPrice = async () => {
   if (!selectedList.value.length) {
     message.warning('请先选择商品')
     return
   }
-  if (
-    batchConfig.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM &&
-    (batchConfig.percent || 0) <= 100
-  ) {
-    message.warning('自定义模式下百分比 ≤ 100 可能出现亏本')
+  if (isDistPriceConfigured(batchPrice.value)) {
+    await batchFormRef.value?.validate()
   }
+  const next = clonePrice(batchPrice.value)
   selectedList.value.forEach((item) => {
-    item.l3AdjustMode = batchConfig.l3AdjustMode
-    if (batchConfig.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {
-      item.percent = batchConfig.percent
-      item.amountYuan = batchConfig.amountYuan
-    }
+    item.price = clonePrice(next)
   })
-  message.success('批量配置已应用')
-}
-
-const validateSelected = async () => {
-  if (!selectedList.value.length) {
-    message.warning('请至少选择一个SKU')
-    return false
-  }
-  for (const item of selectedList.value) {
-    if (!item.platformSkuCode) {
-      message.warning('存在缺少平台SKU编码的商品，无法发布')
-      return false
-    }
-    if (item.distPriceCents == null && item.l3AdjustMode === ProjectL3AdjustModeEnum.FOLLOW_L2) {
-      message.warning(`SKU「${item.skuName}」缺少有效分销价，无法沿用分销商基础价`)
-      return false
-    }
-    if (
-      item.l3AdjustMode !== ProjectL3AdjustModeEnum.FOLLOW_L2 &&
-      item.platformBasePriceCents == null
-    ) {
-      message.warning(`SKU「${item.skuName}」缺少平台默认分销价，无法按当前方式调价`)
-      return false
-    }
-    if (item.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {
-      if (!item.percent || item.percent <= 0) {
-        message.warning(`SKU「${item.skuName}」请设置有效百分比`)
-        return false
-      }
-      if (item.percent <= 100) {
-        try {
-          await message.confirm(
-            `SKU「${item.skuName}」自定义百分比 ≤ 100，可能出现亏本，是否继续？`,
-            '亏本风险提示'
-          )
-        } catch {
-          return false
-        }
-      }
-    }
-  }
-  return true
+  await nextTick()
+  selectedList.value.forEach((item) => {
+    skuFormRefs.get(item.platformSkuCode || '')?.clearValidate()
+  })
+  message.success(isDistPriceConfigured(next) ? '已应用到已选商品' : '已清空已选商品的项目专属价')
 }
 
 const handleSubmit = async () => {
-  if (!(await validateSelected())) return
+  if (!selectedList.value.length) {
+    message.warning('请至少选择一个SKU')
+    return
+  }
   if (!props.projectCode) {
     message.error('缺少项目编号，无法发布商品')
     return
+  }
+  await nextTick()
+  for (const item of selectedList.value) {
+    if (!isDistPriceConfigured(item.price)) continue
+    const form = item.platformSkuCode ? skuFormRefs.get(item.platformSkuCode) : undefined
+    if (!form) {
+      message.error(`请完善 ${item.skuName || item.platformSkuCode} 的项目专属价`)
+      return
+    }
+    await form.validate()
   }
   submitting.value = true
   try {
     const items: ProjectProductItemReqVO[] = selectedList.value.map((item) => {
       const row: ProjectProductItemReqVO = {
-        platformSkuCode: item.platformSkuCode || '',
-        l3AdjustMode: item.l3AdjustMode || ProjectL3AdjustModeEnum.FOLLOW_L2
+        platformSkuCode: item.platformSkuCode || ''
       }
-      if (row.l3AdjustMode === ProjectL3AdjustModeEnum.CUSTOM) {
-        row.percent = item.percent
-        row.amountCents = yuanToCents(item.amountYuan) ?? 0
+      if (isDistPriceConfigured(item.price)) {
+        row.pricing = buildPricing(item.price)
       }
       return row
     })
@@ -379,3 +365,89 @@ const handleSubmit = async () => {
   }
 }
 </script>
+
+<style scoped>
+.right-panel__scroll {
+  max-height: 640px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.batch-config {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+}
+
+.batch-config__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-config__hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.batch-config__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.selected-spu {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+}
+
+.selected-spu__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--el-fill-color-light);
+}
+
+.selected-spu__count {
+  flex: none;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.selected-sku {
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.selected-sku__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.selected-sku__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-sku__price-title {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+</style>

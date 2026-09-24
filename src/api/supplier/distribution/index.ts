@@ -32,6 +32,7 @@ export type {
   ProjectDetail,
   ProjectListingListItem,
   ProjectPageParam,
+  ProjectProductBatchPricingReqVO,
   ProjectProductItemReqVO,
   ProjectProductVO,
   ProjectSaveReqVO,
@@ -60,6 +61,7 @@ import type {
   ProjectDetail,
   ProjectListingListItem,
   ProjectPageParam,
+  ProjectProductBatchPricingReqVO,
   ProjectSaveReqVO
 } from './types'
 
@@ -181,9 +183,9 @@ export const DistributorApi = {
     return await request.put<boolean>({ url: `/supply-chain/buyers/${buyerCode}`, data })
   },
 
-  /** 变更合作状态：PATCH /supply-chain/buyers；单条也走该接口，supplierCodes 只传一个 buyerCode */
-  batchUpdateDistributorStatus: async (supplierCodes: string[], status: string) => {
-    const data: BatchStatusReqVO = { supplierCodes, status }
+  /** 批量暂停或恢复：PATCH /supply-chain/buyers，status 仅 ACTIVE / SUSPENDED */
+  batchUpdateDistributorStatus: async (buyerCodes: string[], status: string) => {
+    const data: BatchStatusReqVO = { buyerCodes, status }
     return await request.patch<boolean>({ url: '/supply-chain/buyers', data })
   },
 
@@ -414,6 +416,17 @@ export const ProjectApi = {
   deleteProduct: async (projectCode: string, listingCode: string) => {
     return await request.delete<boolean>({
       url: `/supply-chain/projects/${projectCode}/products/${listingCode}`
+    })
+  },
+
+  /**
+   * 批量保存项目综合定价：PUT /projects/{projectCode}/products/pricing
+   * 单事务全量成功或回滚；未配置的分组传 inherited=true。
+   */
+  saveProductPricing: async (projectCode: string, data: ProjectProductBatchPricingReqVO) => {
+    return await request.put<boolean>({
+      url: `/supply-chain/projects/${projectCode}/products/pricing`,
+      data
     })
   },
 
