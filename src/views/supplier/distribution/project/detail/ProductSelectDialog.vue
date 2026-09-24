@@ -211,7 +211,8 @@ const getSkuList = async () => {
   try {
     const data = await DistributorApi.getBuyerProductPage(props.buyerCode, {
       pageNo: queryParams.pageNo,
-      pageSize: queryParams.pageSize
+      pageSize: queryParams.pageSize,
+      projectCode: props.projectCode
     })
     skuList.value = data.list || []
     total.value = data.total || 0

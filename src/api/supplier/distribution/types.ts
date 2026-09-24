@@ -348,6 +348,8 @@ export interface BuyerProductPageParam {
   pageSize?: number
   /** 动态商品类型编码，可多选；重复键 productType=A&productType=B */
   productType?: string | string[]
+  /** 项目新增商品选品时排除该项目已加入且未移除的商品 */
+  projectCode?: string
 }
 
 /** 改分销商品 L2 覆盖（PatchBuyerProductReqVO） */

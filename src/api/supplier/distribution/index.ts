@@ -231,6 +231,7 @@ export const DistributorApi = {
       pageSize: params?.pageSize || 20
     }
     if (productType?.length) query.productType = productType
+    if (params?.projectCode) query.projectCode = params.projectCode
     return await request.get<{ list: BuyerProductListItem[]; total: number }>({
       url: `/supply-chain/buyers/${buyerCode}/products`,
       params: query,
