@@ -158,6 +158,45 @@ export interface ProjectPageParam {
   view?: string
 }
 
+/** 项目综合定价公式回显（ProjectFormulaRuleView） */
+export interface ProjectFormulaRuleView {
+  /** DIRECT_MARKET_PRICE 直接等于市场价；CUSTOM 自定义公式 */
+  mode?: string
+  /** MARKET_PRICE / SUGGESTED_SALE_PRICE / SUPPLY_PRICE */
+  base?: string
+  percentage?: number
+  /** ADD / SUBTRACT / MULTIPLY / DIVIDE */
+  operator?: string
+  operand?: number
+}
+
+/** 当前项目综合定价版本（ProjectPricingConfigView） */
+export interface ProjectPricingConfigView {
+  distributionInherited?: boolean
+  distributionRule?: ProjectFormulaRuleView | null
+  salesInherited?: boolean
+  salesRule?: ProjectFormulaRuleView | null
+  serviceFeeInherited?: boolean
+  serviceFeeRule?: {
+    percentage?: number
+    operator?: string
+    operand?: number
+    hideCopy?: boolean
+    copy?: string
+  } | null
+  hideInherited?: boolean
+  hideRule?: {
+    distributionThresholdPercent?: number | null
+    salesThresholdPercent?: number | null
+  } | null
+  taxInherited?: boolean
+  taxMetadata?: {
+    taxIncluded?: boolean
+    taxRateCode?: string
+    taxRateLabel?: string | null
+  } | null
+}
+
 /** 项目商品列表项（GET /projects/{projectCode}/products） */
 export interface ProjectListingListItem {
   /** 项目商品稳定业务编码 */
@@ -181,6 +220,8 @@ export interface ProjectListingListItem {
   priceSource?: string
   /** 当前版本 settlement_price_level 是否 L3 */
   projectPriceCovered?: boolean
+  /** 当前项目综合定价版本；无当前版本时为空 */
+  projectPricingConfig?: ProjectPricingConfigView | null
 }
 
 /** 从分销商品发布到项目（单行）。pricing 省略则继承分销商定价；传入时同事务保存项目覆盖。 */

@@ -1,6 +1,8 @@
 import type { FormulaRuleBase, FormulaRuleMode, FormulaRuleOperator } from '@/api/product'
 import type {
   DistFormulaRuleReqVO,
+  ProjectFormulaRuleView,
+  ProjectPricingConfigView,
   ProjectProductBatchPricingReqVO
 } from '@/api/supplier/distribution'
 
@@ -55,6 +57,62 @@ export const createEmptyProjectPricing = (): ProjectPricingFormData => ({
   taxRateCode: ''
 })
 
+const FORMULA_MODES: FormulaRuleMode[] = ['DIRECT_MARKET_PRICE', 'CUSTOM']
+const FORMULA_BASES: FormulaRuleBase[] = ['MARKET_PRICE', 'SUGGESTED_SALE_PRICE', 'SUPPLY_PRICE']
+const FORMULA_OPERATORS: FormulaRuleOperator[] = ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE']
+
+const asFormulaMode = (mode?: string): FormulaRuleMode | undefined =>
+  FORMULA_MODES.find((item) => item === mode)
+
+const asFormulaBase = (base?: string): FormulaRuleBase | undefined =>
+  FORMULA_BASES.find((item) => item === base)
+
+const asFormulaOperator = (operator?: string): FormulaRuleOperator | undefined =>
+  FORMULA_OPERATORS.find((item) => item === operator)
+
+const toFormNumber = (value?: number | null) => {
+  if (value == null || Number.isNaN(Number(value))) return undefined
+  return Number(value)
+}
+
+/** 仅回填未继承的分销价、利润隐藏、税务。销售价和服务费弹窗不编辑 */
+const fillDistributionRule = (rule?: ProjectFormulaRuleView | null): ProjectFormulaForm => {
+  const mode = asFormulaMode(rule?.mode)
+  if (!mode) return emptyFormula()
+  if (mode === 'DIRECT_MARKET_PRICE') {
+    return { ...emptyFormula(), mode }
+  }
+  return {
+    mode,
+    base: asFormulaBase(rule?.base),
+    percentage: toFormNumber(rule?.percentage),
+    operator: asFormulaOperator(rule?.operator),
+    operand: toFormNumber(rule?.operand)
+  }
+}
+
+export const createProjectPricingFromConfig = (
+  config?: ProjectPricingConfigView | null
+): ProjectPricingFormData => {
+  const form = createEmptyProjectPricing()
+  if (!config) return form
+  if (config.distributionInherited === false) {
+    form.distributionRule = fillDistributionRule(config.distributionRule)
+  }
+  if (config.hideInherited === false) {
+    form.distributionThresholdPercent = toFormNumber(config.hideRule?.distributionThresholdPercent)
+    form.salesThresholdPercent = toFormNumber(config.hideRule?.salesThresholdPercent)
+  }
+  if (config.taxInherited === false && config.taxMetadata) {
+    form.taxIncluded = config.taxMetadata.taxIncluded
+    form.taxRateCode =
+      config.taxMetadata.taxIncluded && config.taxMetadata.taxRateCode
+        ? config.taxMetadata.taxRateCode
+        : ''
+  }
+  return form
+}
+
 const hasFormulaInput = (rule?: ProjectFormulaForm) =>
   !!(
     rule?.mode ||
@@ -106,12 +164,12 @@ const buildFormulaRule = (rule: ProjectFormulaForm): DistFormulaRuleReqVO => {
   }
 }
 
-/** 五组继承开关均显式提交；仅填写了分销价公式时才覆盖项目分销价。 */
+/** 单个配置只覆盖分销价。销售价、服务费固定继承分销商，只传 inherited=true，不传规则 */
 export const buildProjectProductPricing = (
   listingCode: string,
   form: ProjectPricingFormData
 ): ProjectProductBatchPricingReqVO => {
-  const distributionOn = hasFormulaInput(form.distributionRule)
+  const distributionOn = !!form.distributionRule.mode
   const distributionThreshold = toOptionalNumber(form.distributionThresholdPercent)
   const hideOn = distributionThreshold != null
   const taxOn = form.taxIncluded != null
@@ -123,7 +181,7 @@ export const buildProjectProductPricing = (
     hideInherited: !hideOn,
     taxInherited: !taxOn
   }
-  if (distributionOn && form.distributionRule.mode) {
+  if (distributionOn) {
     payload.distributionRule = buildFormulaRule(form.distributionRule)
   }
   if (hideOn) {

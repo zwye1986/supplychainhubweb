@@ -1,15 +1,39 @@
 <template>
   <div class="flex flex-wrap items-center gap-8px">
-    <el-select v-model="model.base" class="!w-140px" placeholder="请选择">
+    <el-select
+      :model-value="model.base"
+      class="!w-140px"
+      placeholder="请选择"
+      @update:model-value="patch({ base: $event })"
+    >
       <el-option v-for="item in FORMULA_BASE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
     </el-select>
     <span class="text-[var(--el-color-danger)]">*</span>
-    <el-input-number v-model="model.percentage" :controls="false" :min="0.01" :precision="2" class="!w-90px" />
+    <el-input-number
+      :model-value="model.percentage"
+      :controls="false"
+      :min="0.01"
+      :precision="2"
+      class="!w-90px"
+      @update:model-value="patch({ percentage: $event })"
+    />
     <span>%</span>
-    <el-select v-model="model.operator" class="!w-80px" placeholder="请选择">
+    <el-select
+      :model-value="model.operator"
+      class="!w-80px"
+      placeholder="请选择"
+      @update:model-value="patch({ operator: $event })"
+    >
       <el-option v-for="item in FORMULA_OPERATOR_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
     </el-select>
-    <el-input-number v-model="model.operand" :controls="false" :min="0" :precision="operandPrecision" class="!w-100px" />
+    <el-input-number
+      :model-value="model.operand"
+      :controls="false"
+      :min="0"
+      :precision="operandPrecision"
+      class="!w-100px"
+      @update:model-value="patch({ operand: $event })"
+    />
     <span>元</span>
     <span v-if="model.operator === 'MULTIPLY'" class="text-12px text-[var(--el-color-warning)]">
       乘以系数，请设置百分比大于100，否则会出现亏本情况
@@ -36,6 +60,11 @@
   ]
 
   const model = defineModel<FormulaRuleReqVO>({ required: true })
+
+  /** 整对象回写，避免父级 computed 返回副本时改字段不生效 */
+  const patch = (partial: Partial<FormulaRuleReqVO>) => {
+    model.value = { ...model.value, ...partial }
+  }
 
   const operandPrecision = computed(() =>
     model.value.operator === 'MULTIPLY' || model.value.operator === 'DIVIDE' ? 4 : 2

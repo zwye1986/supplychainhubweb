@@ -29,6 +29,11 @@
           {{ formatCentsYuan(row.distPriceCents) }}
         </template>
       </el-table-column>
+      <el-table-column label="项目专属价规则" min-width="220">
+        <template #default="{ row }">
+          {{ formatProjectPriceRule(row) }}
+        </template>
+      </el-table-column>
       <el-table-column label="项目专属价（元）" min-width="130" align="right">
         <template #default="{ row }">
           <span :class="{ 'font-600 text-[var(--el-color-warning)]': row.projectPriceCovered }">
@@ -90,13 +95,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ProjectApi, ProjectListingListItem } from '@/api/supplier/distribution'
+import { ProjectApi, ProjectListingListItem, type ProjectFormulaRuleView } from '@/api/supplier/distribution'
 import { formatCentsYuan, getPriceSourceLabel } from '@/views/supplier/utils/constants'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 import ProjectPricingForm from './ProjectPricingForm.vue'
 import {
   buildProjectProductPricing,
   createEmptyProjectPricing,
+  createProjectPricingFromConfig,
   isProjectPricingConfigured,
   type ProjectPricingFormData
 } from './projectPricing'
@@ -127,6 +133,47 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 20
 })
+
+const PRICE_BASE_LABEL: Record<string, string> = {
+  MARKET_PRICE: '市场价',
+  SUGGESTED_SALE_PRICE: '销售建议价',
+  SUPPLY_PRICE: '供应价'
+}
+
+const OPERATOR_SYMBOL: Record<string, string> = {
+  ADD: '+',
+  SUBTRACT: '-',
+  MULTIPLY: '*',
+  DIVIDE: '/'
+}
+
+const formatProjectPriceRule = (row: ProjectListingListItem) => {
+  const config = row.projectPricingConfig
+  const rule = config?.distributionRule
+  if (!config || config.distributionInherited !== false || !rule?.mode) return '-'
+  return formatDistributionRule(rule)
+}
+
+const formatDistributionRule = (rule: ProjectFormulaRuleView) => {
+  if (rule.mode === 'DIRECT_MARKET_PRICE') return '分销价=市场价'
+  const base = PRICE_BASE_LABEL[rule.base || ''] || '销售建议价'
+  const percentage = rule.percentage
+  const operand = rule.operand
+  const symbol = OPERATOR_SYMBOL[rule.operator || ''] || '+'
+  const isPlainBase =
+    (percentage == null || Number(percentage) === 100) &&
+    (operand == null || Number(operand) === 0) &&
+    (symbol === '+' || !rule.operator)
+  if (isPlainBase) return `分销价=${base}`
+  const percentText = percentage == null ? '' : `*${percentage}%`
+  const operandText =
+    operand == null
+      ? ''
+      : symbol === '*' || symbol === '/'
+        ? `${symbol}${operand}`
+        : `${symbol}${operand}元`
+  return `分销价=${base}${percentText}${operandText}`
+}
 
 const getList = async () => {
   if (!props.projectCode) return
@@ -165,7 +212,7 @@ const openAdjust = (row: ProjectListingListItem) => {
     return
   }
   adjustRow.value = row
-  adjustPrice.value = createEmptyProjectPricing()
+  adjustPrice.value = createProjectPricingFromConfig(row.projectPricingConfig)
   adjustVisible.value = true
   nextTick(() => adjustFormRef.value?.clearValidate())
 }
