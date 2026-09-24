@@ -1,5 +1,8 @@
 import type { FormulaRuleBase, FormulaRuleMode, FormulaRuleOperator } from '@/api/product'
-import type { DistFormulaRuleReqVO, ProjectProductBatchPricingReqVO } from '@/api/supplier/distribution'
+import type {
+  DistFormulaRuleReqVO,
+  ProjectProductBatchPricingReqVO
+} from '@/api/supplier/distribution'
 
 export interface ProjectFormulaForm {
   mode?: FormulaRuleMode
@@ -53,7 +56,13 @@ export const createEmptyProjectPricing = (): ProjectPricingFormData => ({
 })
 
 const hasFormulaInput = (rule?: ProjectFormulaForm) =>
-  !!(rule?.mode || rule?.base || rule?.percentage != null || rule?.operator || rule?.operand != null)
+  !!(
+    rule?.mode ||
+    rule?.base ||
+    rule?.percentage != null ||
+    rule?.operator ||
+    rule?.operand != null
+  )
 
 export const isServiceFeeConfigured = (form: ProjectPricingFormData) => {
   const rule = form.serviceFeeRule
@@ -97,22 +106,24 @@ const buildFormulaRule = (rule: ProjectFormulaForm): DistFormulaRuleReqVO => {
   }
 }
 
-/** 单个配置只覆盖分销价。销售价、服务费非必传，请求中不带这两组字段 */
+/** 五组继承开关均显式提交；仅填写了分销价公式时才覆盖项目分销价。 */
 export const buildProjectProductPricing = (
   listingCode: string,
   form: ProjectPricingFormData
 ): ProjectProductBatchPricingReqVO => {
-  const configured = isProjectPricingConfigured(form)
+  const distributionOn = hasFormulaInput(form.distributionRule)
   const distributionThreshold = toOptionalNumber(form.distributionThresholdPercent)
   const hideOn = distributionThreshold != null
   const taxOn = form.taxIncluded != null
   const payload: ProjectProductBatchPricingReqVO = {
     listingCodes: [listingCode],
-    distributionInherited: configured ? false : true,
+    distributionInherited: !distributionOn,
+    salesInherited: true,
+    serviceFeeInherited: true,
     hideInherited: !hideOn,
     taxInherited: !taxOn
   }
-  if (configured && form.distributionRule.mode) {
+  if (distributionOn && form.distributionRule.mode) {
     payload.distributionRule = buildFormulaRule(form.distributionRule)
   }
   if (hideOn) {
