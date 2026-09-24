@@ -21,39 +21,6 @@ export const ROUTE_STATUS_OPTIONS = [
   { value: 'DISABLED', label: '停用', type: 'info' }
 ]
 
-export const PRODUCT_TYPE_OPTIONS = [
-  { code: 'VIRTUAL_CARD', name: '虚拟卡密' },
-  { code: 'VIRTUAL_RECHARGE', name: '虚拟直充' },
-  { code: 'DINING', name: '点餐' },
-  { code: 'MOVIE', name: '电影' },
-  { code: 'JD', name: '京东' },
-  { code: 'RT_MART', name: '大润发' },
-  { code: 'TB_FLASH', name: '淘宝闪购' }
-]
-
-export const MOCK_DISTRIBUTORS = [
-  { code: '18-001', name: '华东福利分销中心' },
-  { code: '18-002', name: '苏州企业购分销商' },
-  { code: '18-003', name: '华南积分商城' }
-]
-
-export const MOCK_PROJECTS = [
-  { code: 'PRJ_20260701001', name: '华东企业年节福利包' },
-  { code: 'PRJ_20260720002', name: '沪上互联网员工权益' },
-  { code: 'PRJ_20260801003', name: '暑期电影通兑专项' },
-  { code: 'PRJ_20260716001', name: '苏州园区午餐补贴' }
-]
-
-export const MOCK_SUPPLIERS = [
-  { code: 'SUP-001', name: '腾讯会员供应商' },
-  { code: 'SUP-002', name: '猫眼票务' },
-  { code: 'SUP-003', name: '百胜餐饮' },
-  { code: 'SUP-004', name: '京东慧采' },
-  { code: 'SUP-005', name: '盒马鲜生' }
-]
-
-export const MOCK_UPDATERS = ['张运营', '李调度', '王配置']
-
 export const createPriorities = () => [
   { id: 'p1', strategy: 'STABLE' as RouteStrategy },
   { id: 'p2', strategy: 'PRICE' as RouteStrategy },

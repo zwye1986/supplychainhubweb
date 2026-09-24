@@ -25,7 +25,7 @@
           clearable
           placeholder="全部"
         >
-          <el-option v-for="item in MOCK_DISTRIBUTORS" :key="item.code" :label="item.name" :value="item.code" />
+          <el-option v-for="item in distributorOptions" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="适用项目">
@@ -37,20 +37,11 @@
           clearable
           placeholder="请选择"
         >
-          <el-option v-for="item in MOCK_PROJECTS" :key="item.code" :label="item.name" :value="item.code" />
+          <el-option v-for="item in projectOptions" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="适用商品类型">
-        <el-select
-          v-model="formData.productTypeCodes"
-          multiple
-          collapse-tags
-          filterable
-          clearable
-          placeholder="全部"
-        >
-          <el-option v-for="item in PRODUCT_TYPE_OPTIONS" :key="item.code" :label="item.name" :value="item.code" />
-        </el-select>
+        <ProductType v-model="formData.productTypeCodes" placeholder="全部" />
       </el-form-item>
 
       <el-divider content-position="left">路由模式与供应商设置</el-divider>
@@ -74,7 +65,7 @@
       </el-form-item>
       <el-form-item v-if="formData.routeMode === 'FIXED'" label="主供应商" prop="primarySupplierCode">
         <el-select v-model="formData.primarySupplierCode" filterable clearable placeholder="请选择固定主供应商">
-          <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.code" />
+          <el-option v-for="item in supplierOptions" :key="item.code" :label="item.name" :value="item.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态">
@@ -140,7 +131,7 @@
   <el-dialog v-model="pickerVisible" title="选择供应商" width="640px" append-to-body>
     <el-table
       ref="supplierTableRef"
-      :data="MOCK_SUPPLIERS"
+      :data="supplierOptions"
       row-key="code"
       @selection-change="handleSupplierPick"
     >
@@ -158,11 +149,9 @@
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
 import { RoutingApi, RouteRuleVO } from '@/api/routing'
+import { DistributorApi, ProjectApi } from '@/api/supplier/distribution'
+import { SupplierApi } from '@/api/supplier/manage'
 import {
-  MOCK_DISTRIBUTORS,
-  MOCK_PROJECTS,
-  MOCK_SUPPLIERS,
-  PRODUCT_TYPE_OPTIONS,
   ROUTE_MODE_OPTIONS,
   ROUTE_STATUS_OPTIONS,
   ROUTE_STRATEGY_OPTIONS,
@@ -173,6 +162,11 @@ import {
 
 defineOptions({ name: 'RoutingRuleForm' })
 
+interface CodeNameOption {
+  code: string
+  name: string
+}
+
 const message = useMessage()
 const emit = defineEmits(['success'])
 const dialogVisible = ref(false)
@@ -181,6 +175,9 @@ const formLoading = ref(false)
 const formRef = ref()
 const pickedCodes = ref<string[]>([])
 const supplierTableRef = ref()
+const distributorOptions = ref<CodeNameOption[]>([])
+const projectOptions = ref<CodeNameOption[]>([])
+const supplierOptions = ref<CodeNameOption[]>([])
 const formData = reactive<RouteRuleVO>({
   ruleCode: '',
   name: '',
@@ -208,8 +205,36 @@ const weightSum = computed(
 )
 const usedStrategies = computed(() => formData.priorities.map((item) => item.strategy))
 const selectedSupplierNames = computed(() =>
-  MOCK_SUPPLIERS.filter((item) => formData.supplierCodes?.includes(item.code)).map((item) => item.name)
+  (formData.supplierCodes || []).map((code, index) => {
+    return (
+      supplierOptions.value.find((item) => item.code === code)?.name ||
+      formData.supplierNames?.[index] ||
+      code
+    )
+  })
 )
+
+const toCodeName = (code?: string, name?: string) => ({ code: code || '', name: name || code || '' })
+
+const loadOptions = async () => {
+  const [distributors, projects, suppliers] = await Promise.all([
+    DistributorApi.getDistributorNameList().catch(() => []),
+    ProjectApi.getProjectNameList().catch(() => []),
+    SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => [])
+  ])
+  distributorOptions.value = (distributors || [])
+    .map((item) => toCodeName(item.code, item.label || item.value))
+    .filter((item) => item.code)
+  projectOptions.value = (projects || [])
+    .map((item) => toCodeName(item.code, item.label || item.value))
+    .filter((item) => item.code)
+  const supplierList = Array.isArray(suppliers) ? suppliers : suppliers?.list || []
+  supplierOptions.value = supplierList
+    .map((item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) =>
+      toCodeName(item.supplierCode || item.code, item.supplierName || item.name)
+    )
+    .filter((item: CodeNameOption) => item.code)
+}
 
 const handleSupplierPick = (rows: { code: string }[]) => {
   pickedCodes.value = rows.map((item) => item.code)
@@ -219,7 +244,7 @@ watch(pickerVisible, async (visible) => {
   if (!visible) return
   await nextTick()
   supplierTableRef.value?.clearSelection()
-  MOCK_SUPPLIERS.forEach((item) => {
+  supplierOptions.value.forEach((item) => {
     if (formData.supplierCodes?.includes(item.code)) {
       supplierTableRef.value?.toggleRowSelection(item, true)
     }
@@ -284,9 +309,6 @@ const submitForm = async () => {
     message.warning(`稳定性权重、价格权重、时效权重之和必须等于100%，当前为 ${weightSum.value}%`)
     return
   }
-  formData.productTypeNames = PRODUCT_TYPE_OPTIONS.filter((item) =>
-    formData.productTypeCodes?.includes(item.code)
-  ).map((item) => item.name)
   formLoading.value = true
   try {
     if (formData.ruleCode) await RoutingApi.update(formData.ruleCode, { ...formData })
@@ -304,6 +326,7 @@ const submitForm = async () => {
 const open = async (ruleCode?: string) => {
   dialogVisible.value = true
   resetForm()
+  loadOptions()
   if (!ruleCode) return
   formLoading.value = true
   try {
