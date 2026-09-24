@@ -118,7 +118,7 @@ export interface ProjectDetail {
   catalogMode?: string
   /** 未移除项目商品数量 */
   skuCount?: number
-  /** 当前 listing 中 settlement_price_level=L3 的数量 */
+  /** 当前项目商品中通用分销价覆盖或旧 L3 冻结覆盖的数量，去重 */
   projectPriceSkuCount?: number
 }
 

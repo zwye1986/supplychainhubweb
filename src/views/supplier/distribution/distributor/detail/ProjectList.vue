@@ -29,12 +29,12 @@
             周期：{{ item.startDate || '-' }} ~ {{ item.endDate || '-' }}
           </div>
           <div class="mb-6px text-13px">
-            商品SKU数：<span class="font-600">{{ item.skuCount ?? 0 }}</span>
+            商品SKU数：<span class="font-600">{{ item.skuCount ?? '-' }}</span>
           </div>
           <div class="mb-6px text-13px">
             项目定价覆盖（SKU）：
             <span class="font-600 text-[var(--el-color-warning)]">
-              {{ item.projectPriceSkuCount ?? 0 }}
+              {{ item.projectPriceSkuCount ?? '-' }}
             </span>
           </div>
           <div class="mb-12px text-13px">
