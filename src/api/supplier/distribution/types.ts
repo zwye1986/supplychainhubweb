@@ -183,7 +183,7 @@ export interface ProjectListingListItem {
   projectPriceCovered?: boolean
 }
 
-/** 从分销商品发布到项目（单行）。pricing 省略则不写项目专属价，按分销商分销价结算 */
+/** 从分销商品发布到项目（单行）。pricing 省略则继承分销商定价；传入时同事务保存项目覆盖。 */
 export interface ProjectProductItemReqVO {
   platformSkuCode: string
   /** L3 调价方式：FOLLOW_L2 / EQUAL_L1 / CUSTOM，默认 FOLLOW_L2 */
@@ -192,7 +192,7 @@ export interface ProjectProductItemReqVO {
   percent?: number
   /** CUSTOM 时加减的 CNY 分 */
   amountCents?: number
-  /** 与分销价同一套公式；填写后覆盖项目专属价 */
+  /** 项目五组定价覆盖；distributionInherited=false 时形成项目专属价 */
   pricing?: BuyerProductCreatePricingReqVO
 }
 
@@ -232,19 +232,19 @@ export interface ProjectProductBatchPricingReqVO {
   /** 当前项目下的项目商品编码列表 */
   listingCodes: string[]
   /** true 时继承分销商分销价；false 时必须提交 distributionRule */
-  distributionInherited?: boolean
+  distributionInherited: boolean
   distributionRule?: DistFormulaRuleReqVO
   /** true 时继承分销商销售价；false 时必须提交 salesRule */
-  salesInherited?: boolean
+  salesInherited: boolean
   salesRule?: DistFormulaRuleReqVO
   /** true 时继承分销商服务费；false 时必须提交 serviceFeeRule */
-  serviceFeeInherited?: boolean
+  serviceFeeInherited: boolean
   serviceFeeRule?: DistServiceFeeRuleReqVO
   /** true 时继承分销商利润隐藏阈值；false 时必须提交 hideRule */
-  hideInherited?: boolean
+  hideInherited: boolean
   hideRule?: ProjectHideRuleReqVO
   /** true 时继承分销商税务；false 时须同时提交 taxIncluded 与 taxRateCode */
-  taxInherited?: boolean
+  taxInherited: boolean
   taxMetadata?: ProjectTaxMetadataReqVO
 }
 
