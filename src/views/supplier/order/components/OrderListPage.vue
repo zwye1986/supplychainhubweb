@@ -15,7 +15,7 @@
           <el-date-picker
             v-model="createRange"
             type="datetimerange"
-            value-format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DDTHH:mm:ss"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
             clearable
@@ -23,12 +23,17 @@
         </el-form-item>
         <el-form-item label="分销商名称" prop="distributorNames">
           <el-select v-model="queryParams.distributorNames" multiple collapse-tags clearable filterable>
-            <el-option v-for="item in MOCK_DISTRIBUTORS" :key="item.code" :label="item.name" :value="item.name" />
+            <el-option v-for="item in distributorOptions" :key="item.code || item.name" :label="item.name" :value="item.name" />
           </el-select>
         </el-form-item>
         <el-form-item label="供应商名称" prop="supplierNames">
           <el-select v-model="queryParams.supplierNames" multiple collapse-tags clearable filterable>
-            <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.name" />
+            <el-option
+              v-for="item in supplierOptions"
+              :key="item.supplierCode || item.supplierName"
+              :label="item.supplierName"
+              :value="item.supplierName"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="订单类型" prop="bizTypes">
@@ -47,8 +52,13 @@
       </template>
       <template v-else>
         <el-form-item label="供应商名称" prop="supplierName">
-          <el-select v-model="queryParams.supplierName" clearable filterable>
-            <el-option v-for="item in MOCK_SUPPLIERS" :key="item.code" :label="item.name" :value="item.name" />
+          <el-select v-model="queryParams.supplierName" clearable filterable placeholder="请选择供应商">
+            <el-option
+              v-for="item in supplierCodeOptions"
+              :key="item.supplierCode"
+              :label="item.supplierName"
+              :value="item.supplierName"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="订单编号" prop="orderNo">
@@ -61,24 +71,24 @@
           <el-date-picker
             v-model="createRange"
             type="datetimerange"
-            value-format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DDTHH:mm:ss"
             start-placeholder="开始时间"
             end-placeholder="结束时间"
             clearable
           />
         </el-form-item>
         <el-form-item label="供货模式" prop="supplyMode">
-          <el-select v-model="queryParams.supplyMode" clearable>
+          <el-select v-model="queryParams.supplyMode" clearable placeholder="请选择供货模式">
             <el-option v-for="item in SUPPLY_MODE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="订单类型" prop="bizType">
-          <el-select v-model="queryParams.bizType" clearable @change="handleQuery">
+          <el-select v-model="queryParams.bizType" clearable placeholder="请选择订单类型" @change="handleQuery">
             <el-option v-for="item in ORDER_BIZ_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="订单状态" prop="status">
-          <el-select v-model="queryParams.status" clearable>
+          <el-select v-model="queryParams.status" clearable placeholder="请选择订单状态">
             <el-option v-for="item in SUPPLIER_STATUS_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -86,7 +96,9 @@
       <el-form-item>
         <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
         <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-        <el-button type="success" plain @click="handleExport"><Icon icon="ep:download" class="mr-5px" /> 导出</el-button>
+        <el-button v-if="isPlatform" type="success" plain :loading="exportLoading" @click="handleExport">
+          <Icon icon="ep:download" class="mr-5px" /> 导出
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -118,7 +130,7 @@
             </el-table-column>
             <el-table-column label="商品数量" prop="qty" min-width="90" />
             <el-table-column label="供应商订单编号" min-width="160">
-              <template #default>{{ row.supplierOrderNo || '-' }}</template>
+              <template #default>{{ formatSupplierOrderNos(row) }}</template>
             </el-table-column>
             <el-table-column label="分销商订单编号" min-width="160">
               <template #default>{{ row.distributorOrderNo || '-' }}</template>
@@ -197,8 +209,8 @@
             </el-table-column>
             <el-table-column label="订单状态" min-width="100">
               <template #default>
-                <el-tag :type="getOptionType(SUPPLIER_STATUS_OPTIONS, row.status)" size="small">
-                  {{ getOptionLabel(SUPPLIER_STATUS_OPTIONS, row.status) }}
+                <el-tag :type="supplierStatusType(row.status)" size="small">
+                  {{ supplierStatusText(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -252,12 +264,14 @@
 
 <script lang="ts" setup>
 import { OrderApi, OrderVO } from '@/api/order'
+import { DistributorApi } from '@/api/supplier/distribution'
+import { SupplierApi } from '@/api/supplier/manage'
+import download from '@/utils/download'
 import OrderPlatformDetail from '../platform/detail/index.vue'
 import OrderSupplierDetail from '../supplier/detail/index.vue'
 import RouteRecordDialog from './RouteRecordDialog.vue'
 import {
-  MOCK_DISTRIBUTORS,
-  MOCK_SUPPLIERS,
+  FULFILLMENT_STATUS_OPTIONS,
   ORDER_BIZ_TYPE_OPTIONS,
   ORDER_STATUS_OPTIONS,
   ORDER_TAB_OPTIONS,
@@ -283,13 +297,17 @@ const props = defineProps({
 const isPlatform = computed(() => props.source === 'PLATFORM')
 const message = useMessage()
 const loading = ref(false)
-const list = ref<OrderVO[]>([])
+const exportLoading = ref(false)
+const list = ref<any[]>([])
 const expandRowKeys = ref<string[]>([])
 const total = ref(0)
 const queryFormRef = ref()
 const platformDetailRef = ref()
 const supplierDetailRef = ref()
 const routeRecordRef = ref()
+const supplierOptions = ref<{ supplierCode?: string; supplierName?: string }[]>([])
+const distributorOptions = ref<{ code?: string; name: string }[]>([])
+const supplierCodeOptions = computed(() => supplierOptions.value.filter((item) => item.supplierCode))
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
@@ -301,9 +319,9 @@ const queryParams = reactive({
   supplierNames: [] as string[],
   supplierName: undefined as string | undefined,
   statuses: [] as any[],
-  status: undefined as any,
+  status: undefined as string | undefined,
   buyerKeyword: undefined as string | undefined,
-  supplyMode: undefined as any,
+  supplyMode: undefined as string | undefined,
   createFrom: undefined as string | undefined,
   createTo: undefined as string | undefined
 })
@@ -322,34 +340,84 @@ const formatBuyer = (row: OrderVO) => {
   return row.buyerName || row.buyerId || '-'
 }
 
+const formatSupplierOrderNos = (row: OrderVO) => {
+  const nos = (row.supplierOrders || []).map((item) => item.supplierOrderNo).filter(Boolean)
+  if (nos.length) return nos.join('、')
+  return row.supplierOrderNo || '-'
+}
+
+const supplierStatusText = (status?: string) => {
+  const prd = getOptionLabel(SUPPLIER_STATUS_OPTIONS, status)
+  if (prd !== '-') return prd
+  return getOptionLabel(FULFILLMENT_STATUS_OPTIONS, status)
+}
+
+const supplierStatusType = (status?: string) => {
+  if (SUPPLIER_STATUS_OPTIONS.some((item) => item.value === status)) return getOptionType(SUPPLIER_STATUS_OPTIONS, status)
+  return getOptionType(FULFILLMENT_STATUS_OPTIONS, status)
+}
+
+const toFulfillmentStatus = (status?: string) => {
+  if (status === 'FAILED') return 'FAILED'
+  if (status === 'FINISHED') return 'SUCCEEDED'
+  return undefined
+}
+
+const loadFilterOptions = async () => {
+  try {
+    const data = await SupplierApi.getSupplierNameList({ view: 'simple' })
+    supplierOptions.value = (Array.isArray(data) ? data : data?.list || [])
+      .map((item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) => ({
+        supplierCode: item.supplierCode || item.code,
+        supplierName: item.supplierName || item.name
+      }))
+      .filter((item: { supplierName?: string }) => item.supplierName)
+  } catch {
+    supplierOptions.value = []
+  }
+  if (!isPlatform.value) return
+  try {
+    const rows = (await DistributorApi.getDistributorNameList()) || []
+    distributorOptions.value = rows
+      .filter((item) => item.label)
+      .map((item) => ({ code: item.code, name: item.label }))
+  } catch {
+    distributorOptions.value = []
+  }
+}
+
 const getList = async () => {
   loading.value = true
   try {
-    const bizTypes = isPlatform.value
-      ? queryParams.bizType
-        ? [queryParams.bizType]
-        : queryParams.bizTypes
-      : queryParams.bizType
-        ? [queryParams.bizType]
-        : queryParams.bizTypes?.length
-          ? queryParams.bizTypes
-          : undefined
-    const data = await OrderApi.getOrderPage({
+    if (isPlatform.value) {
+      const bizTypes = queryParams.bizType ? [queryParams.bizType] : queryParams.bizTypes
+      const data = await OrderApi.getOrderPage({
+        pageNo: queryParams.pageNo,
+        pageSize: queryParams.pageSize,
+        orderNo: queryParams.orderNo,
+        productName: queryParams.productName,
+        createFrom: queryParams.createFrom,
+        createTo: queryParams.createTo,
+        bizTypes,
+        distributorNames: queryParams.distributorNames,
+        supplierNames: queryParams.supplierNames,
+        statuses: queryParams.statuses,
+        buyerKeyword: queryParams.buyerKeyword
+      })
+      list.value = data.list || []
+      total.value = data.total || 0
+      await nextTick()
+      expandRowKeys.value = list.value.map((item) => item.orderNo)
+      return
+    }
+    const data = await OrderApi.getSupplierOrderPage({
       pageNo: queryParams.pageNo,
       pageSize: queryParams.pageSize,
-      orderNo: queryParams.orderNo,
-      productName: queryParams.productName,
-      createFrom: queryParams.createFrom,
-      createTo: queryParams.createTo,
-      source: props.source,
-      bizTypes,
-      distributorNames: isPlatform.value ? queryParams.distributorNames : undefined,
-      supplierNames: isPlatform.value ? queryParams.supplierNames : undefined,
-      supplierName: isPlatform.value ? undefined : queryParams.supplierName,
-      statuses: isPlatform.value ? queryParams.statuses : undefined,
-      status: isPlatform.value ? undefined : queryParams.status,
-      buyerKeyword: isPlatform.value ? queryParams.buyerKeyword : undefined,
-      supplyMode: isPlatform.value ? undefined : queryParams.supplyMode
+      bOrderNo: queryParams.orderNo,
+      supplierCode: supplierCodeOptions.value.find((item) => item.supplierName === queryParams.supplierName)?.supplierCode,
+      fulfillmentStatus: toFulfillmentStatus(queryParams.status),
+      createdFrom: queryParams.createFrom,
+      createdTo: queryParams.createTo
     })
     list.value = data.list || []
     total.value = data.total || 0
@@ -386,6 +454,9 @@ const resetQuery = () => {
   queryFormRef.value?.resetFields()
   queryParams.bizType = ''
   queryParams.bizTypes = []
+  queryParams.supplierName = undefined
+  queryParams.status = undefined
+  queryParams.supplyMode = undefined
   queryParams.createFrom = undefined
   queryParams.createTo = undefined
   handleQuery()
@@ -397,48 +468,31 @@ const openRouteRecord = (orderNo: string) => routeRecordRef.value.open(orderNo)
 
 const handleExport = async () => {
   try {
-    await message.confirm('确认导出当前筛选条件下的订单数据？')
-    const rows = await OrderApi.exportOrders({
-      ...queryParams,
-      bizType: queryParams.bizType || undefined,
-      source: props.source
+    await message.exportConfirm()
+    exportLoading.value = true
+    const bizTypes = queryParams.bizType ? [queryParams.bizType] : queryParams.bizTypes
+    const data = await OrderApi.exportOrders({
+      orderNo: queryParams.orderNo,
+      productName: queryParams.productName,
+      createFrom: queryParams.createFrom,
+      createTo: queryParams.createTo,
+      bizTypes,
+      distributorNames: queryParams.distributorNames,
+      supplierNames: queryParams.supplierNames,
+      statuses: queryParams.statuses,
+      buyerKeyword: queryParams.buyerKeyword
     })
-    const header = isPlatform.value
-      ? ['订单编号', '下单时间', '商品总数', '订单总价', '订单状态', '分销商', '供应商']
-      : ['供应商订单编号', '关联平台订单', '下单时间', '供应商', '供货模式', '订单状态']
-    const body = (rows as OrderVO[]).map((item) =>
-      (isPlatform.value
-        ? [
-            item.orderNo,
-            item.createTime || '',
-            item.qty,
-            item.amount,
-            getOptionLabel(ORDER_STATUS_OPTIONS, item.status),
-            item.distributorName || '',
-            item.supplierName || ''
-          ]
-        : [
-            item.supplierOrderNo || item.orderNo,
-            item.relatedPlatformOrderNo || '',
-            item.createTime || '',
-            item.supplierName || '',
-            getOptionLabel(SUPPLY_MODE_OPTIONS, item.supplyMode),
-            getOptionLabel(SUPPLIER_STATUS_OPTIONS, item.status)
-          ]
-      ).join(',')
-    )
-    const blob = new Blob(['\uFEFF' + [header.join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `orders-${Date.now()}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    message.success('导出成功')
-  } catch {}
+    download.excel(data, '平台订单.xls')
+  } catch {
+  } finally {
+    exportLoading.value = false
+  }
 }
 
-onMounted(getList)
+onMounted(() => {
+  loadFilterOptions()
+  getList()
+})
 </script>
 
 <style scoped lang="scss">

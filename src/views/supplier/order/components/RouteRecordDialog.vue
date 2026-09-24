@@ -10,8 +10,8 @@
       <el-descriptions :column="3" border class="mb-16px">
         <el-descriptions-item label="商品名称">{{ record.productName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="路由状态">
-          <el-tag :type="record.status === 'SUCCESS' ? 'success' : 'danger'" size="small">
-            {{ record.status === 'SUCCESS' ? '路由成功' : '路由失败' }}
+          <el-tag :type="routeStatusType(record.status)" size="small">
+            {{ routeStatusLabel(record.status) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="商品类型">
@@ -86,7 +86,7 @@ const record = ref<OrderRouteRecordVO>({
   orderNo: '',
   productName: '',
   qty: 0,
-  status: 'FAILED',
+  status: '' as OrderRouteRecordVO['status'],
   productType: 'VIRTUAL_CARD',
   tryCount: 0,
   failCount: 0,
@@ -94,8 +94,28 @@ const record = ref<OrderRouteRecordVO>({
   steps: []
 })
 
-const formatDuration = (value?: number) => `${Number(value || 0).toFixed(1)}s`
-const formatJson = (value?: Record<string, any>) => JSON.stringify(value || {}, null, 2)
+const formatDuration = (value?: number) => (value == null ? '-' : `${Number(value).toFixed(1)}s`)
+const formatJson = (value?: string | Record<string, any>) => {
+  if (value == null || value === '') return '-'
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch {
+      return value
+    }
+  }
+  return JSON.stringify(value, null, 2)
+}
+const routeStatusLabel = (status?: string) => {
+  if (status === 'SUCCESS') return '路由成功'
+  if (status === 'FAILED') return '路由失败'
+  return '未进入路由'
+}
+const routeStatusType = (status?: string) => {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  return 'info'
+}
 const toggleStep = (index: number) => {
   expandedMap[index] = !expandedMap[index]
 }
@@ -111,7 +131,7 @@ const open = async (orderNo: string) => {
       orderNo,
       productName: '',
       qty: 0,
-      status: 'FAILED',
+      status: '' as OrderRouteRecordVO['status'],
       productType: 'VIRTUAL_CARD',
       tryCount: 0,
       failCount: 0,

@@ -21,7 +21,8 @@ export const ORDER_BIZ_TYPE_OPTIONS: { value: OrderBizType; label: string }[] = 
   { value: 'VIRTUAL_RECHARGE', label: '虚拟直充' },
   { value: 'DINING', label: '点餐' },
   { value: 'MOVIE', label: '电影' },
-  { value: 'HEMA', label: '盒马购' }
+  { value: 'HEMA', label: '盒马购' },
+  { value: 'INSTORE', label: '到店' }
 ]
 
 export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: string }[] = [
@@ -102,18 +103,26 @@ export const AFTER_SALE_STATUS_OPTIONS: { value: AfterSaleStatus; label: string;
   { value: 'CANCELLED', label: '已撤销', type: 'info' }
 ]
 
-export const MOCK_DISTRIBUTORS = [
-  { code: '18-001', name: '华东福利分销中心' },
-  { code: '18-002', name: '苏州企业购分销商' },
-  { code: '18-003', name: '华南积分商城' }
+export const FULFILLMENT_STATUS_OPTIONS: { value: string; label: string; type: string }[] = [
+  { value: 'WAITING', label: '待执行', type: 'info' },
+  { value: 'PENDING', label: '执行中', type: 'warning' },
+  { value: 'PROCESSING', label: '查询中', type: 'primary' },
+  { value: 'SUCCEEDED', label: '成功', type: 'success' },
+  { value: 'FAILED', label: '失败', type: 'danger' },
+  { value: 'MANUAL', label: '人工处理', type: 'warning' }
 ]
 
-export const MOCK_SUPPLIERS = [
-  { code: 'SUP-001', name: '腾讯会员供应商' },
-  { code: 'SUP-002', name: '猫眼票务' },
-  { code: 'SUP-003', name: '百胜餐饮' },
-  { code: 'SUP-004', name: '京东慧采' },
-  { code: 'SUP-005', name: '盒马鲜生' }
+export const SETTLEMENT_STATUS_OPTIONS: { value: string; label: string; type: string }[] = [
+  { value: 'PENDING', label: '待报告', type: 'info' },
+  { value: 'MATCHED', label: '已匹配', type: 'success' },
+  { value: 'MISMATCH', label: '有差异', type: 'danger' },
+  { value: 'MANUAL', label: '人工处理', type: 'warning' }
+]
+
+export const SUPPLIER_ORDER_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'CARD', label: '卡券' },
+  { value: 'O2O', label: 'O2O' },
+  { value: 'INSTORE', label: '到店' }
 ]
 
 export const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
@@ -130,6 +139,12 @@ export const formatMoney = (value?: number | null) => {
 export const formatAmount = (value?: number | null) => {
   if (value == null || Number.isNaN(Number(value))) return '0.00'
   return Number(value).toFixed(2)
+}
+
+/** 订单接口金额为分，展示为元 */
+export const formatOrderCents = (cents?: number | null) => {
+  if (cents == null || Number.isNaN(Number(cents))) return '-'
+  return `¥${(Number(cents) / 100).toFixed(2)}`
 }
 
 export const isUnpaidStatus = (status?: OrderStatus) => status === 'WAIT_PAY' || status === 'CLOSED'

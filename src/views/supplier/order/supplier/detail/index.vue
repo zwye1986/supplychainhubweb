@@ -2,8 +2,8 @@
   <el-drawer v-model="drawerVisible" title="供应商订单详情" size="80%" append-to-body destroy-on-close>
     <div v-loading="loading" class="p-16px">
       <div class="mb-16px flex items-center justify-between">
-        <el-tag :type="getOptionType(SUPPLIER_STATUS_OPTIONS, order.status)" size="large">
-          {{ getOptionLabel(SUPPLIER_STATUS_OPTIONS, order.status) }}
+        <el-tag :type="supplierStatusType(order.status)" size="large">
+          {{ supplierStatusText(order.status) }}
         </el-tag>
         <el-button type="primary" plain @click="copyInfo">一键复制</el-button>
       </div>
@@ -11,13 +11,8 @@
       <el-descriptions title="基本信息" :column="3" border class="mb-16px">
         <el-descriptions-item label="供应商订单编号">{{ order.supplierOrderNo || order.orderNo }}</el-descriptions-item>
         <el-descriptions-item label="关联平台订单">
-          <el-button
-            v-if="order.relatedPlatformOrderNo || order.orderNo"
-            link
-            type="primary"
-            @click="openPlatform"
-          >
-            {{ order.relatedPlatformOrderNo || order.orderNo }}
+          <el-button v-if="order.relatedPlatformOrderNo" link type="primary" @click="openPlatform">
+            {{ order.relatedPlatformOrderNo }}
           </el-button>
           <span v-else>-</span>
         </el-descriptions-item>
@@ -82,6 +77,7 @@
 import { OrderApi, OrderVO } from '@/api/order'
 import ExclusiveOrderInfo from '@/views/supplier/order/components/ExclusiveOrderInfo.vue'
 import {
+  FULFILLMENT_STATUS_OPTIONS,
   ORDER_BIZ_TYPE_OPTIONS,
   SUPPLIER_LOGISTICS_STATUS_OPTIONS,
   SUPPLIER_STATUS_OPTIONS,
@@ -100,11 +96,22 @@ const loading = ref(false)
 const orderNo = ref('')
 const order = ref<OrderVO>({ orderNo: '', bizType: 'VIRTUAL_CARD', status: 'WAIT_PAY', amount: 0, qty: 0, items: [] })
 
+const supplierStatusText = (status?: string) => {
+  const prd = getOptionLabel(SUPPLIER_STATUS_OPTIONS, status)
+  if (prd !== '-') return prd
+  return getOptionLabel(FULFILLMENT_STATUS_OPTIONS, status)
+}
+
+const supplierStatusType = (status?: string) => {
+  if (SUPPLIER_STATUS_OPTIONS.some((item) => item.value === status)) return getOptionType(SUPPLIER_STATUS_OPTIONS, status)
+  return getOptionType(FULFILLMENT_STATUS_OPTIONS, status)
+}
+
 const load = async () => {
   if (!orderNo.value) return
   loading.value = true
   try {
-    order.value = await OrderApi.getOrder(orderNo.value, 'SUPPLIER')
+    order.value = await OrderApi.getSupplierOrder(orderNo.value)
   } finally {
     loading.value = false
   }

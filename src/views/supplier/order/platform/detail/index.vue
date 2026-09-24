@@ -171,7 +171,7 @@ const load = async () => {
   if (!orderNo.value) return
   loading.value = true
   try {
-    order.value = await OrderApi.getOrder(orderNo.value, 'PLATFORM')
+    order.value = await OrderApi.getOrder(orderNo.value)
   } finally {
     loading.value = false
   }
