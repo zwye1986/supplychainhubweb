@@ -33,7 +33,7 @@
           clearable
           placeholder="请选择关联分销商"
           class="!w-full"
-          :disabled="isEdit && formData.status !== ProjectStatusEnum.DRAFT"
+          :disabled="isEdit"
         >
           <el-option
             v-for="item in buyerOptions"
