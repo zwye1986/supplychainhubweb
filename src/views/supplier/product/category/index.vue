@@ -26,7 +26,7 @@
     <el-table v-loading="loading" :data="list" row-key="categoryCode" default-expand-all>
       <el-table-column label="分类名称" prop="categoryName" min-width="200" />
       <el-table-column label="分类编码" prop="categoryCode" min-width="140" />
-      
+
       <el-table-column label="SPU数" prop="productCount" min-width="90" />
       <el-table-column label="状态" min-width="90">
         <template #default="{ row }">
