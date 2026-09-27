@@ -8,7 +8,7 @@
         <el-input v-model="formData.shortName" maxlength="20" placeholder="请输入品牌简称" />
       </el-form-item>
       <el-form-item label="品牌编码" prop="brandCode">
-        <el-input v-model="formData.brandCode" maxlength="30" placeholder="字母/数字/下划线，可空自动生成" :disabled="isEdit" />
+        <el-input v-model="formData.brandCode" maxlength="7" placeholder="BRD_001；不填自动生成" :disabled="isEdit" />
       </el-form-item>
       <el-form-item label="品牌Logo" prop="logoUrl">
         <UploadImg v-model="formData.logoUrl" height="80px" width="80px" :file-type="['image/jpeg', 'image/png']" />
@@ -47,14 +47,14 @@
     sort: undefined as number | undefined,
     status: BRAND_STATUS.ENABLED
   })
-  const brandCodePattern = /^[A-Za-z0-9_]+$/
+  const brandCodePattern = /^BRD_(?!000)[0-9]{3}$/
   const formRules = {
     brandName: [{ required: true, message: '请输入品牌名称', trigger: 'blur' }],
     brandCode: [
       {
         validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
           if (!value || brandCodePattern.test(value)) callback()
-          else callback(new Error('仅支持字母、数字、下划线'))
+          else callback(new Error('品牌编码应为 BRD_001 格式，流水号范围 001–999'))
         },
         trigger: 'blur'
       }
@@ -123,7 +123,8 @@
       message.success('保存成功')
       dialogVisible.value = false
       emit('success')
-    } catch {
+    } catch (error: any) {
+      if (error?.message) message.error(error.message)
     } finally {
       formLoading.value = false
     }

@@ -214,6 +214,8 @@ export interface SkuDetail extends SkuItemSaveReqVO {
 /** 平台 SPU 详情 */
 export interface SpuDetail {
   spuCode?: string
+  /** 平台SPU内部全局短序号，供SKU编码父段引用 */
+  codeScopeNo?: number
   spuName?: string
   brandId?: number
   brandName?: string
@@ -256,6 +258,8 @@ export interface CategoryListParam {
 export interface ProductCategoryVO {
   id?: number
   categoryCode?: string
+  /** 分类节点内部全局短序号，供直接子分类编码父段引用 */
+  categoryNodeNo?: number
   categoryName: string
   categoryLevel?: number
   parentId?: number

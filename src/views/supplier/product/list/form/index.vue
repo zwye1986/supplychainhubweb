@@ -10,7 +10,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="SPU编号" prop="spuCode">
-            <el-input v-model="formData.spuCode" disabled placeholder="由系统生成" />
+            <el-input v-model="formData.spuCode" :disabled="isEdit" maxlength="7" placeholder="SPU_001；不填自动生成" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -95,7 +95,12 @@
         </el-table-column>
         <el-table-column label="SKU编码" min-width="120">
           <template #default="{ row }">
-            <el-input v-model="row.skuCode" disabled placeholder="由系统生成" />
+            <el-input
+              v-model="row.skuCode"
+              :disabled="row.readonlyCode"
+              maxlength="11"
+              :placeholder="skuCodeHint"
+            />
           </template>
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
@@ -127,8 +132,14 @@
               </div>
               <div v-if="row.suggestedSalePriceRule.mode === 'FIXED'" class="flex items-center gap-8px">
                 <span>固定售价</span>
-                <el-input-number :controls="false" :model-value="centsToYuan(row.suggestedSalePriceRule.fixedPriceCents)" :min="0" :precision="2" class="!w-140px"
-                  @update:model-value="(val) => onFixedPriceChange(row, val)" />
+                <el-input-number
+                  :controls="false"
+                  :model-value="centsToYuan(row.suggestedSalePriceRule.fixedPriceCents)"
+                  :min="0"
+                  :precision="2"
+                  class="!w-140px"
+                  @update:model-value="(val) => onFixedPriceChange(row, val)"
+                />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
@@ -235,6 +246,7 @@
   }
   interface SkuFormItem {
     skuCode?: string
+    readonlyCode?: boolean
     skuName: string
     faceValue?: number
     marketPrice?: number
@@ -247,6 +259,7 @@
 
   interface SpuFormData {
     spuCode?: string
+    codeScopeNo?: number
     spuName: string
     brandCode?: number | string
     sellableCategory?: string
@@ -336,6 +349,14 @@
     ...defaultLimit(),
     skus: [createSku()]
   })
+  const skuCodeHint = computed(() => {
+    const parentSegment = formData.codeScopeNo
+      ? String(formData.codeScopeNo).padStart(3, '0')
+      : /^SPU_([0-9]{3})$/.exec(formData.spuCode || '')?.[1]
+    return parentSegment
+      ? `SKU_${parentSegment}_001；不填自动生成`
+      : 'SKU_父段_001；不填自动生成'
+  })
 
   const noLogistics = computed({
     get: () => formData.deliveryType === 'VIRTUAL',
@@ -403,6 +424,7 @@
   const resetForm = () => {
     Object.assign(formData, {
       spuCode: undefined,
+      codeScopeNo: undefined,
       spuName: '',
       brandCode: undefined,
       productType: '',
@@ -426,6 +448,7 @@
   const mapSkuToForm = (sku: SkuDetail): SkuFormItem => ({
     ...createSku(),
     skuCode: sku.skuCode,
+    readonlyCode: true,
     skuName: sku.skuName,
     picUrl: sku.picUrl,
     detailPics: Array.isArray(sku.detailPics) ? sku.detailPics : [],
@@ -503,6 +526,7 @@
         phoneBindLimitEnabled: isCardFulfillment.value ? false : !!formData.phoneBindLimitEnabled,
         skus: formData.skus.map(toSkuSaveItem)
       } as SpuSaveReqVO
+      delete (payload as SpuSaveReqVO & { codeScopeNo?: number }).codeScopeNo
       if (!payload.userLimitEnabled) {
         delete payload.userLimitPeriod
         delete payload.userLimitQuantity
@@ -515,7 +539,6 @@
       if (isEdit.value && formData.spuCode) {
         await ProductApi.updateProduct(formData.spuCode, payload)
       } else {
-        delete payload.spuCode
         const created = await ProductApi.createProduct(payload)
         savedSpuCode =
           typeof created === 'string'
