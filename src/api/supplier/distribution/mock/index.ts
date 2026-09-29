@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { PLATFORM_SKU_MOCK_LIST } from './platformSkus'
+import { toProductTypeItems } from '../types'
 import type {
   DistPlatformSkuVO,
   DistributorProductVO,
@@ -86,6 +87,9 @@ const syncProjectFields = (item: ProjectVO) => {
   item.buyerName = dist?.buyerName || dist?.name || item.buyerName || ''
   item.settlementPartyType = item.settlementPartyType || 'DISTRIBUTOR'
   item.catalogMode = item.catalogMode || 'MANAGED'
+  if (!item.productTypes?.length && dist) {
+    item.productTypes = toProductTypeItems(dist.productTypes || dist.productType)
+  }
   const rows = projectProducts.filter((p) => p.projectId === item.id)
   item.skuCount = rows.length
   item.projectPriceSkuCount = rows.filter(
@@ -359,6 +363,13 @@ export const ProjectMockApi = {
       (item) => item.projectCode === params?.projectCode || item.id === Number(params?.projectId)
     )
     let list = projectProducts.filter((item) => item.projectId === project?.id)
+    const productType = params?.productType
+    const typeCodes = (Array.isArray(productType) ? productType : productType ? [productType] : [])
+      .map((item: unknown) => String(item))
+      .filter(Boolean)
+    if (typeCodes.length) {
+      list = list.filter((item) => item.productType && typeCodes.includes(item.productType))
+    }
     list.sort((a, b) => String(b.createTime || '').localeCompare(String(a.createTime || '')))
     return paginate(list.map(clone), params?.pageNo || 1, params?.pageSize || 20)
   },

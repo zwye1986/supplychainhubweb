@@ -120,6 +120,8 @@ export interface ProjectDetail {
   skuCount?: number
   /** 当前项目商品中通用分销价覆盖或旧 L3 冻结覆盖的数量，去重 */
   projectPriceSkuCount?: number
+  /** 关联分销商档案配置的商品类型，id 为类型业务编码，name 为类型名称 */
+  productTypes?: ProductTypeRef[]
 }
 
 /** 项目（项目管理 / 分销商关联项目共用） */
@@ -204,16 +206,41 @@ export interface ProjectListingListItem {
   /** 平台 SKU 编码 */
   platformSkuCode?: string
   skuName?: string
+  spuCode?: string
+  spuName?: string
+  /** 动态商品类型编码 */
+  productType?: string
+  productTypeName?: string
+  /** 商品分类 */
+  productClassification?: string
+  productClassificationName?: string
+  categoryName?: string
+  /** 市场价，单位 CNY 分 */
+  marketPriceCents?: number
+  marketPrice?: number
   /** 建议结算价，当前 L1，单位 CNY 分 */
   suggestPriceCents?: number
   /** 平台 SKU 销售建议价，单位 CNY 分 */
   suggestedSalePriceCents?: number
   /** 项目旧调价模式的 B 端平台基价，单位 CNY 分 */
   platformBasePriceCents?: number
+  /** 定价规则文案，未配置项目专属价时回显分销价规则 */
+  pricingRule?: string
   /** 当前有效分销价，优先通用版本，单位 CNY 分 */
   distPriceCents?: number
+  /** 是否含税 */
+  taxIncluded?: boolean
+  taxRateCode?: string
+  taxRate?: number
+  taxRateDisplay?: string
+  /** 税额，单位 CNY 分 */
+  taxAmountCents?: number
+  taxAmount?: number
   /** 当前版本为 L3 时的冻结单价，单位 CNY 分 */
   projectPriceCents?: number
+  /** 不含税项目价，单位 CNY 分 */
+  projectPriceExclusiveCents?: number
+  projectPriceExclusive?: number
   /** 当前冻结版本单价，单位 CNY 分 */
   finalPriceCents?: number
   /** 冻结版本结算层级：L1 / L2 / L3 */

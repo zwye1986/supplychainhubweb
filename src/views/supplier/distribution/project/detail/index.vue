@@ -47,6 +47,20 @@
         <el-descriptions-item label="结算方">
           {{ getSettlementPartyTypeLabel(project.settlementPartyType) }}
         </el-descriptions-item>
+        <el-descriptions-item label="商品类型" :span="3">
+          <template v-if="productTypeItems.length">
+            <el-tag
+              v-for="item in productTypeItems"
+              :key="item.id"
+              class="m-2px"
+              size="small"
+              type="success"
+            >
+              {{ item.name }}
+            </el-tag>
+          </template>
+          <span v-else>-</span>
+        </el-descriptions-item>
       </el-descriptions>
 
       <el-tabs v-model="activeTab" class="mt-16px">
@@ -104,6 +118,22 @@
                 </el-form-item>
               </el-col>
               <el-col :span="24">
+                <el-form-item label="商品类型">
+                  <template v-if="productTypeItems.length">
+                    <el-tag
+                      v-for="item in productTypeItems"
+                      :key="item.id"
+                      class="m-2px"
+                      size="small"
+                      type="success"
+                    >
+                      {{ item.name }}
+                    </el-tag>
+                  </template>
+                  <span v-else>-</span>
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
                 <el-form-item label="项目说明">
                   {{ displayText(project.description) }}
                 </el-form-item>
@@ -117,6 +147,7 @@
             v-if="projectCode"
             :project-code="projectCode"
             :buyer-code="project.buyerCode"
+            :product-type-items="productTypeItems"
             @success="handleProductChange"
           />
         </el-tab-pane>
@@ -126,7 +157,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ProjectApi, ProjectVO } from '@/api/supplier/distribution'
+import { ProjectApi, ProjectVO, toProductTypeItems } from '@/api/supplier/distribution'
 import {
   getCatalogModeLabel,
   getProjectStatusLabel,
@@ -164,6 +195,8 @@ const periodText = computed(() => {
   if (!project.value.startDate && !project.value.endDate) return '-'
   return `${project.value.startDate || '-'} ~ ${project.value.endDate || '-'}`
 })
+
+const productTypeItems = computed(() => toProductTypeItems(project.value.productTypes))
 
 const getDetail = async () => {
   if (!projectCode.value) return

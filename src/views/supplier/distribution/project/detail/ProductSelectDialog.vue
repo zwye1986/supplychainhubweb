@@ -1,39 +1,79 @@
 <template>
   <Dialog v-model="dialogVisible" title="新增分销商品" width="1600px" :scroll="true" max-height="78vh">
-    <el-alert
-      class="mb-12px"
-      type="info"
-      :closable="false"
-      title="只能选择该项目所属分销商的未移除分销商品。项目专属价可不配置，不填则按分销商分销价结算。"
-    />
+    <el-alert class="mb-12px" type="info" :closable="false">
+      <template #title>
+        <div>为已勾选的 SKU 配置项目专属价。填入项目价后，该 SKU 在此项目中按项目价结算；不填则按基础分销价结算。</div>
+        <div>支持批量调价：按分销价=销售价或公式批量设置项目价。</div>
+      </template>
+    </el-alert>
 
     <el-row :gutter="16">
       <el-col :span="12">
         <ContentWrap class="!mb-0">
+          <div v-if="categoryTags.length > 1" class="mb-12px flex flex-wrap items-center gap-10px">
+            <button
+              v-for="tag in categoryTags"
+              :key="tag.value || 'all'"
+              type="button"
+              class="filter-pill"
+              :class="{ 'is-active': activeTag === tag.value }"
+              @click="handleTagChange(tag.value)"
+            >
+              {{ tag.label }}
+            </button>
+          </div>
+          <el-form :inline="true" class="-mb-10px" @submit.prevent>
+            <el-form-item label="商品">
+              <el-input
+                v-model="queryParams.keyword"
+                placeholder="名称/编号"
+                clearable
+                class="!w-160px"
+                @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+            <el-form-item label="商品分类">
+              <ProductCategory
+                v-model="queryParams.categoryCode"
+                node-key="categoryCode"
+                placeholder="请选择"
+                class="!w-160px"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleQuery">搜索</el-button>
+              <el-button @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
           <el-table
             ref="tableRef"
             v-loading="loading"
             :data="skuList"
             row-key="platformSkuCode"
+            border
             height="420"
+            :span-method="spanMethod"
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="45" :reserve-selection="true" />
-            <el-table-column label="商品名称(SPU)" min-width="160">
+            <el-table-column label="商品名称(SPU)" min-width="150">
               <template #default="{ row }">
                 <div>{{ row.spuName || '-' }}</div>
                 <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="SKU规格" min-width="120">
+            <el-table-column label="SKU规格" min-width="110">
               <template #default="{ row }">{{ row.skuName || '-' }}</template>
             </el-table-column>
-            <el-table-column label="市场价（元）" min-width="110" align="right">
+            <el-table-column label="类型/分类" min-width="150">
+              <template #default="{ row }">{{ getTypeCategoryLabel(row) }}</template>
+            </el-table-column>
+            <el-table-column label="市场价（元）" min-width="100" align="right">
               <template #default="{ row }">
                 {{ formatCentsYuan(row.marketPriceCents ?? row.marketPrice) }}
               </template>
             </el-table-column>
-            <el-table-column label="分销价（元）" min-width="110" align="right">
+            <el-table-column label="基础分销价(元)" min-width="120" align="right">
               <template #default="{ row }">
                 {{ formatCentsYuan(row.distPriceCents) }}
               </template>
@@ -126,6 +166,7 @@ import {
   type BuyerProductCreatePricingReqVO,
   type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
+import { ProductCategoryApi, type ProductCategoryVO } from '@/api/product'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 import DistributionPriceForm from '@/views/supplier/distribution/distributor/detail/DistributionPriceForm.vue'
 import {
@@ -138,6 +179,8 @@ defineOptions({ name: 'ProjectProductSelectDialog' })
 
 const DEFAULT_SALE_PRICE_TIP = '销售建议价=市场价*0.5%+0元'
 
+type SelectSkuRow = BuyerProductListItem & { _rowspan?: number }
+
 interface SelectedProjectProduct extends BuyerProductListItem {
   price: DistPriceFormData
 }
@@ -145,6 +188,7 @@ interface SelectedProjectProduct extends BuyerProductListItem {
 const props = defineProps<{
   projectCode: string
   buyerCode?: string
+  productTypeItems?: Array<{ id: string; name: string }>
 }>()
 
 const emit = defineEmits<{
@@ -155,7 +199,9 @@ const message = useMessage()
 const dialogVisible = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
-const skuList = ref<BuyerProductListItem[]>([])
+const skuList = ref<SelectSkuRow[]>([])
+const activeTag = ref('')
+const categoryNameMap = ref<Record<string, string>>({})
 const total = ref(0)
 const selectedList = ref<SelectedProjectProduct[]>([])
 const tableRef = ref()
@@ -165,7 +211,28 @@ const batchPrice = ref<DistPriceFormData>(createEmptyDistPrice())
 
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 10
+  pageSize: 10,
+  keyword: '',
+  categoryCode: undefined as string | undefined
+})
+
+const productTypeCodes = computed(() => [
+  ...new Set(
+    (props.productTypeItems || []).map((item) => String(item.id || '').trim()).filter(Boolean)
+  )
+])
+
+const categoryTags = computed(() => [
+  { value: '', label: '全部商品' },
+  ...(props.productTypeItems || []).map((item) => ({
+    value: item.id,
+    label: item.name || item.id
+  }))
+])
+
+const queryProductTypes = computed(() => {
+  if (activeTag.value) return [activeTag.value]
+  return productTypeCodes.value.length ? productTypeCodes.value : undefined
 })
 
 const clonePrice = (src: DistPriceFormData): DistPriceFormData => ({
@@ -188,6 +255,62 @@ const formatSuggestTip = (item: SelectedProjectProduct) => {
   return price === '-' ? DEFAULT_SALE_PRICE_TIP : `销售建议价=${price}元`
 }
 
+const collectCategoryNames = (nodes: ProductCategoryVO[] = [], map: Record<string, string>) => {
+  nodes.forEach((node) => {
+    if (node.categoryName) {
+      if (node.categoryCode) map[node.categoryCode] = node.categoryName
+      if (node.id != null) map[String(node.id)] = node.categoryName
+    }
+    if (node.children?.length) collectCategoryNames(node.children, map)
+  })
+}
+
+const loadCategoryNames = async () => {
+  if (Object.keys(categoryNameMap.value).length) return
+  const tree = await ProductCategoryApi.getCategoryList()
+  const map: Record<string, string> = {}
+  collectCategoryNames(tree || [], map)
+  categoryNameMap.value = map
+}
+
+const getTypeCategoryLabel = (row: BuyerProductListItem) => {
+  const typeName =
+    props.productTypeItems?.find((item) => item.id === row.productType)?.name || row.productType
+  const classification = row.productClassification
+  const categoryName = classification
+    ? categoryNameMap.value[classification] || classification
+    : ''
+  return [typeName, categoryName].filter(Boolean).join('/') || '-'
+}
+
+const attachSpuRowspan = (items: BuyerProductListItem[] = []): SelectSkuRow[] => {
+  const rows: SelectSkuRow[] = items.map((item) => ({ ...item, _rowspan: 0 }))
+  let index = 0
+  while (index < rows.length) {
+    const spuCode = rows[index].spuCode
+    let count = 1
+    if (spuCode) {
+      while (index + count < rows.length && rows[index + count].spuCode === spuCode) count++
+    }
+    rows[index]._rowspan = count
+    index += count
+  }
+  return rows
+}
+
+const spanMethod = ({ row, columnIndex }: { row: SelectSkuRow; columnIndex: number }) => {
+  if (columnIndex !== 1 || row._rowspan == null) return
+  return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
+}
+
+const matchKeyword = (row: BuyerProductListItem, keyword: string) => {
+  const text = [row.spuName, row.spuCode, row.skuName, row.platformSkuCode]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return text.includes(keyword)
+}
+
 const open = async () => {
   if (!props.buyerCode) {
     message.warning('当前项目未关联分销商，无法选择分销商品')
@@ -195,13 +318,16 @@ const open = async () => {
   }
   dialogVisible.value = true
   selectedList.value = []
+  activeTag.value = ''
   queryParams.pageNo = 1
+  queryParams.keyword = ''
+  queryParams.categoryCode = undefined
   batchPrice.value = createEmptyDistPrice()
   skuFormRefs.clear()
   await nextTick()
   batchFormRef.value?.clearValidate()
   tableRef.value?.clearSelection?.()
-  await getSkuList()
+  await Promise.all([getSkuList(), loadCategoryNames().catch(() => undefined)])
 }
 defineExpose({ open })
 
@@ -212,9 +338,17 @@ const getSkuList = async () => {
     const data = await DistributorApi.getBuyerProductPage(props.buyerCode, {
       pageNo: queryParams.pageNo,
       pageSize: queryParams.pageSize,
-      projectCode: props.projectCode
+      projectCode: props.projectCode,
+      productType: queryProductTypes.value
     })
-    skuList.value = data.list || []
+    const keyword = queryParams.keyword.trim().toLowerCase()
+    const categoryCode = queryParams.categoryCode
+    const list = (data.list || []).filter((item) => {
+      if (keyword && !matchKeyword(item, keyword)) return false
+      if (categoryCode && item.productClassification !== categoryCode) return false
+      return true
+    })
+    skuList.value = attachSpuRowspan(list)
     total.value = data.total || 0
   } catch {
     skuList.value = []
@@ -222,6 +356,25 @@ const getSkuList = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleTagChange = (value: string) => {
+  if (activeTag.value === value) return
+  activeTag.value = value
+  queryParams.pageNo = 1
+  getSkuList()
+}
+
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getSkuList()
+}
+
+const resetQuery = () => {
+  queryParams.keyword = ''
+  queryParams.categoryCode = undefined
+  queryParams.pageNo = 1
+  getSkuList()
 }
 
 const selectedGroups = computed(() => {
@@ -450,5 +603,22 @@ const handleSubmit = async () => {
   margin-bottom: 4px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.filter-pill {
+  border: 1px solid var(--el-border-color);
+  border-radius: 999px;
+  background: var(--el-fill-color-blank);
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 8px 14px;
+}
+
+.filter-pill.is-active {
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #fff;
 }
 </style>

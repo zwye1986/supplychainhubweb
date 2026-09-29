@@ -400,10 +400,26 @@ export const ProjectApi = {
   },
 
   /** 分页查询项目商品：GET /projects/{projectCode}/products，只返回未移除行，金额单位 CNY 分 */
-  getProductPage: async (projectCode: string, params?: { pageNo?: number; pageSize?: number }) => {
+  getProductPage: async (
+    projectCode: string,
+    params?: { pageNo?: number; pageSize?: number; productType?: string | string[] }
+  ) => {
+    const productType = compactArray(
+      Array.isArray(params?.productType)
+        ? params.productType
+        : params?.productType
+          ? [params.productType]
+          : undefined
+    )?.map(String)
+    const query: Record<string, unknown> = {
+      pageNo: params?.pageNo || 1,
+      pageSize: params?.pageSize || 20
+    }
+    if (productType?.length) query.productType = productType
     return await request.get<{ list: ProjectListingListItem[]; total: number }>({
       url: `/supply-chain/projects/${projectCode}/products`,
-      params
+      params: query,
+      paramsSerializer: serializeBuyerQuery
     })
   },
 
