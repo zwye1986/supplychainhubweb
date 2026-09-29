@@ -377,6 +377,10 @@ export interface BuyerProductPageParam {
   productType?: string | string[]
   /** 项目新增商品选品时排除该项目已加入且未移除的商品 */
   projectCode?: string
+  /** SPU/SKU 名称或编码，服务端分页前模糊匹配 */
+  keyword?: string
+  /** SPU 主类目业务编码，包含下级类目 */
+  categoryCode?: string
 }
 
 /** 改分销商品 L2 覆盖（PatchBuyerProductReqVO） */

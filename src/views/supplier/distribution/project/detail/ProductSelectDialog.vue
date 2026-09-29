@@ -303,14 +303,6 @@ const spanMethod = ({ row, columnIndex }: { row: SelectSkuRow; columnIndex: numb
   return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
 }
 
-const matchKeyword = (row: BuyerProductListItem, keyword: string) => {
-  const text = [row.spuName, row.spuCode, row.skuName, row.platformSkuCode]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-  return text.includes(keyword)
-}
-
 const open = async () => {
   if (!props.buyerCode) {
     message.warning('当前项目未关联分销商，无法选择分销商品')
@@ -339,16 +331,11 @@ const getSkuList = async () => {
       pageNo: queryParams.pageNo,
       pageSize: queryParams.pageSize,
       projectCode: props.projectCode,
-      productType: queryProductTypes.value
+      productType: queryProductTypes.value,
+      keyword: queryParams.keyword,
+      categoryCode: queryParams.categoryCode
     })
-    const keyword = queryParams.keyword.trim().toLowerCase()
-    const categoryCode = queryParams.categoryCode
-    const list = (data.list || []).filter((item) => {
-      if (keyword && !matchKeyword(item, keyword)) return false
-      if (categoryCode && item.productClassification !== categoryCode) return false
-      return true
-    })
-    skuList.value = attachSpuRowspan(list)
+    skuList.value = attachSpuRowspan(data.list || [])
     total.value = data.total || 0
   } catch {
     skuList.value = []
