@@ -30,6 +30,8 @@ export type {
   ProductTypeRef,
   PatchProjectListingReqVO,
   ProjectDetail,
+  ProjectApplicationCredentials,
+  ProjectIssuedCredential,
   ProjectFormulaRuleView,
   ProjectListingListItem,
   ProjectPricingConfigView,
@@ -61,6 +63,8 @@ import type {
   PatchBuyerProductReqVO,
   PatchProjectListingReqVO,
   ProjectDetail,
+  ProjectApplicationCredentials,
+  ProjectIssuedCredential,
   ProjectListingListItem,
   ProjectPageParam,
   ProjectProductBatchPricingReqVO,
@@ -71,7 +75,9 @@ import type {
 export const USE_DISTRIBUTOR_MOCK = true
 
 const compactArray = <T>(values?: T[] | null) =>
-  values?.length ? values.filter((item) => item !== undefined && item !== null && item !== '') : undefined
+  values?.length
+    ? values.filter((item) => item !== undefined && item !== null && item !== '')
+    : undefined
 
 const serializeBuyerQuery = (query: Record<string, unknown>) =>
   qs.stringify(query, { arrayFormat: 'repeat', skipNulls: true, allowDots: true })
@@ -90,7 +96,8 @@ const buildBuyerPageParams = (params: DistributorPageParam = {}) => {
   if (params.buyerName?.trim()) query.buyerName = params.buyerName.trim()
   if (params.buyerCode?.trim()) query.buyerCode = params.buyerCode.trim()
   if (distributionLevels?.length) query.distributionLevels = distributionLevels
-  if (compactArray(params.cooperationModes)) query.cooperationModes = compactArray(params.cooperationModes)
+  if (compactArray(params.cooperationModes))
+    query.cooperationModes = compactArray(params.cooperationModes)
   if (compactArray(params.sellableCategories)) {
     query.sellableCategories = compactArray(params.sellableCategories)
   }
@@ -388,6 +395,35 @@ export const ProjectApi = {
   getProject: async (projectCode: string) => {
     return await request.get<ProjectDetail>({
       url: `/supply-chain/projects/${projectCode}`
+    })
+  },
+
+  /** 开通项目应用；appKey 只在本次响应返回。 */
+  enableApplication: async (projectCode: string) => {
+    return await request.post<ProjectIssuedCredential>({
+      url: `/supply-chain/projects/${projectCode}/application/enable`
+    })
+  },
+
+  /** 轮换项目 appKey；新密钥只在本次响应返回。 */
+  rotateApplication: async (projectCode: string) => {
+    return await request.post<ProjectIssuedCredential>({
+      url: `/supply-chain/projects/${projectCode}/application/rotate`
+    })
+  },
+
+  /** 吊销项目全部活动凭证。 */
+  revokeApplication: async (projectCode: string, reason: string) => {
+    return await request.post<boolean>({
+      url: `/supply-chain/projects/${projectCode}/application/revoke`,
+      data: { confirmed: true, reason }
+    })
+  },
+
+  /** 查询应用身份和脱敏版本记录。 */
+  getApplicationCredentials: async (projectCode: string) => {
+    return await request.get<ProjectApplicationCredentials>({
+      url: `/supply-chain/projects/${projectCode}/application/credentials`
     })
   },
 

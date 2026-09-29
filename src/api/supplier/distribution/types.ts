@@ -127,6 +127,26 @@ export interface ProjectDetail {
 /** 项目（项目管理 / 分销商关联项目共用） */
 export type ProjectVO = ProjectDetail
 
+/** 项目应用凭证列表；服务端从不在查询响应中返回密钥明文。 */
+export interface ProjectApplicationCredentials {
+  appId: string | null
+  credentials: Array<{
+    keyVersion: number
+    status: 'CURRENT' | 'GRACE' | 'REVOKED' | 'EXPIRED'
+    maskedHint: string | null
+    validFrom: string
+    validTo: string | null
+  }>
+}
+
+/** 开通或轮换的唯一一次明文响应，不得写入浏览器持久化存储。 */
+export interface ProjectIssuedCredential {
+  appId: string
+  keyVersion: number
+  appKey: string
+  maskedHint: string
+}
+
 /** 分销商详情-关联项目卡片，与项目主体同一结构 */
 export type DistributorProjectVO = ProjectDetail
 

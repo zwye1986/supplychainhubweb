@@ -151,6 +151,14 @@
             @success="handleProductChange"
           />
         </el-tab-pane>
+
+        <el-tab-pane label="应用凭证" name="application" lazy>
+          <ProjectApplicationCredentials
+            v-if="projectCode"
+            :project-code="projectCode"
+            :active="project.status === 'ACTIVE'"
+          />
+        </el-tab-pane>
       </el-tabs>
     </div>
   </el-drawer>
@@ -166,6 +174,7 @@ import {
   getSettlementPartyTypeLabel
 } from '@/views/supplier/utils/constants'
 import ProductList from './ProductList.vue'
+import ProjectApplicationCredentials from './ProjectApplicationCredentials.vue'
 
 defineOptions({ name: 'DistributionProjectDetailDrawer' })
 
