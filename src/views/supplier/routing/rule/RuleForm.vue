@@ -157,6 +157,7 @@ import {
   ROUTE_STRATEGY_OPTIONS,
   createPriorities,
   createWeights,
+  getRoutingScopeError,
   getStrategyHint
 } from '@/views/supplier/routing/rule/utils/constants'
 
@@ -287,6 +288,16 @@ const submitForm = async () => {
   if (formData.routeMode === 'FIXED') {
     formData.supplierMode = 'SPECIFIED'
     formData.supplierCodes = formData.primarySupplierCode ? [formData.primarySupplierCode] : []
+  }
+  const scopeError = getRoutingScopeError(
+    formData.distributorMode,
+    formData.projectMode,
+    formData.productTypeMode,
+    formData.supplierMode
+  )
+  if (scopeError) {
+    message.warning(scopeError)
+    return
   }
   if (
     formData.routeMode === 'AUTO' &&
