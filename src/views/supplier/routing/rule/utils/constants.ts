@@ -1,8 +1,9 @@
 import type { RouteStrategy, ScopeMode } from '@/api/routing/types'
 
-/** 六级范围模式；次序由后端匹配层级定义，不由页面推断优先级。 */
+/** 七级范围模式；次序由后端匹配层级定义，不由页面推断优先级。 */
 const SUPPORTED_ROUTING_SCOPE_KEYS = new Set([
   'SPECIFIED:SPECIFIED:SPECIFIED:SPECIFIED',
+  'SPECIFIED:SPECIFIED:SPECIFIED:ALL',
   'SPECIFIED:ALL:SPECIFIED:ALL',
   'ALL:SPECIFIED:SPECIFIED:ALL',
   'ALL:ALL:SPECIFIED:ALL',
@@ -11,7 +12,7 @@ const SUPPORTED_ROUTING_SCOPE_KEYS = new Set([
 ])
 
 /**
- * 保存前检查四个范围模式是否能被后端六级路由匹配；编码存在性和项目归属仍由后端校验。
+ * 保存前检查四个范围模式是否能被后端七级路由匹配；编码存在性和项目归属仍由后端校验。
  * 设计见 docs/superpowers/specs/2026-09-24-standard-order-routing-execution-design.md#3-规则匹配。
  */
 export const getRoutingScopeError = (
@@ -23,7 +24,7 @@ export const getRoutingScopeError = (
   const key = [distributorMode, projectMode, productTypeMode, supplierMode].join(':')
   return SUPPORTED_ROUTING_SCOPE_KEYS.has(key)
     ? null
-    : '当前适用范围组合不支持，请选择四维、分销商+商品类型、项目+商品类型、商品类型、分销商+项目或全局默认'
+    : '当前适用范围组合不支持，请选择四维、分销商+项目+商品类型、分销商+商品类型、项目+商品类型、商品类型、分销商+项目或全局默认'
 }
 
 export const ROUTE_MODE_OPTIONS = [

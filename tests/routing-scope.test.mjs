@@ -9,6 +9,10 @@ test('accepts distributor and project scope across all product types and supplie
   assert.equal(getRoutingScopeError?.('SPECIFIED', 'SPECIFIED', 'ALL', 'ALL'), null)
 })
 
+test('accepts distributor, project and product type scope across all suppliers', () => {
+  assert.equal(getRoutingScopeError?.('SPECIFIED', 'SPECIFIED', 'SPECIFIED', 'ALL'), null)
+})
+
 test('retains existing product type and global scopes', () => {
   assert.equal(getRoutingScopeError?.('ALL', 'ALL', 'SPECIFIED', 'ALL'), null)
   assert.equal(getRoutingScopeError?.('ALL', 'ALL', 'ALL', 'ALL'), null)
