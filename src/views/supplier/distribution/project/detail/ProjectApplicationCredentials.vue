@@ -37,7 +37,7 @@
       title="保存项目应用密钥"
       width="560px"
       destroy-on-close
-      @closed="clearIssued"
+      @close="clearIssued"
     >
       <el-alert
         class="mb-16px"
@@ -77,18 +77,29 @@ const message = useMessage()
 const loading = ref(false)
 const issuedVisible = ref(false)
 const issued = ref<ProjectIssuedCredential | null>(null)
-const credentials = ref<ProjectApplicationCredentials>({ appId: null, credentials: [] })
+const emptyCredentials = (): ProjectApplicationCredentials => ({ appId: null, credentials: [] })
+const credentials = ref<ProjectApplicationCredentials>(emptyCredentials())
+let projectGeneration = 0
+let loadSequence = 0
 const hasActiveCredential = computed(() =>
   credentials.value.credentials.some((row) => row.status === 'CURRENT' || row.status === 'GRACE')
 )
 
-const load = async () => {
-  if (!props.projectCode) return
+// 仅允许当前项目的最后一次请求写入视图；见 docs/superpowers/specs/2026-09-29-project-app-issuance-platform-signing-callback-design.md#7-管理端配套和安全边界。
+const isCurrent = (projectCode: string, generation: number) =>
+  projectGeneration === generation && props.projectCode === projectCode
+
+const load = async (projectCode: string, generation: number) => {
+  if (!projectCode) return
+  const sequence = ++loadSequence
   loading.value = true
   try {
-    credentials.value = await ProjectApi.getApplicationCredentials(props.projectCode)
+    const result = await ProjectApi.getApplicationCredentials(projectCode)
+    if (isCurrent(projectCode, generation) && sequence === loadSequence) {
+      credentials.value = result
+    }
   } finally {
-    loading.value = false
+    if (isCurrent(projectCode, generation) && sequence === loadSequence) loading.value = false
   }
 }
 
@@ -98,26 +109,36 @@ const showIssued = (value: ProjectIssuedCredential) => {
 }
 
 const enable = async () => {
+  const projectCode = props.projectCode
+  const generation = projectGeneration
   loading.value = true
   try {
-    showIssued(await ProjectApi.enableApplication(props.projectCode))
-    await load()
+    const result = await ProjectApi.enableApplication(projectCode)
+    if (!isCurrent(projectCode, generation)) return
+    showIssued(result)
+    await load(projectCode, generation)
   } finally {
-    loading.value = false
+    if (isCurrent(projectCode, generation)) loading.value = false
   }
 }
 
 const rotate = async () => {
+  const projectCode = props.projectCode
+  const generation = projectGeneration
   loading.value = true
   try {
-    showIssued(await ProjectApi.rotateApplication(props.projectCode))
-    await load()
+    const result = await ProjectApi.rotateApplication(projectCode)
+    if (!isCurrent(projectCode, generation)) return
+    showIssued(result)
+    await load(projectCode, generation)
   } finally {
-    loading.value = false
+    if (isCurrent(projectCode, generation)) loading.value = false
   }
 }
 
 const revoke = async () => {
+  const projectCode = props.projectCode
+  const generation = projectGeneration
   let reason: string
   try {
     const result = await ElMessageBox.prompt(
@@ -135,13 +156,15 @@ const revoke = async () => {
     if (error === 'cancel' || error === 'close') return
     throw error
   }
+  if (!isCurrent(projectCode, generation)) return
   loading.value = true
   try {
-    await ProjectApi.revokeApplication(props.projectCode, reason)
-    await load()
-    message.success('活动密钥已吊销')
+    await ProjectApi.revokeApplication(projectCode, reason)
+    if (!isCurrent(projectCode, generation)) return
+    await load(projectCode, generation)
+    if (isCurrent(projectCode, generation)) message.success('活动密钥已吊销')
   } finally {
-    loading.value = false
+    if (isCurrent(projectCode, generation)) loading.value = false
   }
 }
 
@@ -155,8 +178,24 @@ const copyIssued = async () => {
 
 const clearIssued = () => {
   issued.value = null
+  issuedVisible.value = false
 }
 
-watch(() => props.projectCode, load, { immediate: true })
-onUnmounted(clearIssued)
+watch(
+  () => props.projectCode,
+  async (projectCode) => {
+    const generation = ++projectGeneration
+    ++loadSequence
+    clearIssued()
+    credentials.value = emptyCredentials()
+    loading.value = false
+    if (projectCode) await load(projectCode, generation)
+  },
+  { immediate: true, flush: 'sync' }
+)
+onUnmounted(() => {
+  ++projectGeneration
+  ++loadSequence
+  clearIssued()
+})
 </script>
