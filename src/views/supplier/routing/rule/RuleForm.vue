@@ -51,16 +51,18 @@
         </el-radio-group>
       </el-form-item>
       <el-form-item v-if="formData.routeMode === 'AUTO'" label="适用供应商" required>
-        <el-radio-group v-model="formData.supplierMode">
-          <el-radio value="ALL">全部</el-radio>
-          <el-radio value="SPECIFIED">指定供应商</el-radio>
-        </el-radio-group>
-        <div v-if="formData.supplierMode === 'SPECIFIED'" class="mt-8px">
-          <el-button link type="primary" @click="pickerVisible = true">选择供应商</el-button>
-          <div v-if="selectedSupplierNames.length" class="mt-8px text-13px">
-            已选：{{ selectedSupplierNames.join('、') }}
+        <div class="w-full">
+          <el-radio-group v-model="formData.supplierMode">
+            <el-radio value="ALL">全部</el-radio>
+            <el-radio value="SPECIFIED">指定供应商</el-radio>
+          </el-radio-group>
+          <div v-if="formData.supplierMode === 'SPECIFIED'" class="mt-8px">
+            <el-button link type="primary" @click="pickerVisible = true">选择供应商</el-button>
+            <div v-if="selectedSupplierNames.length" class="mt-8px text-13px leading-22px">
+              已选：{{ selectedSupplierNames.join('、') }}
+            </div>
+            <div class="mt-4px text-12px text-gray-500">指定供应商时请至少选择 2 个，用于失败降级。</div>
           </div>
-          <div class="mt-4px text-12px text-gray-500">指定供应商时请至少选择 2 个，用于失败降级。</div>
         </div>
       </el-form-item>
       <el-form-item v-if="formData.routeMode === 'FIXED'" label="主供应商" prop="primarySupplierCode">
@@ -218,7 +220,7 @@ const toCodeName = (code?: string, name?: string) => ({ code: code || '', name: 
 
 const loadOptions = async () => {
   const [distributors, projects, suppliers] = await Promise.all([
-    DistributorApi.getDistributorNameList().catch(() => []),
+    DistributorApi.getDistributorNameList({ status: ['ACTIVE'] }).catch(() => []),
     ProjectApi.getProjectNameList().catch(() => []),
     SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => [])
   ])

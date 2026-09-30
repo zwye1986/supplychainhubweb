@@ -133,6 +133,9 @@
             :model-value="row.status"
             active-value="ENABLED"
             inactive-value="DISABLED"
+            active-text="启用"
+            inactive-text="停用"
+            inline-prompt
             @change="(val) => handleStatus(row, String(val))"
           />
         </template>
@@ -235,7 +238,7 @@ const toCodeName = (code?: string, name?: string) => ({ code: code || '', name: 
 
 const loadOptions = async () => {
   const [distributors, projects, suppliers, users] = await Promise.all([
-    DistributorApi.getDistributorNameList().catch(() => []),
+    DistributorApi.getDistributorNameList({ status: ['ACTIVE'] }).catch(() => []),
     ProjectApi.getProjectNameList().catch(() => []),
     SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => []),
     getSimpleUserList().catch(() => [])

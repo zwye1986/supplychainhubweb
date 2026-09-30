@@ -114,10 +114,11 @@ export const DistributorApi = {
   },
 
   /** 获取分销商名称列表（供下拉选择，view=simple） */
-  getDistributorNameList: async () => {
+  getDistributorNameList: async (params?: Pick<DistributorPageParam, 'status'>) => {
     const data = await request.get({
       url: '/supply-chain/buyers',
-      params: { view: 'simple' }
+      params: buildBuyerPageParams({ view: 'simple', status: params?.status }),
+      paramsSerializer: serializeBuyerQuery
     })
     const list = Array.isArray(data) ? data : data?.list || []
     return list.map((item: { buyerCode?: string; buyerName?: string }) => ({
