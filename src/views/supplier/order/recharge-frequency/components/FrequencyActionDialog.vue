@@ -10,6 +10,13 @@
   >
     <template v-if="target">
       <el-alert
+        v-if="!allowed"
+        title="查询或操作权限已撤销，暂停发送。未确定的操作号与正文持续保留，恢复权限后可按原意图重试。"
+        type="warning"
+        :closable="false"
+        class="mb-16px"
+      />
+      <el-alert
         :title="
           target.kind === 'retry'
             ? '仅触发检查，不承诺订单已发送。'
@@ -97,7 +104,10 @@ const uncertain = ref(false)
 const refused = ref(false)
 const hasPending = computed(() => submitting.value || uncertain.value)
 const allowed = computed(
-  () => !!target.value && checkPermi([FREQUENCY_PERMISSIONS[target.value.kind]])
+  () =>
+    !!target.value &&
+    checkPermi([FREQUENCY_PERMISSIONS.query]) &&
+    checkPermi([FREQUENCY_PERMISSIONS[target.value.kind]])
 )
 
 /**
@@ -106,7 +116,12 @@ const allowed = computed(
  * 设计：docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#7-管理端契约与权限
  */
 const open = (value: Target) => {
-  if (hasPending.value || !checkPermi([FREQUENCY_PERMISSIONS[value.kind]])) return
+  if (
+    hasPending.value ||
+    !checkPermi([FREQUENCY_PERMISSIONS.query]) ||
+    !checkPermi([FREQUENCY_PERMISSIONS[value.kind]])
+  )
+    return
   if (value.kind === 'release' && !value.row.canRelease) return
   target.value = value
   intent.value = undefined

@@ -208,10 +208,11 @@
       @size-change="changeSize"
       @current-change="changePage"
     />
-    <FrequencyActionDialog ref="actions" @resolved="refresh" @changed="refresh" />
     <OrderDetail v-if="canOrder" ref="orderDetail" />
   </ContentWrap>
   <ContentWrap v-else><el-result icon="warning" title="无直充限频查询权限" /></ContentWrap>
+  <!-- 意图承载组件持续挂载；撤销查询权限不能丢弃未知命令或导航保护。 -->
+  <FrequencyActionDialog ref="actions" @resolved="refresh" @changed="refresh" />
 </template>
 
 <script setup lang="ts">
@@ -221,7 +222,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { checkPermi } from '@/utils/permission'
 import {
   DISPLAY_STATUSES,
@@ -419,11 +420,20 @@ const cleanup = () => {
   mobile.value = ''
   applied.value = { params: {} }
 }
-onBeforeRouteLeave(() => {
+/**
+ * AppView以fullPath作为key，同matched路由的query/hash/params变化也会卸载页面。
+ * 未知意图必须同时保护leave和update；拒绝导航时不能清理原正文与操作号。
+ * 设计：docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#8-前端监控页面
+ */
+const preventPendingNavigation = () => {
   if (actions.value?.hasPending) {
     ElMessage.warning('操作结果尚未确定，请先在弹窗使用原操作号重试并核实结果。')
     return false
   }
+}
+onBeforeRouteUpdate(preventPendingNavigation)
+onBeforeRouteLeave(() => {
+  if (preventPendingNavigation() === false) return false
   cleanup()
 })
 const beforeUnload = (event: BeforeUnloadEvent) => {
