@@ -49,11 +49,17 @@ const backlogResult = {
 }
 let answer = 'uncertain'
 let reads = 0
+let nextPageRead
 const request = {
   get: async (options) => {
     const { url } = options
     queryCalls.push({ method: 'GET', ...JSON.parse(JSON.stringify(options)) })
     reads++
+    if (!url.endsWith('/statistics') && nextPageRead) {
+      const response = nextPageRead
+      nextPageRead = undefined
+      return response
+    }
     return url.endsWith('/statistics')
       ? {
           waitingOrderCount: 1,
@@ -244,6 +250,7 @@ const setup = async (kind = 'retry') => {
   queryCalls.length = 0
   notifications.length = 0
   reads = 0
+  nextPageRead = undefined
   answer = 'uncertain'
   const router = routerLib.createRouter({
     history: routerLib.createMemoryHistory(),
@@ -317,6 +324,7 @@ const setup = async (kind = 'retry') => {
     application,
     router,
     page,
+    container,
     action,
     submit,
     initialAction: action(),
@@ -611,6 +619,69 @@ const setup = async (kind = 'retry') => {
       await flush()
       assert.deepEqual(lastPageQuery().params, { ...fields, pageNo: 1, pageSize: 100 })
       assert.deepEqual(pagination.props['page-sizes'], [20, 50, 100])
+    } finally {
+      env.close()
+    }
+  })
+  for (const label of ['分销商ID', '项目ID']) {
+    await scenario(`查询已拒绝的非法${label}切换积压页签仍不得请求`, async () => {
+      const env = await setup(null)
+      try {
+        await setFilter(env, label, '-1')
+        const before = queryCalls.length
+        await submitSearch(env)
+        assert.equal(queryCalls.length, before, 'query rejects invalid ID')
+        await selectView(env, 'BACKLOGS')
+        assert.equal(queryCalls.length, before, 'tab switch also rejects invalid ID')
+        assert.equal(notifications.at(-1), '分销商和项目ID须为正整数内部主键')
+        const state = env.page().setupState
+        assert.deepEqual(state.rows, [])
+        assert.equal(state.total, undefined)
+        assert.equal(state.listObservedAt, undefined)
+        assert.equal(state.listLoading, false)
+        assert.equal(state.listStale, false)
+        assert.equal(state.listError, '')
+        assert.equal(state.statistics.waitingOrderCount, 1)
+      } finally {
+        env.close()
+      }
+    })
+  }
+  await scenario('非法ID切换使旧查询失效，迟到响应不得覆盖新页签或保留旧加载', async () => {
+    const env = await setup()
+    try {
+      // 先通过实际请求建立旧列表，再让下一次读取在页签切换时保持在飞。
+      nextPageRead = Promise.resolve(backlogResult)
+      env.page().setupState.refresh()
+      await flush()
+      assert.equal(env.page().setupState.rows.length, 1)
+      let resolveRead
+      nextPageRead = new Promise((resolve) => {
+        resolveRead = resolve
+      })
+      env.page().setupState.refresh()
+      await flush()
+      assert.equal(env.page().setupState.listLoading, true)
+      assert.equal(env.page().setupState.listStale, true)
+      await setFilter(env, '项目ID', '-1')
+      await selectView(env, 'BACKLOGS')
+      const state = env.page().setupState
+      assert.equal(state.listLoading, false, 'rejected tab ends old loading')
+      assert.equal(state.listStale, false, 'rejected tab clears old stale flag')
+      assert.deepEqual(state.rows, [])
+      assert.equal(state.total, undefined)
+      assert.equal(state.listObservedAt, undefined)
+      assert.equal(state.listError, '')
+      const statistics = state.statistics
+      resolveRead({ ...backlogResult, observedAt: 2 })
+      await flush()
+      assert.deepEqual(state.rows, [], 'late old response must stay discarded')
+      assert.equal(state.total, undefined)
+      assert.equal(state.listObservedAt, undefined)
+      assert.equal(state.listLoading, false)
+      assert.equal(state.listStale, false)
+      assert.equal(state.statistics, statistics, 'global statistics are independent')
+      assert.equal(env.action().hasPending, true, 'tab rejection preserves pending intent')
     } finally {
       env.close()
     }

@@ -368,14 +368,20 @@ const applyFilters = () => {
   }
   applied.value = { params, mobile: mobile.value.trim() || undefined }
 }
-const search = () => {
-  if (listLoading.value) return
+/** 查询与页签自动读取共用ID校验，保留十进制字符串精度。
+ * 设计：docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#8-前端监控页面
+ */
+const validateIds = () => {
   for (const key of ['buyerId', 'projectId'] as const) {
     if (filters[key].trim() && !/^[1-9]\d*$/.test(filters[key].trim())) {
       ElMessage.warning('分销商和项目ID须为正整数内部主键')
-      return
+      return false
     }
   }
+  return true
+}
+const search = () => {
+  if (listLoading.value || !validateIds()) return
   applyFilters()
   pageNo.value = 1
   void loadList()
@@ -389,10 +395,17 @@ const reset = () => {
   search()
 }
 const switchView = () => {
+  // 即使新条件无效也废弃旧请求；不能让旧页签响应回填已切换的列表。
+  // 设计：docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#8-前端监控页面
+  ++listSequence
+  listLoading.value = false
+  listStale.value = false
+  listError.value = ''
   pageNo.value = 1
   rows.value = []
   total.value = undefined
   listObservedAt.value = undefined
+  if (!validateIds()) return
   applyFilters()
   void loadList()
 }
