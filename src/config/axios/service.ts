@@ -17,6 +17,24 @@ import { resetRouter } from '@/router'
 import { deleteUserCache } from '@/hooks/web/useCache'
 import { ApiEncrypt } from '@/utils/encrypt'
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** 限频接口显式选择安全错误契约；认证刷新回放仍保留原配置与正文。 */
+    frequencySafeErrors?: boolean
+  }
+}
+
+/** 限频错误只保留分类与安全业务结果，禁止携带Axios配置、正文和原始异常。 */
+export interface FrequencySafeError {
+  kind: 'business' | 'uncertain'
+  code?: number
+  message: string
+}
+const uncertainFrequencyError = (): FrequencySafeError => ({
+  kind: 'uncertain',
+  message: '请求结果未确定，请保留原操作号核实或重试'
+})
+
 const tenantEnable = import.meta.env.VITE_APP_TENANT_ENABLE
 const { result_code, base_url, request_timeout } = config
 
@@ -92,15 +110,15 @@ service.interceptors.request.use(
           config.headers[ApiEncrypt.getEncryptHeader()] = 'true'
         }
       } catch (error) {
-        console.error('请求数据加密失败:', error)
-        throw error
+        console.error('请求数据加密失败')
+        throw config.frequencySafeErrors ? uncertainFrequencyError() : error
       }
     }
     return config
   },
   (error: AxiosError) => {
     // Do something with request error
-    console.log(error) // for debug
+    console.debug('请求处理失败') // 不打印配置、正文或异常对象
     return Promise.reject(error)
   }
 )
@@ -112,7 +130,7 @@ service.interceptors.response.use(
     const config = response.config
     if (!data) {
       // 返回“[HTTP]请求没有返回值”;
-      throw new Error()
+      throw config.frequencySafeErrors ? uncertainFrequencyError() : new Error()
     }
 
     // 检查是否需要解密响应数据
@@ -125,7 +143,8 @@ service.interceptors.response.use(
         // 解密响应数据
         data = ApiEncrypt.decryptResponse(data)
       } catch (error) {
-        console.error('响应数据解密失败:', error)
+        console.error('响应数据解密失败')
+        if (config.frequencySafeErrors) throw uncertainFrequencyError()
         throw new Error('响应数据解密失败: ' + (error as Error).message)
       }
     }
@@ -148,7 +167,7 @@ service.interceptors.response.use(
     const msg = data.msg || errorCode[code] || errorCode['default']
     if (ignoreMsgs.indexOf(msg) !== -1) {
       // 如果是忽略的错误码，直接返回 msg 异常
-      return Promise.reject(msg)
+      return Promise.reject(config.frequencySafeErrors ? uncertainFrequencyError() : msg)
     } else if (code === 401) {
       // 如果未认证，并且未进行刷新令牌，说明可能是访问令牌过期了
       if (!isRefreshToken) {
@@ -192,6 +211,9 @@ service.interceptors.response.use(
           })
         })
       }
+    } else if (config.frequencySafeErrors && code !== 0 && code !== 200) {
+      // 仅限频调用保留结构化结果；是否确定由调用端的封闭错误码集合判断。
+      return Promise.reject({ kind: 'business', code, message: msg } satisfies FrequencySafeError)
     } else if (code === 500) {
       ElMessage.error(t('sys.api.errMsg500'))
       return Promise.reject(new Error(msg))
@@ -223,7 +245,9 @@ service.interceptors.response.use(
     }
   },
   (error: AxiosError) => {
-    console.log('err' + error) // for debug
+    console.debug('响应处理失败') // 不输出完整异常、URL、请求配置或正文
+    if ((error as unknown as FrequencySafeError)?.kind === 'uncertain') return Promise.reject(error)
+    if (error.config?.frequencySafeErrors) return Promise.reject(uncertainFrequencyError())
     let { message } = error
     const { t } = useI18n()
     if (message === 'Network Error') {
