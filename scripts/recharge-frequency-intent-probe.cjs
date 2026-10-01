@@ -1,5 +1,5 @@
 /**
- * 现有依赖下的限频意图生命周期行为探针：编译实际SFC并挂载到Vue renderer，
+ * 现有依赖下的限频意图生命周期与筛选行为探针：编译实际SFC并挂载到Vue renderer，
  * 使用真实Router与AppView的fullPath key重现权限撤销、同路由更新和卸载。
  * API/权限适配器只隔离网络和登录环境，不替代组件或路由行为。
  * 运行：node scripts/recharge-frequency-intent-probe.cjs [待验证Git修订]
@@ -32,10 +32,27 @@ const dialogFile = path.join(
 const permissions = vue.reactive(new Set())
 const calls = []
 const notifications = []
+const queryCalls = []
+const backlogResult = {
+  list: [
+    {
+      queueId: '9007199254740993',
+      maskedMobile: '138****8000',
+      platformSpuCode: 'SPU',
+      waitingCount: 8,
+      earliestEnqueuedAt: 1790784000000,
+      overThreshold: true
+    }
+  ],
+  total: 1,
+  observedAt: 1
+}
 let answer = 'uncertain'
 let reads = 0
 const request = {
-  get: async ({ url }) => {
+  get: async (options) => {
+    const { url } = options
+    queryCalls.push({ method: 'GET', ...JSON.parse(JSON.stringify(options)) })
     reads++
     return url.endsWith('/statistics')
       ? {
@@ -45,9 +62,15 @@ const request = {
           overdueQueueCount: 0,
           observedAt: 1
         }
-      : { list: [], total: 0, observedAt: 1 }
+      : url.endsWith('/backlogs')
+        ? backlogResult
+        : { list: [], total: 0, observedAt: 1 }
   },
   post: async ({ url, data }) => {
+    if (url.endsWith('/search')) {
+      queryCalls.push({ method: 'POST', url, data: JSON.parse(JSON.stringify(data)) })
+      return data.view === 'BACKLOGS' ? backlogResult : { list: [], total: 0, observedAt: 1 }
+    }
     calls.push({ url, data: JSON.parse(JSON.stringify(data)) })
     if (answer === 'uncertain') throw { kind: 'uncertain', message: 'unknown' }
     if (answer === 'refused') throw { kind: 'business', code: 1050001152, message: '版本已变化' }
@@ -218,6 +241,7 @@ const setup = async (kind = 'retry') => {
   permissions.clear()
   Object.values(policy).forEach((value) => permissions.add(value))
   calls.length = 0
+  queryCalls.length = 0
   notifications.length = 0
   reads = 0
   answer = 'uncertain'
@@ -273,6 +297,9 @@ const setup = async (kind = 'retry') => {
             holderOrderNo: 'ORD'
           }
         }
+  if (kind === null) {
+    return { application, router, page, container, close: () => application.unmount() }
+  }
   action().open(target)
   await flush()
   const input = findElement(
@@ -408,6 +435,182 @@ const setup = async (kind = 'retry') => {
       await env.router.push('/monitor/a?resolved=refused')
       await flush()
       assert.equal(env.router.currentRoute.value.fullPath, '/monitor/a?resolved=refused')
+    } finally {
+      env.close()
+    }
+  })
+  // 通过实际模板的model事件、表单提交和分页事件验证筛选，不以源码文本替代行为。
+  const control = (env, label, type = 'el-input') => {
+    const item = findElement(
+      env.container,
+      (node) => node.type === 'el-form-item' && node.props.label === label
+    )
+    assert.ok(item, `missing visible filter: ${label}`)
+    return findElement(item, (node) => node.type === type)
+  }
+  const setFilter = async (env, label, value, type) => {
+    control(env, label, type).props['onUpdate:modelValue'](value)
+    await flush()
+  }
+  const selectView = async (env, view) => {
+    const tabs = findElement(env.container, (node) => node.type === 'el-tabs')
+    tabs.props['onUpdate:modelValue'](view)
+    await flush()
+    tabs.props.onTabChange(view)
+    await flush()
+  }
+  const submitSearch = async (env) => {
+    const form = findElement(env.container, (node) => node.type === 'el-form')
+    form.props.onSubmit({ preventDefault() {} })
+    await flush()
+  }
+  const lastPageQuery = () => queryCalls.filter((call) => !call.url.endsWith('/statistics')).at(-1)
+  const fields = {
+    platformSpuCode: 'SPU',
+    buyerId: '9007199254740993',
+    projectId: '9223372036854775807',
+    orderNo: 'ORD',
+    buyerOrderNo: 'BUYER-ORD',
+    enqueuedFrom: '2026-10-01T00:00:00',
+    enqueuedTo: '2026-10-01T23:59:59'
+  }
+  const fillFilters = async (env) => {
+    await setFilter(env, '平台SPU编码', ` ${fields.platformSpuCode} `)
+    await setFilter(env, '分销商ID', ` ${fields.buyerId} `)
+    await setFilter(env, '项目ID', ` ${fields.projectId} `)
+    await setFilter(env, '平台订单号', ` ${fields.orderNo} `)
+    await setFilter(env, '采购商订单号', ` ${fields.buyerOrderNo} `)
+    await setFilter(
+      env,
+      '首次入队时间（上海）',
+      [fields.enqueuedFrom, fields.enqueuedTo],
+      'el-date-picker'
+    )
+  }
+  await scenario('积压页签显示全部筛选控件及整队列统计说明', async () => {
+    const env = await setup(null)
+    try {
+      await selectView(env, 'BACKLOGS')
+      for (const label of ['分销商ID', '项目ID', '平台订单号', '采购商订单号']) {
+        assert.ok(control(env, label))
+      }
+      assert.ok(control(env, '首次入队时间（上海）', 'el-date-picker'))
+      assert.ok(
+        findElement(env.container, (node) =>
+          node.text?.includes('筛选匹配队列，数量与最早等待时间统计整条队列')
+        ),
+        'backlog aggregation explanation is visible'
+      )
+    } finally {
+      env.close()
+    }
+  })
+  await scenario('积压GET传完整字符串ID与上海本地时间，整队列数据及全局统计保留', async () => {
+    const env = await setup(null)
+    try {
+      await fillFilters(env)
+      await selectView(env, 'BACKLOGS')
+      await submitSearch(env)
+      assert.deepEqual(lastPageQuery(), {
+        method: 'GET',
+        url: '/supply-chain/recharge-frequency/backlogs',
+        params: { ...fields, pageNo: 1, pageSize: 20 },
+        frequencySafeErrors: true
+      })
+      assert.deepEqual(env.page().setupState.rows, backlogResult.list)
+      assert.equal(env.page().setupState.rows[0].waitingCount, 8)
+      assert.equal(env.page().setupState.rows[0].earliestEnqueuedAt, 1790784000000)
+      assert.equal(env.page().setupState.rows[0].overThreshold, true)
+      assert.equal(env.page().setupState.statistics.waitingOrderCount, 1)
+      env.page().setupState.refresh()
+      await flush()
+      for (const call of queryCalls.filter((call) => call.url.endsWith('/statistics'))) {
+        assert.deepEqual(call, {
+          method: 'GET',
+          url: '/supply-chain/recharge-frequency/statistics',
+          frequencySafeErrors: true
+        })
+      }
+    } finally {
+      env.close()
+    }
+  })
+  await scenario('积压手机号搜索仅POST且按上海时区转换两个时间边界', async () => {
+    const env = await setup(null)
+    try {
+      await fillFilters(env)
+      const exactMobile = ['138', '0013', '8000'].join('')
+      await setFilter(env, '精确手机号', exactMobile)
+      await selectView(env, 'BACKLOGS')
+      await submitSearch(env)
+      assert.deepEqual(lastPageQuery(), {
+        method: 'POST',
+        url: '/supply-chain/recharge-frequency/search',
+        data: {
+          ...fields,
+          enqueuedFrom: Date.parse('2026-10-01T00:00:00+08:00'),
+          enqueuedTo: Date.parse('2026-10-01T23:59:59+08:00'),
+          mobile: exactMobile,
+          view: 'BACKLOGS',
+          pageNo: 1,
+          pageSize: 20
+        }
+      })
+      assert.ok(
+        queryCalls.every((call) => !JSON.stringify(call.params || {}).includes(exactMobile))
+      )
+      assert.ok(queryCalls.every((call) => !call.url.includes(exactMobile)))
+      assert.equal(env.router.currentRoute.value.fullPath, '/monitor/a')
+      await env.router.push('/other')
+      await flush()
+      assert.equal(env.page(), null, 'leaving unmounts component and its sensitive input')
+    } finally {
+      env.close()
+    }
+  })
+  for (const label of ['分销商ID', '项目ID']) {
+    await scenario(`积压${label}拒绝非正整数且允许超安全整数字符串`, async () => {
+      const env = await setup(null)
+      try {
+        await selectView(env, 'BACKLOGS')
+        for (const invalid of ['0', '-1', '1.5', '1e3', 'abc', '01']) {
+          await setFilter(env, label, invalid)
+          const before = queryCalls.length
+          await submitSearch(env)
+          assert.equal(queryCalls.length, before, `${label}: invalid ID must not request`)
+          assert.equal(notifications.at(-1), '分销商和项目ID须为正整数内部主键')
+        }
+        await setFilter(env, label, '9223372036854775807')
+        await submitSearch(env)
+        assert.equal(
+          lastPageQuery().params[label === '分销商ID' ? 'buyerId' : 'projectId'],
+          '9223372036854775807'
+        )
+      } finally {
+        env.close()
+      }
+    })
+  }
+  await scenario('跨页签及翻页保留完整筛选，查询和改页大小回第一页', async () => {
+    const env = await setup(null)
+    try {
+      await fillFilters(env)
+      await submitSearch(env)
+      for (const view of ['BACKLOGS', 'OCCUPANCIES', 'WAITING', 'BACKLOGS']) {
+        await selectView(env, view)
+        assert.deepEqual(lastPageQuery().params, { ...fields, pageNo: 1, pageSize: 20 })
+      }
+      let pagination = findElement(env.container, (node) => node.type === 'el-pagination')
+      pagination.props.onCurrentChange(2)
+      await flush()
+      assert.deepEqual(lastPageQuery().params, { ...fields, pageNo: 2, pageSize: 20 })
+      await submitSearch(env)
+      assert.deepEqual(lastPageQuery().params, { ...fields, pageNo: 1, pageSize: 20 })
+      pagination = findElement(env.container, (node) => node.type === 'el-pagination')
+      pagination.props.onSizeChange(100)
+      await flush()
+      assert.deepEqual(lastPageQuery().params, { ...fields, pageNo: 1, pageSize: 100 })
+      assert.deepEqual(pagination.props['page-sizes'], [20, 50, 100])
     } finally {
       env.close()
     }

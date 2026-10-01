@@ -47,34 +47,35 @@
       <el-form-item label="平台SPU编码"
         ><el-input v-model="filters.platformSpuCode" maxlength="64" clearable
       /></el-form-item>
-      <template v-if="view !== 'BACKLOGS'">
-        <el-form-item label="分销商ID"
-          ><el-input v-model="filters.buyerId" placeholder="内部主键" clearable
-        /></el-form-item>
-        <el-form-item label="项目ID"
-          ><el-input v-model="filters.projectId" placeholder="内部主键" clearable
-        /></el-form-item>
-        <el-form-item label="平台订单号"
-          ><el-input v-model="filters.orderNo" maxlength="64" clearable
-        /></el-form-item>
-        <el-form-item label="采购商订单号"
-          ><el-input v-model="filters.buyerOrderNo" maxlength="128" clearable
-        /></el-form-item>
-        <el-form-item label="首次入队时间（上海）">
-          <el-date-picker
-            v-model="enqueuedRange"
-            type="datetimerange"
-            value-format="YYYY-MM-DDTHH:mm:ss"
-            start-placeholder="开始"
-            end-placeholder="截止（含边界）"
-          />
-        </el-form-item>
-      </template>
+      <el-form-item label="分销商ID"
+        ><el-input v-model="filters.buyerId" placeholder="内部主键" clearable
+      /></el-form-item>
+      <el-form-item label="项目ID"
+        ><el-input v-model="filters.projectId" placeholder="内部主键" clearable
+      /></el-form-item>
+      <el-form-item label="平台订单号"
+        ><el-input v-model="filters.orderNo" maxlength="64" clearable
+      /></el-form-item>
+      <el-form-item label="采购商订单号"
+        ><el-input v-model="filters.buyerOrderNo" maxlength="128" clearable
+      /></el-form-item>
+      <el-form-item label="首次入队时间（上海）">
+        <el-date-picker
+          v-model="enqueuedRange"
+          type="datetimerange"
+          value-format="YYYY-MM-DDTHH:mm:ss"
+          start-placeholder="开始"
+          end-placeholder="截止（含边界）"
+        />
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" native-type="submit" :disabled="listLoading">查询</el-button>
         <el-button :disabled="listLoading" @click="reset">重置</el-button>
       </el-form-item>
     </el-form>
+    <div v-if="view === 'BACKLOGS'" class="mb-8px">
+      筛选匹配队列，数量与最早等待时间统计整条队列
+    </div>
     <el-alert v-if="listError" :title="listError" type="error" :closable="false" class="mb-16px" />
     <div class="mb-8px"
       >列表观察时间：{{ time(listObservedAt) }}
@@ -351,32 +352,26 @@ const refresh = () => {
 const applyFilters = () => {
   const params: Omit<FrequencyPageParams, 'pageNo' | 'pageSize'> = {}
   if (filters.platformSpuCode.trim()) params.platformSpuCode = filters.platformSpuCode.trim()
-  // TODO: docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#7-管理端契约与权限
-  // 积压项级筛选聚合口径待确认；此视图仅提交mobile/SPU，不能继承其他页签条件。
-  if (view.value !== 'BACKLOGS') {
-    for (const key of ['buyerId', 'projectId', 'orderNo', 'buyerOrderNo'] as const) {
-      if (filters[key].trim()) params[key] = filters[key].trim()
-    }
-    if (enqueuedRange.value?.length === 2) {
-      const exactMobile = mobile.value.trim()
-      params.enqueuedFrom = exactMobile
-        ? dayjs.tz(enqueuedRange.value[0], 'Asia/Shanghai').valueOf()
-        : enqueuedRange.value[0]
-      params.enqueuedTo = exactMobile
-        ? dayjs.tz(enqueuedRange.value[1], 'Asia/Shanghai').valueOf()
-        : enqueuedRange.value[1]
-    }
+  // 各页签保留同一组条件；积压由同一WAITING项匹配队列，聚合仍由服务端统计整队列。
+  // 设计：docs/superpowers/specs/2026-09-30-direct-recharge-mobile-spu-frequency-design.md#7-管理端契约与权限
+  for (const key of ['buyerId', 'projectId', 'orderNo', 'buyerOrderNo'] as const) {
+    if (filters[key].trim()) params[key] = filters[key].trim()
+  }
+  if (enqueuedRange.value?.length === 2) {
+    const exactMobile = mobile.value.trim()
+    params.enqueuedFrom = exactMobile
+      ? dayjs.tz(enqueuedRange.value[0], 'Asia/Shanghai').valueOf()
+      : enqueuedRange.value[0]
+    params.enqueuedTo = exactMobile
+      ? dayjs.tz(enqueuedRange.value[1], 'Asia/Shanghai').valueOf()
+      : enqueuedRange.value[1]
   }
   applied.value = { params, mobile: mobile.value.trim() || undefined }
 }
 const search = () => {
   if (listLoading.value) return
   for (const key of ['buyerId', 'projectId'] as const) {
-    if (
-      view.value !== 'BACKLOGS' &&
-      filters[key].trim() &&
-      !/^[1-9]\d*$/.test(filters[key].trim())
-    ) {
+    if (filters[key].trim() && !/^[1-9]\d*$/.test(filters[key].trim())) {
       ElMessage.warning('分销商和项目ID须为正整数内部主键')
       return
     }
