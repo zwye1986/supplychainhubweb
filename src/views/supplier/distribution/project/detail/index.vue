@@ -151,12 +151,22 @@
             @success="handleProductChange"
           />
         </el-tab-pane>
+
+        <el-tab-pane label="应用凭证" name="application" lazy>
+          <ProjectApplicationCredentials
+            v-if="projectCode"
+            :key="projectCode"
+            :project-code="projectCode"
+            :active="project.status === 'ACTIVE'"
+          />
+        </el-tab-pane>
       </el-tabs>
     </div>
   </el-drawer>
 </template>
 
 <script lang="ts" setup>
+import { computed, ref, watch } from 'vue'
 import { ProjectApi, ProjectVO, toProductTypeItems } from '@/api/supplier/distribution'
 import {
   getCatalogModeLabel,
@@ -166,6 +176,7 @@ import {
   getSettlementPartyTypeLabel
 } from '@/views/supplier/utils/constants'
 import ProductList from './ProductList.vue'
+import ProjectApplicationCredentials from './ProjectApplicationCredentials.vue'
 
 defineOptions({ name: 'DistributionProjectDetailDrawer' })
 
@@ -185,6 +196,7 @@ const loading = ref(false)
 const activeTab = ref('basic')
 const project = ref<ProjectVO>({} as ProjectVO)
 const projectCode = computed(() => props.projectCode)
+let detailSequence = 0
 
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
@@ -199,22 +211,32 @@ const periodText = computed(() => {
 const productTypeItems = computed(() => toProductTypeItems(project.value.productTypes))
 
 const getDetail = async () => {
-  if (!projectCode.value) return
+  const code = projectCode.value
+  if (!code) return
+  const sequence = ++detailSequence
   loading.value = true
   try {
-    project.value = await ProjectApi.getProject(projectCode.value)
+    const result = await ProjectApi.getProject(code)
+    if (sequence === detailSequence && props.modelValue && props.projectCode === code) {
+      project.value = result
+    }
   } finally {
-    loading.value = false
+    if (sequence === detailSequence) loading.value = false
   }
 }
 
+// 切换项目时先清空旧详情，并使旧请求失效；见 docs/superpowers/specs/2026-09-29-project-app-issuance-platform-signing-callback-design.md#7-管理端配套和安全边界。
 watch(
   () => [props.modelValue, props.projectCode] as const,
-  ([visible]) => {
-    if (!visible || !props.projectCode) return
+  async ([visible, code]) => {
+    ++detailSequence
+    project.value = {} as ProjectVO
+    loading.value = false
+    if (!visible || !code) return
     activeTab.value = 'basic'
-    getDetail()
-  }
+    await getDetail()
+  },
+  { flush: 'sync' }
 )
 
 const openEdit = () => {
@@ -228,6 +250,7 @@ const handleProductChange = async () => {
 }
 
 const handleClosed = () => {
+  ++detailSequence
   project.value = {} as ProjectVO
   activeTab.value = 'basic'
 }
