@@ -14,6 +14,8 @@ export type {
   FormulaVO,
   PlatformPricingDetail,
   PlatformSkuBatchPricingReqVO,
+  ProductBatchStatusFailedItemVO,
+  ProductBatchStatusResultVO,
   ProductBrandVO,
   ProductCategoryVO,
   ProductManagementPageParam,
@@ -42,6 +44,7 @@ import type {
   CategorySaveReqVO,
   PlatformPricingDetail,
   PlatformSkuBatchPricingReqVO,
+  ProductBatchStatusResultVO,
   ProductCategoryVO,
   ProductManagementPageParam,
   ProductTypePageParam,
@@ -227,6 +230,23 @@ export const ProductApi = {
     return await request.put({
       url: `/supply-chain/products/spus/${spuCode}/status`,
       data: { targetStatus }
+    })
+  },
+  /**
+   * 批量变更商品上下架状态。
+   * 后端逐项独立事务：任一项失败仅回滚该项，已成功项保持结果。
+   * 响应携带成功列表与失败明细，前端按项渲染提示并支持针对失败项重试。
+   * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
+   */
+  batchChangeProductStatus: async (
+    spuCodes: string[],
+    skuCodes: string[],
+    targetStatus: number,
+    unshelveMode?: string
+  ): Promise<ProductBatchStatusResultVO> => {
+    return await request.put({
+      url: '/supply-chain/products/batch-status',
+      data: { spuCodes, skuCodes, targetStatus, unshelveMode }
     })
   },
   /** 批量保存商品 SKU 默认定价，单事务全量成功或回滚 */

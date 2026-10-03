@@ -44,6 +44,32 @@ export interface PlatformSkuBatchPricingReqVO {
   taxRateCode?: string
 }
 
+/**
+ * 批量上下架失败明细项。
+ * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
+ */
+export interface ProductBatchStatusFailedItemVO {
+  /** 实体类型：SPU 或 SKU */
+  entityType: 'SPU' | 'SKU'
+  /** 失败项业务编码（spuCode 或 skuCode） */
+  code: string
+  /** 稳定错误码，与 SupplyChainErrorCodeConstants 对齐 */
+  errorCode: number
+  /** 错误消息 */
+  errorMessage: string
+}
+
+/**
+ * 批量上下架结果。
+ * succeeded 与 failed 列表混合 SPU/SKU 编码；前端按项渲染「成功 N 项、失败 M 项」并可针对失败项重试。
+ */
+export interface ProductBatchStatusResultVO {
+  /** 成功处理项的业务编码列表（SPU 与 SKU 混合） */
+  succeeded: string[]
+  /** 失败明细列表 */
+  failed: ProductBatchStatusFailedItemVO[]
+}
+
 /** GET /supply-chain/products/skus/{skuCode}/pricing 定价状态 */
 export type PlatformPricingStatus =
   | 'UNPRICED'

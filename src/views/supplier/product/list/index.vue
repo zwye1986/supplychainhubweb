@@ -177,6 +177,8 @@
 <script lang="ts" setup>
   import {
     ProductApi,
+    ProductBatchStatusFailedItemVO,
+    ProductBatchStatusResultVO,
     ProductBrandApi,
     ProductBrandVO,
     ProductManagementSkuItem,
@@ -433,14 +435,75 @@
 
   const handleBatchStatus = async (targetStatus: number) => {
     const text = targetStatus === PRODUCT_STATUS.ON_SHELF ? '上架' : '下架'
+    const spuCodes = [...selectedCodes.value]
+    if (!spuCodes.length) {
+      message.warning('请选择需要操作的商品')
+      return
+    }
     try {
       await message.confirm(`确认批量${text}选中商品？`)
-      await Promise.all(
-        selectedCodes.value.map((spuCode) => ProductApi.changeProductStatus(spuCode, targetStatus))
+    } catch {
+      return
+    }
+
+    // 优先调用后端批量接口：单次 HTTP 往返，逐项独立事务，返回成功列表与失败明细。
+    // 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
+    let result: ProductBatchStatusResultVO
+    try {
+      result = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus)
+    } catch (batchError) {
+      // 批量接口整体失败（网络/网关/鉴权）时降级到逐个调用 + allSettled 容错，
+      // 保留与改造前等价的兜底语义，避免后端新契约未发布时阻断前端操作。
+      message.warning('批量接口暂不可用，正在逐个重试，请稍候…')
+      const settled = await Promise.allSettled(
+        spuCodes.map((spuCode) => ProductApi.changeProductStatus(spuCode, targetStatus))
       )
-      message.success(`批量${text}成功`)
-      getList()
-    } catch {}
+      const succeeded: string[] = []
+      const failed: ProductBatchStatusFailedItemVO[] = []
+      settled.forEach((res, idx) => {
+        const code = spuCodes[idx]
+        if (res.status === 'fulfilled') {
+          succeeded.push(code)
+        } else {
+          // 单接口失败原因通常是 ServiceException 经 axios 拦截器抛出，尽力抽取 code/message。
+          const reason: any = res.reason
+          failed.push({
+            entityType: 'SPU',
+            code,
+            errorCode: reason?.code ?? 0,
+            errorMessage: reason?.message ?? '调用失败'
+          })
+        }
+      })
+      result = { succeeded, failed }
+    }
+
+    // 渲染成功/失败明细：成功项弹 success，失败项单独弹 warning 并列出编码与原因，
+    // 用户可针对失败项重新勾选并重试。
+    const succeededCount = result.succeeded.length
+    const failedCount = result.failed.length
+    if (failedCount === 0) {
+      message.success(`批量${text}成功，共 ${succeededCount} 项`)
+    } else if (succeededCount === 0) {
+      const detail = formatBatchFailedDetail(result.failed)
+      message.error(`批量${text}失败，共 ${failedCount} 项\n${detail}`)
+    } else {
+      const detail = formatBatchFailedDetail(result.failed)
+      message.warning(
+        `批量${text}完成：成功 ${succeededCount} 项，失败 ${failedCount} 项\n${detail}`
+      )
+    }
+    getList()
+  }
+
+  /** 格式化批量上下架失败明细，便于在消息框中展示并支持复制排查。 */
+  const formatBatchFailedDetail = (failed: ProductBatchStatusFailedItemVO[]): string => {
+    if (!failed?.length) return ''
+    return failed
+      .slice(0, 20)
+      .map((item) => `[${item.entityType}] ${item.code}：${item.errorMessage}（错误码 ${item.errorCode}）`)
+      .join('\n')
+      .concat(failed.length > 20 ? `\n…其余 ${failed.length - 20} 项详见日志` : '')
   }
 
   watch(
