@@ -68,7 +68,7 @@ import { getConnectorStatusLabel, getConnectorStatusType } from '../utils/consta
  */
 defineOptions({ name: 'CapabilityPanel' })
 
-const props = defineProps<{ supplierCode: string }>()
+const props = defineProps<{ supplierCode: string; configurationRevision?: number }>()
 
 const message = useMessage()
 const loading = ref(false)
@@ -131,5 +131,17 @@ const loadBase = async () => {
   }
 }
 
-onMounted(loadBase)
+/**
+ * 生命周期变更或标签激活后重新读取列表及当前详情；有效选择保留，已移除选择清空。
+ * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#152-技术子页刷新。
+ */
+const reload = async () => {
+  await loadBase()
+  if (!connectors.value.some((row) => row.connectorNo === selectedConnectorNo.value)) {
+    selectedConnectorNo.value = ''
+  }
+  await loadDetail()
+}
+watch(() => props.configurationRevision, reload)
+onMounted(reload)
 </script>

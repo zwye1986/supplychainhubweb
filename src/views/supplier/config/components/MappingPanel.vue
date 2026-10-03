@@ -89,7 +89,7 @@ import {
  */
 defineOptions({ name: 'MappingPanel' })
 
-const props = defineProps<{ supplierCode: string }>()
+const props = defineProps<{ supplierCode: string; configurationRevision?: number }>()
 
 const message = useMessage()
 const loading = ref(false)
@@ -157,5 +157,17 @@ const openAppend = (mode: 'STATUS' | 'ERROR') => {
   appendDialogRef.value?.open(mode, versionId)
 }
 
-onMounted(loadConnectors)
+/**
+ * 生命周期变更或标签激活后重新读取列表及当前详情；有效选择保留，已移除选择清空。
+ * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#152-技术子页刷新。
+ */
+const reload = async () => {
+  await loadConnectors()
+  if (!connectors.value.some((row) => row.connectorNo === selectedConnectorNo.value)) {
+    selectedConnectorNo.value = ''
+  }
+  await loadMappings()
+}
+watch(() => props.configurationRevision, reload)
+onMounted(reload)
 </script>

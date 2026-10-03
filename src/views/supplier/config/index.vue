@@ -21,18 +21,26 @@
   </ContentWrap>
   <ContentWrap>
     <el-empty v-if="!supplierCode" description="请先选择供应商，再配置连接器 / 凭据 / 能力 / 映射" />
-    <el-tabs v-else v-model="activeTab">
+    <el-tabs v-else v-model="activeTab" @tab-change="handleConfigurationChanged">
       <el-tab-pane label="连接器" name="connector">
-        <ConnectorPanel :key="`connector-${supplierCode}`" :supplier-code="supplierCode" />
+        <ConnectorPanel :key="`connector-${supplierCode}`" :supplier-code="supplierCode" @changed="handleConfigurationChanged" />
       </el-tab-pane>
       <el-tab-pane label="凭据" name="credential">
         <CredentialPanel :key="`credential-${supplierCode}`" :supplier-code="supplierCode" />
       </el-tab-pane>
       <el-tab-pane label="能力" name="capability">
-        <CapabilityPanel :key="`capability-${supplierCode}`" :supplier-code="supplierCode" />
+        <CapabilityPanel
+          :key="`capability-${supplierCode}`"
+          :supplier-code="supplierCode"
+          :configuration-revision="configurationRevision"
+        />
       </el-tab-pane>
       <el-tab-pane label="映射" name="mapping">
-        <MappingPanel :key="`mapping-${supplierCode}`" :supplier-code="supplierCode" />
+        <MappingPanel
+          :key="`mapping-${supplierCode}`"
+          :supplier-code="supplierCode"
+          :configuration-revision="configurationRevision"
+        />
       </el-tab-pane>
     </el-tabs>
   </ContentWrap>
@@ -60,6 +68,12 @@ interface CodeNameOption {
 
 const supplierCode = ref<string>('')
 const activeTab = ref('connector')
+/**
+ * 连接器生命周期变更与标签激活均刷新已挂载子页，避免新建后的列表仍为空。
+ * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#152-技术子页刷新。
+ */
+const configurationRevision = ref(0)
+const handleConfigurationChanged = () => { configurationRevision.value += 1 }
 const supplierOptions = ref<CodeNameOption[]>([])
 
 const loadSuppliers = async () => {

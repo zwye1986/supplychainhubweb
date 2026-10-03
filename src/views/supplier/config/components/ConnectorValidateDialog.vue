@@ -12,10 +12,10 @@
       </el-form-item>
       <el-form-item label="启用能力" prop="capabilities">
         <el-checkbox-group v-model="formData.capabilities">
-          <el-checkbox v-for="cap in capabilityOptions" :key="cap" :value="cap" :label="cap" />
+          <el-checkbox v-for="cap in capabilityOptions" :key="cap" :value="cap" :label="cap" disabled />
         </el-checkbox-group>
         <div class="text-12px text-gray-400 mt-4px">
-          能力为封闭集，来自所选适配器类型的 capabilities()；上架即发布时按 SKU 履约类型推导所需能力，缺失将拒绝上架。
+          校验须声明该适配器的完整能力集合，已自动全部选中；此步骤不支持选择能力子集。
         </div>
       </el-form-item>
       <el-form-item label="校验有效期(分)" prop="validMinutes">
@@ -38,7 +38,7 @@ import type { AdapterTypeView, ConnectorListItem } from '@/api/supplier/config'
 
 /**
  * 连接器校验对话框（§6.4/§8.4）：能力在此步骤声明（草稿表单不含能力），落 sc_supplier_connector_capability。
- * 能力勾选项来自该连接器 adapterType 对应 T1 AdapterTypeView.capabilities()（封闭集，前端不自由输入）。
+ * 能力声明自动复制该连接器 adapterType 对应 T1 AdapterTypeView.capabilities() 完整集合，只读展示。
  * 校验要求版本处于草稿态，非法跃迁由后端守卫拒绝并经 axios 拦截器透传。
  * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#64-能力声明。
  */
@@ -63,7 +63,7 @@ const formData = ref<{ capabilities: string[]; validMinutes: number; reason: str
 
 const formRules = reactive({
   capabilities: [
-    { required: true, type: 'array', min: 1, message: '请至少勾选一项能力', trigger: 'change' }
+    { required: true, type: 'array', min: 1, message: '适配器能力目录未加载，请刷新后重试', trigger: 'change' }
   ],
   validMinutes: [{ required: true, message: '请输入校验有效期', trigger: 'blur' }],
   reason: [{ required: true, message: '请输入校验原因（审计）', trigger: 'blur' }]
@@ -74,7 +74,7 @@ const open = (row: ConnectorListItem) => {
   connectorLabel.value = `${row.connectorCode || row.connectorNo}（v${row.latestVersionNo ?? '-'}）`
   const view = props.adapterTypes.find((item) => item.adapterType === row.adapterType)
   capabilityOptions.value = view?.capabilities || []
-  formData.value = { capabilities: [], validMinutes: 10, reason: '' }
+  formData.value = { capabilities: [...capabilityOptions.value], validMinutes: 10, reason: '' }
   dialogVisible.value = true
   nextTick(() => formRef.value?.clearValidate())
 }
@@ -84,6 +84,14 @@ const submitForm = async () => {
   const versionId = currentRow.value?.latestVersionId
   if (versionId == null) {
     message.warning('该连接器尚无可用版本，无法校验')
+    return
+  }
+  // 完整集合契约由后端最终校验；目录缺失或被意外改成子集时不发送无效请求。
+  // 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#153-能力声明契约。
+  if (!capabilityOptions.value.length
+    || formData.value.capabilities.length !== capabilityOptions.value.length
+    || capabilityOptions.value.some((code) => !formData.value.capabilities.includes(code))) {
+    message.warning('适配器能力目录未加载或声明不完整，请刷新后重试')
     return
   }
   await formRef.value.validate()

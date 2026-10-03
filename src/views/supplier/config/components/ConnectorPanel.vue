@@ -63,9 +63,9 @@
       :supplier-code="supplierCode"
       :adapter-types="adapterTypes"
       :credential-slots="credentialSlots"
-      @success="loadConnectors"
+      @success="handleChanged"
     />
-    <ConnectorValidateDialog ref="validateDialogRef" :adapter-types="adapterTypes" @success="loadConnectors" />
+    <ConnectorValidateDialog ref="validateDialogRef" :adapter-types="adapterTypes" @success="handleChanged" />
     <ConnectorDetailDrawer ref="detailDrawerRef" />
   </div>
 </template>
@@ -93,6 +93,7 @@ import {
 defineOptions({ name: 'ConnectorPanel' })
 
 const props = defineProps<{ supplierCode: string }>()
+const emit = defineEmits<{ changed: [] }>()
 
 const message = useMessage()
 const loading = ref(false)
@@ -113,6 +114,12 @@ const loadConnectors = async () => {
   } finally {
     loading.value = false
   }
+}
+
+/** 生命周期写入完成后通知父页刷新能力与映射，见供给发布详细设计 §15.2。 */
+const handleChanged = async () => {
+  await loadConnectors()
+  emit('changed')
 }
 
 /** 适配器目录（T1）与凭据槽（T6）为平台级、与供应商无关，只需加载一次。 */
@@ -157,7 +164,7 @@ const handlePublish = async (row: ConnectorListItem) => {
       reason: value
     })
     message.success('连接器发布成功')
-    loadConnectors()
+    await handleChanged()
   } catch (error: any) {
     if (error?.message) message.error(error.message)
   }
@@ -177,7 +184,7 @@ const handleRetire = async (row: ConnectorListItem) => {
       reason: value
     })
     message.success('连接器已退役')
-    loadConnectors()
+    await handleChanged()
   } catch (error: any) {
     if (error?.message) message.error(error.message)
   }
