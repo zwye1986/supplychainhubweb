@@ -226,6 +226,16 @@
                   </span>
                 </div>
                 <div class="sku-field">
+                  <el-input
+                    v-model="item.externalSkuCode"
+                    size="small"
+                    maxlength="128"
+                    placeholder="供应商商品编码"
+                    clearable
+                    class="sku-control !w-150px"
+                  />
+                </div>
+                <div class="sku-field">
                   <el-select v-model="item.priceMode" size="small" class="sku-control !w-110px">
                     <template #label="{ label, value }">
                       {{ label || getOfferPriceModeLabel(value) }}
@@ -376,6 +386,7 @@ import {
   yuanToCents
 } from '@/views/supplier/utils/constants'
 import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
+import { validateExternalSkuCode } from './utils/fulfillment'
 
 defineOptions({ name: 'SupplierProductSelectDialog' })
 
@@ -663,6 +674,7 @@ const handleSelectionChange = (rows: SelectSkuRow[]) => {
       platformSpuName: row.spuName,
       platformSkuName: row.skuName,
       productType: row.productType,
+      externalSkuCode: '',
       suggestPriceCents: row.marketPrice,
       suggestedPriceCents: row.marketPrice,
       priceMode: getDefaultPriceMode(),
@@ -726,7 +738,8 @@ const toDraftReq = (item: OfferFormItem): DraftReqVO => {
   const payload: DraftReqVO = {
     platformSkuCode: item.platformSkuCode || '',
     priceMode,
-    supplyMode: item.supplyMode || item.offerSupplyMode || ''
+    supplyMode: item.supplyMode || item.offerSupplyMode || '',
+    externalSkuCode: (item.externalSkuCode || '').trim()
   }
   if (priceMode === OfferPriceModeEnum.FIXED) {
     const unitPriceCents = toDraftNumber(item.unitPriceCents)
@@ -754,6 +767,11 @@ const validateSelected = () => {
     const skuName = item.platformSkuName || item.platformSkuCode || 'SKU'
     if (!item.platformSkuCode) {
       message.warning(`请完整填写平台 SKU 编码`)
+      return false
+    }
+    const externalSkuCodeError = validateExternalSkuCode(item.externalSkuCode)
+    if (externalSkuCodeError) {
+      message.warning(`SKU「${skuName}」${externalSkuCodeError}`)
       return false
     }
     if (!item.priceMode) {

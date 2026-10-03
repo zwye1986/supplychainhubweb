@@ -203,6 +203,14 @@ export interface OfferListItem {
   taxRateCode?: string
   /** 生命周期：PUBLISHED已发布，SUSPENDED暂停 */
   status?: string
+  /** 供应商侧商品编码（f1 身份行 external_sku_code），上架时冻结进版本行 */
+  externalSkuCode?: string
+  /** 当前已发布履约版本ID；为空表示尚未配置履约 */
+  currentVersionId?: number | null
+  /** Offer 聚合乐观锁版本号，上架须回传作为 expectedOfferVersion */
+  offerVersion?: number
+  /** i-b 履约就绪度三态：NOT_CONFIGURED未配置，STALE过期，READY就绪 */
+  fulfillmentStatus?: string
 }
 
 /** 合作商品行（接口 DraftReqVO） */
@@ -223,6 +231,8 @@ export interface DraftReqVO {
   maxQuantity?: number
   /** 草稿最低起购量，空则取 1，不继承供货配置预留字段 */
   minQuantity?: number
+  /** 供应商外部商品编码（f1），选合作商品时录入，下单时据此定位履约商品 */
+  externalSkuCode: string
 }
 
 /** 履约能力评分保存（接口 FulfillmentScoreSaveReqVO） */
@@ -253,6 +263,24 @@ export interface OfferItemsReqVO {
 export interface PatchOfferReqVO {
   /** 目标状态：仅 PUBLISHED / SUSPENDED */
   status: string
+}
+
+/** 上架即发布（B1）请求体：前端只传可选 validTo，其余服务端派生（接口 ListOnShelfReqVO） */
+export interface ListOnShelfReqVO {
+  /** 履约版本失效时间（UTC）；空＝长期有效（k1）。须晚于 validFrom（=上架时刻） */
+  validTo?: string
+}
+
+/** 上架即发布结果（接口 PublishResult） */
+export interface OfferPublishResult {
+  /** 合作商品稳定业务编号 */
+  offerNo?: string
+  /** 新发布的履约版本ID */
+  offerVersionId?: number
+  /** 履约版本序号 */
+  offerVersionNo?: number
+  /** Offer 聚合乐观锁版本号 */
+  aggregateVersion?: number
 }
 
 /** 合作商品分页查询 */

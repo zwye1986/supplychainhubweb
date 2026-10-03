@@ -22,6 +22,8 @@ export type {
   OfferItemsReqVO,
   DraftReqVO,
   PatchOfferReqVO,
+  ListOnShelfReqVO,
+  OfferPublishResult,
   FulfillmentScoreSaveReqVO,
   ScoreUpdateResult,
   NamedRef
@@ -34,6 +36,8 @@ import type {
   OfferListItem,
   OfferPageParam,
   PatchOfferReqVO,
+  ListOnShelfReqVO,
+  OfferPublishResult,
   FulfillmentScoreSaveReqVO,
   ScoreUpdateResult,
   SaveScopesReqVO,
@@ -186,6 +190,20 @@ export const SupplierApi = {
     return await request.patch<boolean>({
       url: `/supply-chain/suppliers/${supplierCode}/offers/${offerNo}`,
       data
+    })
+  },
+
+  /**
+   * 上架即发布（B1）：POST /suppliers/{supplierCode}/offers/{offerNo}/list-on-shelf。
+   * 前端只传 offerNo（路径）+ 可选 validTo（空＝长期有效，k1），其余服务端派生：自动引用唯一已发布连接器版本（C3）、
+   * 自动开通/复用库存（c3）、继承身份行结算价（g3）、注入适配器默认执行画像（d2）。
+   * 连接器缺失返回 SUPPLIER_NO_PUBLISHED_CONNECTOR、能力缺口返回 OFFER_CAPABILITY_MISSING，由调用方 message.error 透传。
+   * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#66-上架即发布服务b1核心。
+   */
+  listOfferOnShelf: async (supplierCode: string, offerNo: string, data?: ListOnShelfReqVO) => {
+    return await request.post<OfferPublishResult>({
+      url: `/supply-chain/suppliers/${supplierCode}/offers/${offerNo}/list-on-shelf`,
+      data: data || {}
     })
   },
 

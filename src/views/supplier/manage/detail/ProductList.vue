@@ -40,6 +40,12 @@
       <el-table-column label="商品名称" prop="platformSpuName" min-width="140" />
       <el-table-column label="SKU规格" prop="platformSkuName" min-width="110" />
       <el-table-column label="SKU编号" prop="platformSkuCode" min-width="120" />
+      <el-table-column label="供应商商品编码" prop="externalSkuCode" min-width="140">
+        <template #default="{ row }">
+          <span v-if="row.externalSkuCode">{{ row.externalSkuCode }}</span>
+          <span v-else class="text-gray-400">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="类型/分类" min-width="180">
         <template #default="{ row }">
           <el-tag v-if="row.productType || row.productClassification" size="small" type="info">
@@ -114,9 +120,19 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" align="center" fixed="right">
+      <el-table-column label="履约状态" min-width="100" align="center">
+        <template #default="{ row }">
+          <el-tag :type="getFulfillmentStatusType(row.fulfillmentStatus)" size="small">
+            {{ getFulfillmentStatusLabel(row.fulfillmentStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="180" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">改价</el-button>
+          <el-button link type="success" @click="handleListOnShelf(row)">
+            {{ getOnShelfActionLabel(row.fulfillmentStatus) }}
+          </el-button>
           <el-button link type="danger" @click="handleDelete(row.offerNo)">移除</el-button>
         </template>
       </el-table-column>
@@ -138,6 +154,14 @@
         <el-form-item label="商品名称">{{ priceRow?.platformSpuName || '-' }}</el-form-item>
         <el-form-item label="SKU规格">{{ priceRow?.platformSkuName || '-' }}</el-form-item>
         <el-form-item label="SKU编号">{{ priceForm.platformSkuCode || '-' }}</el-form-item>
+        <el-form-item label="供应商商品编码" required>
+          <el-input
+            v-model="priceForm.externalSkuCode"
+            maxlength="128"
+            placeholder="供应商侧商品编号/ID，下单时据此定位履约商品"
+            clearable
+          />
+        </el-form-item>
         <el-form-item label="销售建议价">{{ formatCentsYuan(priceForm.suggestedPriceCents) }}</el-form-item>
         <el-form-item label="供应价模式" required>
           <el-select v-model="priceForm.priceMode" class="!w-full">
@@ -272,6 +296,12 @@ import {
 import { getStrDictOptions } from '@/utils/dict'
 import type { FormInstance, FormRules } from 'element-plus'
 import ProductSelectDialog from './ProductSelectDialog.vue'
+import {
+  getFulfillmentStatusLabel,
+  getFulfillmentStatusType,
+  getOnShelfActionLabel,
+  validateExternalSkuCode
+} from './utils/fulfillment'
 
 defineOptions({ name: 'SupplierProductList' })
 
@@ -341,6 +371,7 @@ const batchScoreRules: FormRules = {
 const priceForm = reactive({
   offerNo: '',
   platformSkuCode: '',
+  externalSkuCode: '',
   priceMode: OfferPriceModeEnum.FIXED,
   unitPriceYuan: undefined as number | undefined,
   discountPercent: undefined as number | undefined,
@@ -580,6 +611,7 @@ const openEdit = (row: OfferListItem) => {
   priceRow.value = row
   priceForm.offerNo = row.offerNo
   priceForm.platformSkuCode = row.platformSkuCode
+  priceForm.externalSkuCode = row.externalSkuCode || ''
   priceForm.priceMode = row.priceMode || OfferPriceModeEnum.FIXED
   priceForm.unitPriceYuan = centsToYuan(row.unitPriceCents)
   priceForm.discountPercent = bpToPercent(row.discountBp)
@@ -611,10 +643,16 @@ const submitPrice = async () => {
     message.warning('请选择供货模式')
     return
   }
+  const externalSkuCodeError = validateExternalSkuCode(priceForm.externalSkuCode)
+  if (externalSkuCodeError) {
+    message.warning(externalSkuCodeError)
+    return
+  }
   const payload: DraftReqVO = {
     platformSkuCode: priceForm.platformSkuCode,
     priceMode: priceForm.priceMode,
-    supplyMode: priceForm.supplyMode
+    supplyMode: priceForm.supplyMode,
+    externalSkuCode: priceForm.externalSkuCode.trim()
   }
   if (priceForm.priceMode === OfferPriceModeEnum.FIXED) {
     const unitPriceCents = yuanToCents(priceForm.unitPriceYuan)
@@ -661,6 +699,28 @@ const handleDelete = async (offerNo?: string) => {
     message.success('移除成功')
     await getList()
   } catch {}
+}
+
+/**
+ * 上架即发布（B1，§8.6）：只传 offerNo（长期有效，k1），无发布对话框；服务端自动引用唯一已发布连接器版本、
+ * 开通库存、继承结算价、注入执行画像。连接器缺失/能力缺口由后端返回明确文案，经 axios 拦截器透传（本页不重复 toast）。
+ * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#86-业务侧b1f1。
+ */
+const handleListOnShelf = async (row: OfferListItem) => {
+  if (!row.offerNo) {
+    message.error('缺少合作商品编号，暂无法上架')
+    return
+  }
+  try {
+    await message.confirm(
+      `确认${getOnShelfActionLabel(row.fulfillmentStatus)}「${row.platformSkuName || row.platformSkuCode}」？将发布为可履约供给版本。`
+    )
+    await SupplierApi.listOfferOnShelf(props.supplierCode, row.offerNo)
+    message.success('上架成功')
+    await getList()
+  } catch (error: any) {
+    if (error?.message) message.error(error.message)
+  }
 }
 
 const reload = async () => {
