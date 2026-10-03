@@ -12,12 +12,15 @@ function deferred() {
 function boundary(reply) {
   const writes = [], reads = []
   let readError
+  let refreshPromise
   return {
     writes, reads, failRefresh: error => { readError = error },
+    waitRefresh: promise => { refreshPromise = promise },
     get: async request => {
       reads.push(request)
       if (request.url === pageUrl) {
         if (readError) throw readError
+        if (refreshPromise) return refreshPromise
         return { list: [], total: 0 }
       }
       return []
@@ -66,7 +69,7 @@ for (const [name, reason] of [
     } finally { view.unmount() }
   })
 }
-test('确认在途重复点击只确认一次并冻结选中编码', async () => {
+test('确认在途两按钮禁用并加载，重复点击只确认一次且冻结选中编码', async () => {
   const confirmation = deferred()
   const { http, view } = await mount({ succeeded: ['SPU_1'], failed: [] }, ['SPU_1'], () => confirmation.promise)
   try {
@@ -75,27 +78,54 @@ test('确认在途重复点击只确认一次并冻结选中编码', async () =>
     await flushProductList()
     const confirmCount = view.confirmations.length
     const disabled = view.buttons().map(item => item.props.disabled)
+    const loading = view.buttons().map(item => item.props.loading)
     view.state.handleSelectionChange([{ spuCode: 'SPU_CHANGED' }])
     confirmation.resolve()
     await Promise.all([first, duplicate]); await flushProductList()
     assert.equal(confirmCount, 1)
     assert.deepEqual(disabled, [true, true])
+    assert.deepEqual(loading, [true, true])
     assertSingleWrite(http)
     assert.deepEqual(http.writes[0].data, { spuCodes: ['SPU_1'], skuCodes: [], targetStatus: 10, unshelveMode: undefined })
     assert.equal(view.state.batchStatusBusy, false)
   } finally { view.unmount() }
 })
-test('写请求在途重复点击只发一次且两按钮禁用', async () => {
+test('写请求在途两按钮禁用并加载，重复点击只发一次', async () => {
   const write = deferred()
   const { http, view } = await mount(() => write.promise)
   try {
     const first = view.buttons()[0].props.onClick(); await flushProductList()
     const duplicate = view.buttons()[1].props.onClick(); await flushProductList()
     const disabled = view.buttons().map(item => item.props.disabled)
+    const loading = view.buttons().map(item => item.props.loading)
     write.resolve({ succeeded: ['SPU_1'], failed: [] })
     await Promise.all([first, duplicate])
     assertSingleWrite(http); assert.deepEqual(disabled, [true, true])
+    assert.deepEqual(loading, [true, true])
     assert.equal(view.confirmations.length, 1)
+  } finally { view.unmount() }
+})
+test('读刷新在途两按钮禁用并加载，重复点击不再确认或写入，完成后解除反馈', async () => {
+  const refresh = deferred()
+  const { http, view } = await mount({ succeeded: ['SPU_1'], failed: [] })
+  try {
+    http.waitRefresh(refresh.promise)
+    const first = view.buttons()[0].props.onClick(); await flushProductList()
+    const disabled = view.buttons().map(item => item.props.disabled)
+    const loading = view.buttons().map(item => item.props.loading)
+    const listLoading = view.state.loading
+    const duplicate = view.buttons()[1].props.onClick(); await flushProductList()
+    refresh.resolve({ list: [], total: 0 })
+    await Promise.all([first, duplicate]); await flushProductList()
+    assert.deepEqual(disabled, [true, true])
+    assert.deepEqual(loading, [true, true])
+    assert.equal(listLoading, true)
+    assertSingleWrite(http); assertRefreshed(http)
+    assert.equal(view.confirmations.length, 1)
+    assert.equal(view.state.batchStatusBusy, false)
+    assert.equal(view.state.loading, false)
+    assert.deepEqual(view.buttons().map(item => item.props.disabled), [false, false])
+    assert.deepEqual(view.buttons().map(item => item.props.loading), [false, false])
   } finally { view.unmount() }
 })
 test('201 个 SPU 在确认和请求之前拒绝', async () => {

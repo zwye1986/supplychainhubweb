@@ -58,10 +58,10 @@
         <el-button type="primary" plain @click="openForm()">
           <Icon icon="ep:plus" class="mr-5px" /> 新增商品
         </el-button>
-        <el-button type="success" plain :disabled="batchStatusBusy || !selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)">
+        <el-button type="success" plain :disabled="batchStatusBusy || !selectedCodes.length" :loading="batchStatusBusy" @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)">
           批量上架
         </el-button>
-        <el-button type="warning" plain :disabled="batchStatusBusy || !selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
+        <el-button type="warning" plain :disabled="batchStatusBusy || !selectedCodes.length" :loading="batchStatusBusy" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
           批量下架
         </el-button>
         <el-button type="primary" plain :disabled="!selectedSkuCodes.length" @click="openPriceDialog()">
