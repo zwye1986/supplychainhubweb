@@ -44,7 +44,6 @@ import type {
   CategorySaveReqVO,
   PlatformPricingDetail,
   PlatformSkuBatchPricingReqVO,
-  ProductBatchStatusResultVO,
   ProductCategoryVO,
   ProductManagementPageParam,
   ProductTypePageParam,
@@ -235,7 +234,8 @@ export const ProductApi = {
   /**
    * 批量变更商品上下架状态。
    * 后端逐项独立事务：任一项失败仅回滚该项，已成功项保持结果。
-   * 响应携带成功列表与失败明细，前端按项渲染提示并支持针对失败项重试。
+   * 返回未知 HTTP 数据，由调用方校验完整回执后呈现；异常和旧 Boolean 均不自动重发写请求。
+   * 用户核对当前状态后可主动重新选择失败项；前后端必须同批发布。
    * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
    */
   batchChangeProductStatus: async (
@@ -243,7 +243,7 @@ export const ProductApi = {
     skuCodes: string[],
     targetStatus: number,
     unshelveMode?: string
-  ): Promise<ProductBatchStatusResultVO> => {
+  ): Promise<unknown> => {
     return await request.put({
       url: '/supply-chain/products/batch-status',
       data: { spuCodes, skuCodes, targetStatus, unshelveMode }

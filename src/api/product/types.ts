@@ -61,7 +61,8 @@ export interface ProductBatchStatusFailedItemVO {
 
 /**
  * 批量上下架结果。
- * succeeded 与 failed 列表混合 SPU/SKU 编码；前端按项渲染「成功 N 项、失败 M 项」并可针对失败项重试。
+ * succeeded 与 failed 列表混合 SPU/SKU 编码；调用方须先校验完整回执，当前商品列表仅批量处理 SPU。
+ * 用户核对当前状态后可主动重新选择失败项，异常不自动重发写请求。
  */
 export interface ProductBatchStatusResultVO {
   /** 成功处理项的业务编码列表（SPU 与 SKU 混合） */

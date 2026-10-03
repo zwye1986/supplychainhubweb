@@ -58,10 +58,10 @@
         <el-button type="primary" plain @click="openForm()">
           <Icon icon="ep:plus" class="mr-5px" /> 新增商品
         </el-button>
-        <el-button type="success" plain :disabled="!selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)">
+        <el-button type="success" plain :disabled="batchStatusBusy || !selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)">
           批量上架
         </el-button>
-        <el-button type="warning" plain :disabled="!selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
+        <el-button type="warning" plain :disabled="batchStatusBusy || !selectedCodes.length" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
           批量下架
         </el-button>
         <el-button type="primary" plain :disabled="!selectedSkuCodes.length" @click="openPriceDialog()">
@@ -169,6 +169,7 @@
     </el-table>
     <Pagination v-model:page="queryParams.pageNo" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
   </ContentWrap>
+  <BatchStatusResultDialog v-model="batchStatusResultVisible" :result="batchStatusResult" :action-text="batchStatusActionText" />
   <ProductForm ref="formRef" @success="handleFormSuccess" />
   <ProductDetail ref="detailRef" @edit="handleEditFromDetail" />
   <ProductPriceDialog ref="priceRef" @success="getList" />
@@ -177,7 +178,6 @@
 <script lang="ts" setup>
   import {
     ProductApi,
-    ProductBatchStatusFailedItemVO,
     ProductBatchStatusResultVO,
     ProductBrandApi,
     ProductBrandVO,
@@ -192,6 +192,8 @@
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
   import ProductPriceDialog from './components/PriceDialog.vue'
+  import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
+  import { isSpuBatchStatusResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'
   import ProductForm from './form/index.vue'
   import ProductDetail from './detail/index.vue'
 
@@ -202,6 +204,10 @@
   const message = useMessage()
 
   const loading = ref(false)
+  const batchStatusBusy = ref(false)
+  const batchStatusResult = ref<ProductBatchStatusResultVO | null>(null)
+  const batchStatusResultVisible = ref(false)
+  const batchStatusActionText = ref('')
   const list = ref<ProductManagementSpuItem[]>([])
   const total = ref(0)
   const brandList = ref<ProductBrandVO[]>([])
@@ -433,77 +439,65 @@
     } catch {}
   }
 
+  /**
+   * 冻结选中 SPU 后只提交一次批量写请求，确认与执行期间共同持有 busy。
+   * 整体异常可能已有部分提交，因此不能降级重写或伪造逐项结果；始终尝试查询最新列表。
+   * 刷新失败只反馈读错误，保留已确认的写回执。前后端批量回执契约须同批发布。
+   * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110-批量上下架接口put-supply-chainproductsbatch-status。
+   */
   const handleBatchStatus = async (targetStatus: number) => {
+    if (batchStatusBusy.value) return
     const text = targetStatus === PRODUCT_STATUS.ON_SHELF ? '上架' : '下架'
     const spuCodes = [...selectedCodes.value]
     if (!spuCodes.length) {
       message.warning('请选择需要操作的商品')
       return
     }
-    try {
-      await message.confirm(`确认批量${text}选中商品？`)
-    } catch {
+    if (spuCodes.length > MAX_BATCH_STATUS_COUNT) {
+      message.warning(`批量上下架最多选择 ${MAX_BATCH_STATUS_COUNT} 个商品，请减少选择后重试`)
       return
     }
-
-    // 优先调用后端批量接口：单次 HTTP 往返，逐项独立事务，返回成功列表与失败明细。
-    // 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
-    let result: ProductBatchStatusResultVO
+    batchStatusBusy.value = true
     try {
-      result = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus)
-    } catch (batchError) {
-      // 批量接口整体失败（网络/网关/鉴权）时降级到逐个调用 + allSettled 容错，
-      // 保留与改造前等价的兜底语义，避免后端新契约未发布时阻断前端操作。
-      message.warning('批量接口暂不可用，正在逐个重试，请稍候…')
-      const settled = await Promise.allSettled(
-        spuCodes.map((spuCode) => ProductApi.changeProductStatus(spuCode, targetStatus))
-      )
-      const succeeded: string[] = []
-      const failed: ProductBatchStatusFailedItemVO[] = []
-      settled.forEach((res, idx) => {
-        const code = spuCodes[idx]
-        if (res.status === 'fulfilled') {
-          succeeded.push(code)
-        } else {
-          // 单接口失败原因通常是 ServiceException 经 axios 拦截器抛出，尽力抽取 code/message。
-          const reason: any = res.reason
-          failed.push({
-            entityType: 'SPU',
-            code,
-            errorCode: reason?.code ?? 0,
-            errorMessage: reason?.message ?? '调用失败'
-          })
+      try {
+        await message.confirm(`确认批量${text}选中的 ${spuCodes.length} 个商品？`)
+      } catch (error) {
+        // Element Plus 将用户取消/关闭确认框作为 Promise 拒绝，是预期的交互流程。
+        if (error !== 'cancel' && error !== 'close') {
+          message.error('批量操作确认失败，请重新打开确认框')
         }
-      })
-      result = { succeeded, failed }
+        return
+      }
+      batchStatusResult.value = null
+      batchStatusResultVisible.value = false
+      batchStatusActionText.value = text
+      try {
+        const response: unknown = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus)
+        if (!isSpuBatchStatusResult(response, spuCodes)) {
+          message.error('批量上下架回执契约不兼容，结果未确认，请核对当前商品状态；前后端须同批发布')
+          return
+        }
+        batchStatusResult.value = response
+        batchStatusResultVisible.value = true
+        const succeededCount = response.succeeded.length
+        const failedCount = response.failed.length
+        const summary = `批量${text}完成：成功 ${succeededCount} 项，失败 ${failedCount} 项`
+        if (failedCount === 0) message.success(summary)
+        else if (succeededCount === 0) message.error(summary)
+        else message.warning(summary)
+      } catch {
+        message.error(`批量${text}请求未取得完整回执，请核对当前商品状态后再决定是否重新操作`)
+      } finally {
+        // 写请求已经发出，合法回执和结果未知都需查询；读失败不能改变原写结果或触发重写。
+        try {
+          await getList()
+        } catch {
+          message.warning('商品列表刷新失败，请手动刷新核对当前状态；本次批量操作结果以上述提示为准')
+        }
+      }
+    } finally {
+      batchStatusBusy.value = false
     }
-
-    // 渲染成功/失败明细：成功项弹 success，失败项单独弹 warning 并列出编码与原因，
-    // 用户可针对失败项重新勾选并重试。
-    const succeededCount = result.succeeded.length
-    const failedCount = result.failed.length
-    if (failedCount === 0) {
-      message.success(`批量${text}成功，共 ${succeededCount} 项`)
-    } else if (succeededCount === 0) {
-      const detail = formatBatchFailedDetail(result.failed)
-      message.error(`批量${text}失败，共 ${failedCount} 项\n${detail}`)
-    } else {
-      const detail = formatBatchFailedDetail(result.failed)
-      message.warning(
-        `批量${text}完成：成功 ${succeededCount} 项，失败 ${failedCount} 项\n${detail}`
-      )
-    }
-    getList()
-  }
-
-  /** 格式化批量上下架失败明细，便于在消息框中展示并支持复制排查。 */
-  const formatBatchFailedDetail = (failed: ProductBatchStatusFailedItemVO[]): string => {
-    if (!failed?.length) return ''
-    return failed
-      .slice(0, 20)
-      .map((item) => `[${item.entityType}] ${item.code}：${item.errorMessage}（错误码 ${item.errorCode}）`)
-      .join('\n')
-      .concat(failed.length > 20 ? `\n…其余 ${failed.length - 20} 项详见日志` : '')
   }
 
   watch(
