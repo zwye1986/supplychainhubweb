@@ -30,15 +30,15 @@
         </el-radio-group>
       </el-form-item>
       <el-form-item v-if="formData.providerType === CredentialProviderEnum.ENV" label="秘密引用" prop="secretRef">
-        <el-input v-model="formData.secretRef" maxlength="256" placeholder="以 env: 前缀，如 env:QNM_PROD_USERKEY" clearable />
+        <el-input v-model="formData.secretRef" maxlength="512" placeholder="以 env: 前缀，如 env:QNM_PROD_USERKEY" clearable />
       </el-form-item>
       <el-form-item v-if="formData.providerType === CredentialProviderEnum.ENVELOPE" label="密钥明文" prop="secretValue">
         <el-input
           v-model="formData.secretValue"
-          type="password"
-          show-password
+          type="textarea"
+          :rows="8"
           autocomplete="new-password"
-          maxlength="512"
+          maxlength="8192"
           placeholder="仅入参，服务端信封加密，不回显不落日志"
         />
       </el-form-item>
@@ -65,7 +65,7 @@ import {
 } from '../utils/constants'
 
 /**
- * 新建凭据项对话框（F1-hybrid，§8.3）。护栏：ENV 填 env: 引用且不带明文；ENVELOPE 填明文（type=password、
+ * 新建凭据项对话框（F1-hybrid，§8.3）。护栏：ENV 填 env: 引用且不带明文；ENVELOPE 填多行明文（最多8192字符、
  * 只写不回显）且不带 env: 引用；maskedHint 与 activeSecretVersion 必填。跨字段即时校验用纯函数
  * validateCredentialItem，后端为最终裁决。提交后不回显任何密文/明文。
  * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#83-凭据子页f1-hybrid。
@@ -131,6 +131,8 @@ const submitForm = async () => {
       maskedHint: formData.value.maskedHint,
       activeSecretVersion: formData.value.activeSecretVersion
     })
+    formData.value.secretValue = ''
+    formData.value.secretRef = ''
     message.success('凭据项创建成功（明文不回显）')
     dialogVisible.value = false
     emit('success')

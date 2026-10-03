@@ -8,7 +8,10 @@
 // ── 只读投影（T1–T6）──────────────────────────────────────────────────────────
 
 /** T1 适配器类型目录项；capabilities/credentialKeys 为封闭集，计数来自映射模板。 */
+export type CredentialBindingMode = 'SINGLE_SLOT' | 'CREDENTIAL_SET'
 export interface AdapterTypeView {
+  /** 显式凭据引用模式，旧适配器为 SINGLE_SLOT */
+  credentialBindingMode?: CredentialBindingMode
   /** 代码注册的适配器类型，如 QNM_GAME_ORDER_V1 */
   adapterType?: string
   /** 该适配器支持的能力封闭集（Capability 枚举名） */
@@ -51,6 +54,10 @@ export interface CapabilityView {
 
 /** T3 连接器版本详情；仅含非秘密连接参数与能力启用态，不含凭据明文。 */
 export interface ConnectorVersionDetail {
+  credentialBindingMode?: CredentialBindingMode
+  /** 脱敏凭据编号，二者按模式恰一存在 */
+  credentialSlotNo?: string
+  credentialSetCode?: string
   /** 版本主键 id */
   versionId?: number
   /** 所属连接器编号 */
@@ -216,7 +223,11 @@ export interface CreateConnectorDraftReqVO {
   /** 商户账号（可空） */
   merchantAccount?: string
   /** 凭据槽编号（T6 下拉选中值，绑定 legacy sc_credential_slot） */
-  credentialSlotNo: string
+  credentialSlotNo?: string
+  /** 凭据集编号，供应商内唯一 */
+  credentialSetCode?: string
+  /** 连接器版本非秘密可调参数，如expireTime秒、outMobile；密钥类禁止入此列 */
+  extraConfig?: string
   /** 协议版本 */
   protocolVersion: string
   /** 回调路径（可空） */

@@ -18,6 +18,8 @@
         <el-descriptions-item label="发布时间">{{ detail.publishedAt || '-' }}</el-descriptions-item>
         <el-descriptions-item label="网关基础地址" :span="2">{{ detail.baseUrl || '-' }}</el-descriptions-item>
         <el-descriptions-item label="商户账号">{{ detail.merchantAccount || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="凭据模式">{{ detail.credentialBindingMode || 'SINGLE_SLOT' }}</el-descriptions-item>
+        <el-descriptions-item label="凭据编号">{{ detail.credentialSetCode || detail.credentialSlotNo || '-' }}</el-descriptions-item>
         <el-descriptions-item label="协议版本">{{ detail.protocolVersion || '-' }}</el-descriptions-item>
         <el-descriptions-item label="回调路径" :span="2">{{ detail.callbackPath || '-' }}</el-descriptions-item>
         <el-descriptions-item label="连接超时(ms)">{{ detail.connectTimeoutMs ?? '-' }}</el-descriptions-item>

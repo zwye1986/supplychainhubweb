@@ -10,6 +10,7 @@ function apiStub() {
     listConnectors: async () => [...connectors],
     listAdapterTypes: async () => [{ adapterType: 'QNM_GAME_ORDER_V1', capabilities }],
     listCredentialSlots: async () => [],
+    listCredentialSets: async () => [],
     getMappings: async (versionId) => ({ statusMappings: [{ externalStatus: `version-${versionId}` }] }),
     getConnectorVersionDetail: async (_no, versionId) => ({ versionId, adapterType: 'QNM_GAME_ORDER_V1', capabilities: [] })
   }
@@ -92,5 +93,86 @@ test('validation refuses to submit when adapter metadata is unavailable', async 
     await view.root.setupState.submitForm()
     assert.equal(called, false)
     assert.ok(view.messages.length > 0)
+  } finally { view.unmount() }
+})
+
+const setAdapter = { adapterType: 'TEST_SET', credentialBindingMode: 'CREDENTIAL_SET', credentialKeys: ['appSecret', 'privateKey', 'callbackPublicKey'] }
+test('real connector form offers only complete active supplier sets and clears references on adapter switch', async () => {
+  const view = mountSupplierConfig(apiStub(), 'components/ConnectorFormDialog.vue', {
+    supplierCode: 'SPL_A', adapterTypes: [setAdapter, { adapterType: 'QNM', credentialBindingMode: 'SINGLE_SLOT' }], credentialSlots: [],
+    credentialSets: [
+      { setCode: 'COMPLETE', status: 10, items: setAdapter.credentialKeys.map(itemKey => ({ itemKey, status: 10 })) },
+      { setCode: 'MISSING', status: 10, items: [{ itemKey: 'appSecret', status: 10 }] },
+      { setCode: 'DISABLED', status: 20, items: setAdapter.credentialKeys.map(itemKey => ({ itemKey, status: 10 })) },
+      { setCode: 'EXTRA', status: 10, items: [...setAdapter.credentialKeys, 'unexpected'].map(itemKey => ({ itemKey, status: 10 })) }
+    ]
+  })
+  try {
+    view.root.exposed.open(); const state = view.root.setupState
+    state.formData.adapterType = 'TEST_SET'; await flushSfc()
+    assert.equal(state.bindingMode, 'CREDENTIAL_SET')
+    assert.deepEqual(state.availableSets.map(row => row.setCode), ['COMPLETE'])
+    state.formData.credentialSetCode = 'COMPLETE'; state.formData.credentialSlotNo = 'OLD_SLOT'
+    state.formData.adapterType = 'QNM'; await flushSfc()
+    assert.equal(state.formData.credentialSetCode, '')
+    assert.equal(state.formData.credentialSlotNo, '')
+    state.formData.credentialSlotNo = 'SLOT'; view.root.props.supplierCode = 'SPL_B'; await flushSfc()
+    assert.equal(state.formData.credentialSlotNo, '')
+  } finally { view.unmount() }
+})
+test('real SET connector form submits set code and non-secret JSON without legacy slot', async () => {
+  const api = apiStub(); let submitted
+  api.createConnectorDraft = async request => { submitted = request }
+  const view = mountSupplierConfig(api, 'components/ConnectorFormDialog.vue', {
+    supplierCode: 'SPL_A', adapterTypes: [setAdapter], credentialSlots: [], credentialSets: []
+  })
+  try {
+    view.root.exposed.open(); const state = view.root.setupState
+    state.formData.adapterType = 'TEST_SET'; await flushSfc()
+    state.formData.credentialSetCode = 'COMPLETE'; state.formData.extraConfig = '{"expireTime":60}'
+    state.formRef = { validate: async () => true }; await state.submitForm()
+    assert.equal(submitted.credentialSetCode, 'COMPLETE'); assert.equal(submitted.credentialSlotNo, undefined)
+    assert.equal(submitted.extraConfig, '{"expireTime":60}')
+  } finally { view.unmount() }
+})
+test('connector panel loads credential sets for current supplier and ignores late old supplier response', async () => {
+  const api = apiStub(); const requested = []
+  api.listCredentialSets = async code => { requested.push(code); return [{ setCode: code, status: 10 }] }
+  const view = mountSupplierConfig(api, 'components/ConnectorPanel.vue', { supplierCode: 'SPL_A' })
+  try {
+    await flushSfc(); assert.equal(view.root.setupState.credentialSets[0].setCode, 'SPL_A')
+    view.root.props.supplierCode = 'SPL_B'; await flushSfc()
+    assert.equal(view.root.setupState.credentialSets[0].setCode, 'SPL_B')
+    assert.deepEqual(requested, ['SPL_A', 'SPL_B'])
+  } finally { view.unmount() }
+})
+
+test('real credential dialog supports multiline long PEM and clears entered secret after successful write', async () => {
+  const api = apiStub(); let submitted
+  api.createCredentialItem = async request => { submitted = request }
+  const view = mountSupplierConfig(api, 'components/CredentialItemDialog.vue', { supplierCode: 'SPL_A', setCode: 'SET', itemKeys: ['privateKey'] })
+  try {
+    view.root.exposed.open(); const state = view.root.setupState
+    state.formData.providerType = 'ENVELOPE'; state.formData.itemKey = 'privateKey'; state.formData.maskedHint = 'masked'
+    const pem = '-----BEGIN PRIVATE KEY-----\n' + 'A'.repeat(1700) + '\n-----END PRIVATE KEY-----'
+    state.formData.secretValue = pem; await flushSfc()
+    const input = view.find('ElInput').vnode.props
+    assert.equal(input.type, 'textarea'); assert.equal(input.maxlength, '8192')
+    state.formRef = { validate: async () => true }; await state.submitForm()
+    assert.equal(submitted.secretValue, pem); assert.equal(submitted.secretRef, undefined)
+    assert.equal(state.formData.secretValue, '')
+  } finally { view.unmount() }
+})
+
+test('late old supplier credential-set response cannot overwrite new supplier options', async () => {
+  const api = apiStub(); let oldResponse
+  api.listCredentialSets = code => code === 'SPL_A'
+    ? new Promise(resolve => { oldResponse = resolve })
+    : Promise.resolve([{ setCode: 'NEW_SET', status: 10 }])
+  const view = mountSupplierConfig(api, 'components/ConnectorPanel.vue', { supplierCode: 'SPL_A' })
+  try {
+    await flushSfc(); view.root.props.supplierCode = 'SPL_B'; await flushSfc()
+    oldResponse([{ setCode: 'OLD_SET', status: 10 }]); await flushSfc()
+    assert.deepEqual(view.root.setupState.credentialSets.map(set => set.setCode), ['NEW_SET'])
   } finally { view.unmount() }
 })

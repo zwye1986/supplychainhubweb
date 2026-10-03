@@ -21,7 +21,7 @@
       <el-form-item label="商户账号" prop="merchantAccount">
         <el-input v-model="formData.merchantAccount" maxlength="128" placeholder="可空" clearable />
       </el-form-item>
-      <el-form-item label="凭据引用" prop="credentialSlotNo">
+      <el-form-item v-if="bindingMode === 'SINGLE_SLOT'" label="凭据槽引用" prop="credentialSlotNo">
         <el-select v-model="formData.credentialSlotNo" placeholder="请选择可用凭据槽（平台级，脱敏）" clearable filterable class="!w-full">
           <el-option
             v-for="slot in credentialSlots"
@@ -29,6 +29,11 @@
             :label="`${slot.maskedHint || slot.slotNo}（${slot.providerType}）`"
             :value="slot.slotNo!"
           />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-else label="凭据集引用" prop="credentialSetCode">
+        <el-select v-model="formData.credentialSetCode" placeholder="请选择当前供应商完整且可用的凭据集" clearable filterable class="!w-full">
+          <el-option v-for="set in availableSets" :key="set.setCode" :label="set.setCode" :value="set.setCode!" />
         </el-select>
       </el-form-item>
       <el-form-item label="协议版本" prop="protocolVersion">
@@ -58,6 +63,10 @@
         />
         <div class="text-12px text-gray-400 mt-4px">前端仅做 JSON 语法即时校验，字段合法性由后端按适配器 Schema 裁决。</div>
       </el-form-item>
+      <el-form-item label="非秘密扩展JSON" prop="extraConfig">
+        <el-input v-model="formData.extraConfig" type="textarea" :rows="4" placeholder="仅填写适配器 Schema 声明的非秘密参数，无参数填 {}" />
+        <div class="text-12px text-gray-400 mt-4px">字段与类型由后端 Schema 校验；禁止密钥或 token。</div>
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
@@ -68,7 +77,7 @@
 
 <script lang="ts" setup>
 import { SupplierConfigApi } from '@/api/supplier/config'
-import type { AdapterTypeView, CredentialSlotView } from '@/api/supplier/config'
+import type { AdapterTypeView, CredentialSlotView, CredentialSetView } from '@/api/supplier/config'
 import { isValidJson } from '../utils/constants'
 
 /**
@@ -83,6 +92,7 @@ const props = defineProps<{
   supplierCode: string
   adapterTypes: AdapterTypeView[]
   credentialSlots: CredentialSlotView[]
+  credentialSets?: CredentialSetView[]
 }>()
 const emit = defineEmits<{ success: [] }>()
 
@@ -97,6 +107,8 @@ const createForm = () => ({
   baseUrl: '',
   merchantAccount: '',
   credentialSlotNo: '',
+  credentialSetCode: '',
+  extraConfig: '{}',
   protocolVersion: 'V1',
   callbackPath: '',
   connectTimeoutMs: 3000,
@@ -107,6 +119,28 @@ const createForm = () => ({
 })
 const formData = ref(createForm())
 
+/** 模式与完整项集来自代码元数据，供应商/适配器变化必须清空旧引用。
+ * 设计见 docs/superpowers/specs/2026-10-02-huasheng-fulfillment-adapter-design.md#123-第二切片显式凭据集绑定与运行时配置。 */
+const selectedAdapter = computed(() => props.adapterTypes.find(item => item.adapterType === formData.value.adapterType))
+const bindingMode = computed(() => selectedAdapter.value?.credentialBindingMode || 'SINGLE_SLOT')
+const availableSets = computed(() => {
+  const required = new Set(selectedAdapter.value?.credentialKeys || [])
+  if (!required.size) return []
+  return (props.credentialSets || []).filter(set => {
+    const activeItems = (set.items || []).filter(item => item.status === 10)
+    return set.status === 10 && activeItems.length === required.size && activeItems.every(item => required.has(item.itemKey || ''))
+  })
+})
+watch([() => props.supplierCode, () => formData.value.adapterType], () => {
+  formData.value.credentialSlotNo = ''
+  formData.value.credentialSetCode = ''
+  formRef.value?.clearValidate(['credentialSlotNo', 'credentialSetCode'])
+})
+const validateReference = (_rule: any, _value: string, callback: (e?: Error) => void) => {
+  const value = bindingMode.value === 'CREDENTIAL_SET' ? formData.value.credentialSetCode : formData.value.credentialSlotNo
+  if (!value) callback(new Error('请选择当前模式的凭据引用'))
+  else callback()
+}
 const validateJson = (_rule: any, value: string, callback: (e?: Error) => void) => {
   if (!isValidJson(value)) callback(new Error('请输入合法 JSON（无私有配置填 {}）'))
   else callback()
@@ -115,7 +149,9 @@ const formRules = reactive({
   connectorCode: [{ required: true, message: '请输入连接器编码', trigger: 'blur' }],
   adapterType: [{ required: true, message: '请选择适配器类型', trigger: 'change' }],
   baseUrl: [{ required: true, message: '请输入网关基础地址', trigger: 'blur' }],
-  credentialSlotNo: [{ required: true, message: '请选择凭据引用', trigger: 'change' }],
+  credentialSlotNo: [{ validator: validateReference, trigger: 'change' }],
+  credentialSetCode: [{ validator: validateReference, trigger: 'change' }],
+  extraConfig: [{ validator: validateJson, trigger: 'blur' }],
   protocolVersion: [{ required: true, message: '请输入协议版本', trigger: 'blur' }],
   connectTimeoutMs: [{ required: true, message: '请输入连接超时', trigger: 'blur' }],
   readTimeoutMs: [{ required: true, message: '请输入读取超时', trigger: 'blur' }],
@@ -139,7 +175,9 @@ const submitForm = async () => {
       adapterType: formData.value.adapterType,
       baseUrl: formData.value.baseUrl,
       merchantAccount: formData.value.merchantAccount || undefined,
-      credentialSlotNo: formData.value.credentialSlotNo,
+      credentialSlotNo: bindingMode.value === 'SINGLE_SLOT' ? formData.value.credentialSlotNo : undefined,
+      credentialSetCode: bindingMode.value === 'CREDENTIAL_SET' ? formData.value.credentialSetCode : undefined,
+      extraConfig: formData.value.extraConfig,
       protocolVersion: formData.value.protocolVersion,
       callbackPath: formData.value.callbackPath || undefined,
       connectTimeoutMs: formData.value.connectTimeoutMs,

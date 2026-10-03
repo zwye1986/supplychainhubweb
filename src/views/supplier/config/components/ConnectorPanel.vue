@@ -63,6 +63,7 @@
       :supplier-code="supplierCode"
       :adapter-types="adapterTypes"
       :credential-slots="credentialSlots"
+      :credential-sets="credentialSets"
       @success="handleChanged"
     />
     <ConnectorValidateDialog ref="validateDialogRef" :adapter-types="adapterTypes" @success="handleChanged" />
@@ -72,7 +73,7 @@
 
 <script lang="ts" setup>
 import { SupplierConfigApi } from '@/api/supplier/config'
-import type { AdapterTypeView, ConnectorListItem, CredentialSlotView } from '@/api/supplier/config'
+import type { AdapterTypeView, ConnectorListItem, CredentialSlotView, CredentialSetView } from '@/api/supplier/config'
 import ConnectorFormDialog from './ConnectorFormDialog.vue'
 import ConnectorValidateDialog from './ConnectorValidateDialog.vue'
 import ConnectorDetailDrawer from './ConnectorDetailDrawer.vue'
@@ -100,6 +101,7 @@ const loading = ref(false)
 const list = ref<ConnectorListItem[]>([])
 const adapterTypes = ref<AdapterTypeView[]>([])
 const credentialSlots = ref<CredentialSlotView[]>([])
+const credentialSets = ref<CredentialSetView[]>([])
 const formDialogRef = ref()
 const validateDialogRef = ref()
 const detailDrawerRef = ref()
@@ -132,10 +134,28 @@ const loadLookups = async () => {
   credentialSlots.value = slots || []
 }
 
+/** 集下拉仅属于当前供应商；迟到响应不得覆盖切换后的数据。 */
+const loadCredentialSets = async () => {
+  const supplierCode = props.supplierCode
+  credentialSets.value = []
+  if (!supplierCode) return
+  try {
+    const sets = await SupplierConfigApi.listCredentialSets(supplierCode)
+    if (props.supplierCode === supplierCode) credentialSets.value = sets || []
+  } catch (error: any) {
+    if (props.supplierCode === supplierCode && error?.message) message.error(error.message)
+  }
+}
 const loadAll = () => {
   loadLookups()
   loadConnectors()
+  loadCredentialSets()
 }
+watch(() => props.supplierCode, () => {
+  list.value = []
+  loadConnectors()
+  loadCredentialSets()
+})
 
 const openCreate = () => formDialogRef.value?.open()
 const openValidate = (row: ConnectorListItem) => validateDialogRef.value?.open(row)

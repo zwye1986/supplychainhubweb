@@ -18,7 +18,7 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
     error: (value) => messages.push(value), warning: (value) => messages.push(value), success: () => {}
   })
   const constants = evaluate(fs.readFileSync(path.join(viewRoot, 'utils/constants.ts'), 'utf8'))
-  const actualFiles = new Set(['index.vue', 'ConnectorPanel.vue', 'MappingPanel.vue', 'CapabilityPanel.vue', 'ConnectorValidateDialog.vue'])
+  const actualFiles = new Set(['index.vue', 'ConnectorPanel.vue', 'MappingPanel.vue', 'CapabilityPanel.vue', 'ConnectorValidateDialog.vue', 'ConnectorFormDialog.vue', 'ConnectorDetailDrawer.vue', 'CredentialItemDialog.vue'])
   function evaluate(code, resolve = require) {
     const exports = {}
     const js = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
@@ -28,7 +28,7 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
   function stub(name) {
     return { name, setup: (_props, { slots, expose }) => {
       expose({ open: () => {}, validate: async () => true, clearValidate: () => {} })
-      return () => ['ElDialog', 'ElTableColumn'].includes(name) ? null : vue.h('div', slots.default?.())
+      return () => ['ElTableColumn'].includes(name) ? null : vue.h('div', slots.default?.())
     } }
   }
   function load(file) {
@@ -76,7 +76,7 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
   app.directive('loading', {})
   for (const name of ['ContentWrap', 'Icon', 'ElForm', 'ElFormItem', 'ElSelect', 'ElOption', 'ElTabs', 'ElTabPane',
     'ElButton', 'ElTable', 'ElTableColumn', 'ElEmpty', 'ElAlert', 'ElDescriptions', 'ElDescriptionsItem',
-    'ElTag', 'ElDialog', 'ElCheckboxGroup', 'ElCheckbox', 'ElInputNumber', 'ElInput']) app.component(name, stub(name))
+    'ElTag', 'ElDrawer', 'ElRadioGroup', 'ElRadio', 'ElDialog', 'ElCheckboxGroup', 'ElCheckbox', 'ElInputNumber', 'ElInput']) app.component(name, stub(name))
   const root = app.mount({})
   function find(name) {
     let result
