@@ -123,11 +123,18 @@ service.interceptors.request.use(
   }
 )
 
+// 提取链路追踪编号
+const getTraceId = (headers: any): string | undefined => {
+  if (!headers) return undefined
+  return headers['trace-id'] || headers['traceid'] || headers['Trace-Id']
+}
+
 // response 拦截器
 service.interceptors.response.use(
   async (response: AxiosResponse<any>) => {
     let { data } = response
     const config = response.config
+    const traceId = getTraceId(response.headers)
     if (!data) {
       // 返回“[HTTP]请求没有返回值”;
       throw config.frequencySafeErrors ? uncertainFrequencyError() : new Error()
@@ -215,7 +222,8 @@ service.interceptors.response.use(
       // 仅限频调用保留结构化结果；是否确定由调用端的封闭错误码集合判断。
       return Promise.reject({ kind: 'business', code, message: msg } satisfies FrequencySafeError)
     } else if (code === 500) {
-      ElMessage.error(t('sys.api.errMsg500'))
+      const errMsg = traceId ? `${t('sys.api.errMsg500')} (追踪号: ${traceId})` : t('sys.api.errMsg500')
+      ElMessage.error(errMsg)
       return Promise.reject(new Error(msg))
     } else if (code === 901) {
       ElMessage.error({
@@ -237,7 +245,11 @@ service.interceptors.response.use(
         console.log(msg)
         return handleAuthorized()
       } else {
-        ElNotification.error({ title: msg })
+        ElNotification.error({
+          title: msg,
+          message: traceId ? `错误追踪号: ${traceId}` : undefined,
+          duration: 5000
+        })
       }
       return Promise.reject('error')
     } else {
@@ -250,12 +262,16 @@ service.interceptors.response.use(
     if (error.config?.frequencySafeErrors) return Promise.reject(uncertainFrequencyError())
     let { message } = error
     const { t } = useI18n()
+    const traceId = getTraceId(error.response?.headers)
     if (message === 'Network Error') {
       message = t('sys.api.errorMessage')
     } else if (message.includes('timeout')) {
       message = t('sys.api.apiTimeoutMessage')
     } else if (message.includes('Request failed with status code')) {
       message = t('sys.api.apiRequestFailed') + message.substr(message.length - 3)
+    }
+    if (traceId) {
+      message = `${message} (追踪号: ${traceId})`
     }
     ElMessage.error(message)
     return Promise.reject(error)
