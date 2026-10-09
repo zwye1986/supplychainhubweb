@@ -83,146 +83,228 @@
     </el-form>
   </ContentWrap>
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" row-key="orderNo" :expand-row-keys="expandRowKeys" class="order-list-table" row-class-name="order-summary-row">
-      <el-table-column type="expand">
-        <template #default="{ row }">
-          <el-table v-if="isPlatform" :data="row.items" size="small" class="m-12px">
-            <el-table-column label="商品详情" min-width="220">
-              <template #default="{ row: item }">
-                <div class="flex items-center gap-8px">
-                  <el-image v-if="item.picUrl" :src="item.picUrl" class="h-40px w-40px rounded" fit="cover" />
-                  <div class="min-w-0">
-                    <div class="truncate">{{ item.name }}</div>
-                    <div class="text-12px text-gray-500">{{ item.spec || item.skuCode }}</div>
-                  </div>
+    <div v-loading="loading" class="order-card-list">
+      <!-- 外层统一横向滚动，表头与卡片内容联动 -->
+      <div class="order-card-list__scroll">
+        <div class="order-card-list__inner" :style="{ minWidth: tableMinWidth }">
+          <!-- 顶部统一表头 -->
+          <el-table v-if="isPlatform" :data="[]" class="order-header-table">
+            <el-table-column label="商品详情" min-width="220" />
+            <el-table-column label="销售价(元)" min-width="100" />
+            <el-table-column label="商品数量" min-width="90" />
+            <el-table-column label="供应商订单编号" min-width="150" />
+            <el-table-column label="分销商订单编号" min-width="150" />
+            <el-table-column label="分销商名称" min-width="120" />
+            <el-table-column label="项目名称" min-width="140" />
+            <el-table-column label="供应商名称" min-width="120" />
+            <el-table-column label="订单类型" min-width="100" />
+            <el-table-column label="订单状态" min-width="90" />
+            <el-table-column label="下单人" min-width="130" />
+            <el-table-column label="下单人手机号" min-width="120" />
+            <el-table-column label="操作" min-width="200" fixed="right" />
+          </el-table>
+          <el-table v-else :data="[]" class="order-header-table">
+            <el-table-column label="供应商名称" min-width="140" />
+            <el-table-column label="商品信息" min-width="240" />
+            <el-table-column label="供货模式" min-width="110" />
+            <el-table-column label="供货数量" min-width="90" />
+            <el-table-column label="供货价结算" min-width="130" />
+            <el-table-column label="订单类型" min-width="110" />
+            <el-table-column label="订单状态" min-width="100" />
+            <el-table-column label="操作" min-width="140" fixed="right" />
+          </el-table>
+
+          <el-empty v-if="!loading && !list.length" description="暂无订单" />
+
+          <div v-for="row in list" :key="row.orderNo" class="order-card">
+        <div v-if="isPlatform" class="order-card__meta">
+          <span>订单编号 {{ row.orderNo }}</span>
+          <span class="sep">|</span>
+          <span>下单时间 {{ row.createTime || '-' }}</span>
+          <span class="sep">|</span>
+          <span>共{{ row.qty ?? orderItemList(row).length }}件商品</span>
+          <span class="sep">|</span>
+          <span>订单总价: {{ formatMoney(row.amount) }}</span>
+        </div>
+        <div v-else class="order-card__meta">
+          <span>供应商订单编号 {{ row.supplierOrderNo || row.orderNo }}</span>
+          <span class="sep">|</span>
+          <span class="meta-inline">
+            关联平台订单
+            <el-button
+              v-if="row.relatedPlatformOrderNo"
+              link
+              type="primary"
+              class="meta-link"
+              @click="openPlatformDetail(row.relatedPlatformOrderNo)"
+            >
+              {{ row.relatedPlatformOrderNo }}
+            </el-button>
+            <span v-else>-</span>
+          </span>
+          <span class="sep">|</span>
+          <span>下单时间 {{ row.createTime || '-' }}</span>
+        </div>
+
+        <el-table
+          v-if="isPlatform"
+          :data="orderItemList(row)"
+          :show-header="false"
+          class="order-body-table"
+        >
+          <el-table-column label="商品详情" min-width="220">
+            <template #default="{ row: item }">
+              <div class="product-cell">
+                <el-image v-if="item.picUrl" :src="item.picUrl" class="product-thumb" fit="cover">
+                  <template #error>
+                    <div class="product-thumb product-thumb--placeholder">
+                      <Icon icon="ep:picture" />
+                    </div>
+                  </template>
+                </el-image>
+                <div v-else class="product-thumb product-thumb--placeholder">
+                  <Icon icon="ep:picture" />
                 </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="销售价（元）" min-width="110">
-              <template #default="{ row: item }">{{ formatMoney(item.salePrice) }}</template>
-            </el-table-column>
-            <el-table-column label="商品数量" prop="qty" min-width="90" />
-            <el-table-column label="供应商订单编号" min-width="160">
-              <template #default>{{ formatSupplierOrderNos(row) }}</template>
-            </el-table-column>
-            <el-table-column label="分销商订单编号" min-width="160">
-              <template #default>{{ row.distributorOrderNo || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="分销商名称" min-width="140">
-              <template #default>{{ row.distributorName || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="项目名称" min-width="160">
-              <template #default>{{ row.projectName || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="供应商名称" min-width="140">
-              <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="订单类型" min-width="110">
-              <template #default="{ row: item }">{{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType) }}</template>
-            </el-table-column>
-            <el-table-column label="订单状态" min-width="100">
-              <template #default>
-                <el-tag :type="getOptionType(ORDER_STATUS_OPTIONS, row.status)" size="small">
-                  {{ getOptionLabel(ORDER_STATUS_OPTIONS, row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="下单人" min-width="140">
-              <template #default>{{ formatBuyer(row) }}</template>
-            </el-table-column>
-            <el-table-column label="下单人手机号" min-width="130">
-              <template #default>{{ row.buyerMobile || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="操作" fixed="right" min-width="220">
-              <template #default>
+                <div class="product-info">
+                  <div class="product-name" :title="item.name">{{ item.name || '-' }}</div>
+                  <div v-if="item.spec || item.skuCode" class="product-sub">{{ item.spec || item.skuCode }}</div>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="销售价(元)" min-width="100">
+            <template #default="{ row: item }">{{ formatAmount(item.salePrice) }}</template>
+          </el-table-column>
+          <el-table-column label="商品数量" min-width="90">
+            <template #default="{ row: item }">{{ item.qty ?? '-' }}</template>
+          </el-table-column>
+          <el-table-column label="供应商订单编号" min-width="150">
+            <template #default>{{ formatSupplierOrderNos(row) }}</template>
+          </el-table-column>
+          <el-table-column label="分销商订单编号" min-width="150">
+            <template #default>{{ row.distributorOrderNo || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="分销商名称" min-width="120">
+            <template #default>{{ row.distributorName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="项目名称" min-width="140">
+            <template #default>{{ row.projectName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="供应商名称" min-width="120">
+            <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="订单类型" min-width="100">
+            <template #default="{ row: item }">
+              {{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType || row.bizType) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="订单状态" min-width="90">
+            <template #default>
+              <span class="status-pill" :class="`status-pill--${platformStatusTone(row.status)}`">
+                {{ getOptionLabel(ORDER_STATUS_OPTIONS, row.status) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="下单人" min-width="130">
+            <template #default>{{ formatBuyer(row) }}</template>
+          </el-table-column>
+          <el-table-column label="下单人手机号" min-width="120">
+            <template #default>{{ row.buyerMobile || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="200" fixed="right">
+            <template #default>
+              <div class="action-links">
                 <el-button link type="primary" @click="openPlatformDetail(row.orderNo)">详情</el-button>
                 <el-tooltip v-if="canResend(row.status)" content="本期暂不考虑一键补发" placement="top">
                   <span class="inline-flex">
-                    <el-button link type="warning" disabled>一键补发</el-button>
+                    <el-button link type="primary" disabled>一键补发</el-button>
                   </span>
                 </el-tooltip>
                 <el-tooltip v-if="canRefund(row.status)" content="本期暂不考虑退款" placement="top">
                   <span class="inline-flex">
-                    <el-button link type="danger" disabled>退款</el-button>
+                    <el-button link type="primary" disabled>退款</el-button>
                   </span>
                 </el-tooltip>
                 <el-button v-if="canRouteRecord(row.status)" link type="primary" @click="openRouteRecord(row.orderNo)">
                   路由记录
                 </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-table v-else :data="row.items" size="small" class="m-12px">
-            <el-table-column label="供应商名称" min-width="140">
-              <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="商品信息" min-width="240">
-              <template #default="{ row: item }">
-                <div class="flex items-center gap-8px">
-                  <el-image v-if="item.picUrl" :src="item.picUrl" class="h-40px w-40px rounded" fit="cover" />
-                  <div class="min-w-0">
-                    <div class="truncate">{{ item.name }}</div>
-                    <div class="text-12px text-gray-500">{{ item.skuCode }}</div>
-                  </div>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-table
+          v-else
+          :data="orderItemList(row)"
+          :show-header="false"
+          class="order-body-table"
+        >
+          <el-table-column label="供应商名称" min-width="140">
+            <template #default="{ row: item }">{{ item.supplierName || row.supplierName || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="商品信息" min-width="240">
+            <template #default="{ row: item }">
+              <div class="product-cell">
+                <el-image v-if="item.picUrl" :src="item.picUrl" class="product-thumb" fit="cover">
+                  <template #error>
+                    <div class="product-thumb product-thumb--placeholder">
+                      <Icon icon="ep:picture" />
+                    </div>
+                  </template>
+                </el-image>
+                <div v-else class="product-thumb product-thumb--placeholder">
+                  <Icon icon="ep:picture" />
                 </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="供货模式" min-width="110">
-              <template #default>{{ getOptionLabel(SUPPLY_MODE_OPTIONS, row.supplyMode) }}</template>
-            </el-table-column>
-            <el-table-column label="供货数量" prop="qty" min-width="90" />
-            <el-table-column label="供货价结算" min-width="130">
-              <template #default="{ row: item }">
-                <div>{{ formatAmount(item.supplyPrice) }}</div>
-                <div class="text-12px text-gray-500">{{ formatAmount(item.supplyPrice) }}×{{ item.qty }}</div>
-              </template>
-            </el-table-column>
-            <el-table-column label="订单类型" min-width="110">
-              <template #default="{ row: item }">{{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType) }}</template>
-            </el-table-column>
-            <el-table-column label="订单状态" min-width="100">
-              <template #default>
-                <el-tag :type="supplierStatusType(row.status)" size="small">
-                  {{ supplierStatusText(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" fixed="right" width="140">
-              <template #default>
-                <el-button link type="primary" @click="openSupplierDetail(row.supplierOrderNo || row.orderNo)">详情</el-button>
+                <div class="product-info">
+                  <div class="product-name" :title="item.name">{{ item.name || '-' }}</div>
+                  <div v-if="item.skuCode" class="product-sub">{{ item.skuCode }}</div>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="供货模式" min-width="110">
+            <template #default>{{ getOptionLabel(SUPPLY_MODE_OPTIONS, row.supplyMode) }}</template>
+          </el-table-column>
+          <el-table-column label="供货数量" min-width="90">
+            <template #default="{ row: item }">{{ item.qty ?? '-' }}</template>
+          </el-table-column>
+          <el-table-column label="供货价结算" min-width="130">
+            <template #default="{ row: item }">
+              <div>{{ formatAmount(item.supplyPrice) }}</div>
+              <div class="product-sub">{{ formatAmount(item.supplyPrice) }}×{{ item.qty }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="订单类型" min-width="110">
+            <template #default="{ row: item }">
+              {{ getOptionLabel(ORDER_BIZ_TYPE_OPTIONS, item.orderType || row.bizType) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="订单状态" min-width="100">
+            <template #default>
+              <span class="status-pill" :class="`status-pill--${supplierStatusTone(row.status)}`">
+                {{ supplierStatusText(row.status) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="140" fixed="right">
+            <template #default>
+              <div class="action-links">
+                <el-button link type="primary" @click="openSupplierDetail(row.supplierOrderNo || row.orderNo)">
+                  详情
+                </el-button>
                 <el-tooltip v-if="canSupplierRefund(row.status)" content="本期暂不考虑退款" placement="top">
                   <span class="inline-flex">
-                    <el-button link type="danger" disabled>退款</el-button>
+                    <el-button link type="primary" disabled>退款</el-button>
                   </span>
                 </el-tooltip>
-              </template>
-            </el-table-column>
-          </el-table>
-        </template>
-      </el-table-column>
-      <template v-if="isPlatform">
-        <el-table-column label="订单编号" prop="orderNo" min-width="170" />
-        <el-table-column label="下单时间" prop="createTime" min-width="170" />
-        <el-table-column label="商品总数" prop="qty" min-width="90" />
-        <el-table-column label="订单总价" min-width="110">
-          <template #default="{ row }">{{ formatMoney(row.amount) }}</template>
-        </el-table-column>
-      </template>
-      <template v-else>
-        <el-table-column label="供应商订单编号" min-width="170">
-          <template #default="{ row }">{{ row.supplierOrderNo || row.orderNo }}</template>
-        </el-table-column>
-        <el-table-column label="关联平台订单" min-width="170">
-          <template #default="{ row }">
-            <el-button v-if="row.relatedPlatformOrderNo" link type="primary" @click="openPlatformDetail(row.relatedPlatformOrderNo)">
-              {{ row.relatedPlatformOrderNo }}
-            </el-button>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="下单时间" prop="createTime" min-width="170" />
-      </template>
-    </el-table>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+          </div>
+        </div>
+      </div>
+    </div>
     <Pagination v-model:page="queryParams.pageNo" v-model:limit="queryParams.pageSize" :total="total" @pagination="getList" />
   </ContentWrap>
   <OrderPlatformDetail ref="platformDetailRef" @open-supplier="openSupplierDetail" />
@@ -263,11 +345,12 @@
   })
 
   const isPlatform = computed(() => props.source === 'PLATFORM')
+  /** 表头与明细同宽容器，外层横向滚动时一起联动 */
+  const tableMinWidth = computed(() => (isPlatform.value ? '1730px' : '1060px'))
   const message = useMessage()
   const loading = ref(false)
   const exportLoading = ref(false)
   const list = ref<any[]>([])
-  const expandRowKeys = ref<string[]>([])
   const total = ref(0)
   const queryFormRef = ref()
   const platformDetailRef = ref()
@@ -306,6 +389,11 @@
     }
   })
 
+  const orderItemList = (row: OrderVO) => {
+    if (row.items?.length) return row.items
+    return [{} as NonNullable<OrderVO['items']>[number]]
+  }
+
   const formatBuyer = (row: OrderVO) => {
     if (!row.buyerId && !row.buyerName) return '-'
     if (row.buyerId && row.buyerName) return `${row.buyerId}-${row.buyerName}`
@@ -318,16 +406,27 @@
     return row.supplierOrderNo || '-'
   }
 
+  /** 状态胶囊色调：贴近设计稿（失败灰、处理中中性、成功绿） */
+  const platformStatusTone = (status?: string) => {
+    if (status === 'SUCCESS') return 'success'
+    if (status === 'PROCESSING' || status === 'WAIT_PAY') return 'processing'
+    if (status === 'FAILED' || status === 'CLOSED') return 'failed'
+    return 'processing'
+  }
+
   const supplierStatusText = (status?: string) => {
     const prd = getOptionLabel(SUPPLIER_STATUS_OPTIONS, status)
     if (prd !== '-') return prd
     return getOptionLabel(FULFILLMENT_STATUS_OPTIONS, status)
   }
 
-  const supplierStatusType = (status?: string) => {
-    if (SUPPLIER_STATUS_OPTIONS.some((item) => item.value === status))
-      return getOptionType(SUPPLIER_STATUS_OPTIONS, status)
-    return getOptionType(FULFILLMENT_STATUS_OPTIONS, status)
+  const supplierStatusTone = (status?: string) => {
+    const type = SUPPLIER_STATUS_OPTIONS.some((item) => item.value === status)
+      ? getOptionType(SUPPLIER_STATUS_OPTIONS, status)
+      : getOptionType(FULFILLMENT_STATUS_OPTIONS, status)
+    if (type === 'success') return 'success'
+    if (type === 'danger') return 'failed'
+    return 'processing'
   }
 
   const toFulfillmentStatus = (status?: string) => {
@@ -381,8 +480,6 @@
         })
         list.value = data.list || []
         total.value = data.total || 0
-        await nextTick()
-        expandRowKeys.value = list.value.map((item) => item.orderNo)
         return
       }
       const data = await OrderApi.getSupplierOrderPage({
@@ -398,8 +495,6 @@
       })
       list.value = data.list || []
       total.value = data.total || 0
-      await nextTick()
-      expandRowKeys.value = list.value.map((item) => item.orderNo)
     } finally {
       loading.value = false
     }
@@ -473,13 +568,217 @@
 </script>
 
 <style scoped lang="scss">
-  .order-list-table {
-    :deep(.order-summary-row > td.el-table__cell) {
-      background-color: var(--el-fill-color-light);
+  .order-card-list {
+    min-height: 120px;
+  }
+
+  .order-card-list__scroll {
+    overflow-x: auto;
+  }
+
+  .order-card-list__inner {
+    min-width: 100%;
+  }
+
+  .order-header-table,
+  .order-body-table,
+  .order-card {
+    width: 100%;
+    min-width: v-bind(tableMinWidth);
+  }
+
+  .order-header-table,
+  .order-body-table {
+    // 禁用表格内部横向滚动，交给外层统一滚动
+    overflow: visible !important;
+
+    :deep(.el-table__inner-wrapper) {
+      overflow: visible !important;
     }
 
-    :deep(.el-table__body tr.order-summary-row:hover > td.el-table__cell) {
-      background-color: var(--el-fill-color);
+    :deep(.el-table__header-wrapper),
+    :deep(.el-table__body-wrapper) {
+      overflow: visible !important;
+    }
+
+    :deep(.el-scrollbar) {
+      overflow: visible !important;
+    }
+
+    :deep(.el-scrollbar__wrap) {
+      overflow: visible !important;
+      max-height: none !important;
+    }
+
+    :deep(.el-scrollbar__bar) {
+      display: none !important;
+    }
+  }
+
+  .order-header-table {
+    margin-bottom: 10px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+
+    :deep(.el-table__inner-wrapper::before),
+    :deep(.el-table__empty-block) {
+      display: none;
+    }
+
+    :deep(.el-table__header-wrapper th.el-table__cell) {
+      height: 44px;
+      color: var(--el-text-color-regular);
+      font-weight: 500;
+      background: var(--el-fill-color-light);
+    }
+
+    :deep(.el-table__body-wrapper) {
+      display: none;
+    }
+  }
+
+  .order-card {
+    margin-bottom: 12px;
+    background: var(--el-bg-color);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      border-color: var(--el-border-color);
+      box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .order-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 4px;
+    align-items: center;
+    padding: 10px 16px;
+    color: var(--el-text-color-regular);
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--el-fill-color-light);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .sep {
+      margin: 0 8px;
+      color: var(--el-border-color);
+    }
+  }
+
+  .meta-inline {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .meta-link {
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  .order-body-table {
+    :deep(.el-table__inner-wrapper::before) {
+      display: none;
+    }
+
+    :deep(.el-table__cell) {
+      padding: 14px 0;
+      border-bottom: none;
+    }
+
+    :deep(.el-table__row:hover > td.el-table__cell) {
+      background: transparent;
+    }
+  }
+
+  .product-cell {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .product-thumb {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+    background: var(--el-fill-color-lighter);
+
+    &--placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--el-text-color-placeholder);
+      font-size: 18px;
+    }
+  }
+
+  .product-info {
+    min-width: 0;
+  }
+
+  .product-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  .product-sub {
+    margin-top: 2px;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+
+    &--failed,
+    &--processing {
+      background: #909399;
+    }
+
+    &--success {
+      background: var(--el-color-success);
+    }
+  }
+
+  .action-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 4px;
+    align-items: center;
+
+    :deep(.el-button.is-link) {
+      padding: 0 4px;
+      margin: 0;
+      height: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .order-card {
+      transition: none;
     }
   }
 </style>
