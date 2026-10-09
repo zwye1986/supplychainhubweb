@@ -17,16 +17,7 @@
         />
       </el-form-item>
       <el-form-item label="适用分销商">
-        <el-select
-          v-model="formData.distributorCodes"
-          multiple
-          collapse-tags
-          filterable
-          clearable
-          placeholder="全部"
-        >
-          <el-option v-for="item in distributorOptions" :key="item.code" :label="item.name" :value="item.code" />
-        </el-select>
+        <DistributorSelect v-model="formData.distributorCodes" placeholder="请选择" />
       </el-form-item>
       <el-form-item label="适用项目">
         <el-select
@@ -82,16 +73,10 @@
         <template #item="{ element, index }">
           <div class="mb-12px flex items-center gap-12px rounded border p-12px">
             <Icon icon="ic:round-drag-indicator" class="drag-handle cursor-move text-gray-400" />
-            <span class="w-90px">第{{ index + 1 }}优先级</span>
-            <el-select v-model="element.strategy" class="!w-220px">
-              <el-option
-                v-for="item in ROUTE_STRATEGY_OPTIONS"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-                :disabled="usedStrategies.includes(item.value) && element.strategy !== item.value"
-              />
-            </el-select>
+            <span class="w-90px shrink-0 text-gray-600">第{{ index + 1 }}优先级</span>
+            <el-tag :type="getStrategyTagType(element.strategy)" effect="plain">
+              {{ getStrategyLabel(element.strategy) }}
+            </el-tag>
             <span class="text-12px text-gray-500">{{ getStrategyHint(element.strategy) }}</span>
           </div>
         </template>
@@ -151,16 +136,16 @@
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
 import { RoutingApi, RouteRuleVO } from '@/api/routing'
-import { DistributorApi, ProjectApi } from '@/api/supplier/distribution'
+import { ProjectApi } from '@/api/supplier/distribution'
 import { SupplierApi } from '@/api/supplier/manage'
 import {
   ROUTE_MODE_OPTIONS,
   ROUTE_STATUS_OPTIONS,
-  ROUTE_STRATEGY_OPTIONS,
   createPriorities,
   createWeights,
   getRoutingScopeError,
-  getStrategyHint
+  getStrategyHint,
+  getStrategyLabel
 } from '@/views/supplier/routing/rule/utils/constants'
 
 defineOptions({ name: 'RoutingRuleForm' })
@@ -178,7 +163,6 @@ const formLoading = ref(false)
 const formRef = ref()
 const pickedCodes = ref<string[]>([])
 const supplierTableRef = ref()
-const distributorOptions = ref<CodeNameOption[]>([])
 const projectOptions = ref<CodeNameOption[]>([])
 const supplierOptions = ref<CodeNameOption[]>([])
 const formData = reactive<RouteRuleVO>({
@@ -206,7 +190,11 @@ const showWeights = computed(() => formData.priorities.some((item) => item.strat
 const weightSum = computed(
   () => (formData.weights.stability || 0) + (formData.weights.price || 0) + (formData.weights.timeliness || 0)
 )
-const usedStrategies = computed(() => formData.priorities.map((item) => item.strategy))
+const getStrategyTagType = (strategy?: string) => {
+  if (strategy === 'STABLE') return 'success'
+  if (strategy === 'PRICE') return 'warning'
+  return undefined
+}
 const selectedSupplierNames = computed(() =>
   (formData.supplierCodes || []).map((code, index) => {
     return (
@@ -220,14 +208,10 @@ const selectedSupplierNames = computed(() =>
 const toCodeName = (code?: string, name?: string) => ({ code: code || '', name: name || code || '' })
 
 const loadOptions = async () => {
-  const [distributors, projects, suppliers] = await Promise.all([
-    DistributorApi.getDistributorNameList({ status: ['ACTIVE'] }).catch(() => []),
+  const [projects, suppliers] = await Promise.all([
     ProjectApi.getProjectNameList().catch(() => []),
     SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => [])
   ])
-  distributorOptions.value = (distributors || [])
-    .map((item) => toCodeName(item.code, item.label || item.value))
-    .filter((item) => item.code)
   projectOptions.value = (projects || [])
     .map((item) => toCodeName(item.code, item.label || item.value))
     .filter((item) => item.code)
