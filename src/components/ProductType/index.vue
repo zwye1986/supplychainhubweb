@@ -1,5 +1,5 @@
 /**
- * 商品类型选择 / 回显
+ * 商品类型组件
  */
 <template>
   <span v-if="text" class="inline-flex flex-wrap items-center">

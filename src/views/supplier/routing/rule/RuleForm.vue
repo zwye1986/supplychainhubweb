@@ -20,16 +20,7 @@
         <DistributorSelect v-model="formData.distributorCodes" placeholder="请选择" />
       </el-form-item>
       <el-form-item label="适用项目">
-        <el-select
-          v-model="formData.projectCodes"
-          multiple
-          collapse-tags
-          filterable
-          clearable
-          placeholder="请选择"
-        >
-          <el-option v-for="item in projectOptions" :key="item.code" :label="item.name" :value="item.code" />
-        </el-select>
+        <ProjectSelect v-model="formData.projectCodes" placeholder="请选择" />
       </el-form-item>
       <el-form-item label="适用商品类型">
         <ProductType v-model="formData.productTypeCodes" placeholder="全部" />
@@ -136,7 +127,6 @@
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
 import { RoutingApi, RouteRuleVO } from '@/api/routing'
-import { ProjectApi } from '@/api/supplier/distribution'
 import { SupplierApi } from '@/api/supplier/manage'
 import {
   ROUTE_MODE_OPTIONS,
@@ -163,7 +153,6 @@ const formLoading = ref(false)
 const formRef = ref()
 const pickedCodes = ref<string[]>([])
 const supplierTableRef = ref()
-const projectOptions = ref<CodeNameOption[]>([])
 const supplierOptions = ref<CodeNameOption[]>([])
 const formData = reactive<RouteRuleVO>({
   ruleCode: '',
@@ -208,13 +197,7 @@ const selectedSupplierNames = computed(() =>
 const toCodeName = (code?: string, name?: string) => ({ code: code || '', name: name || code || '' })
 
 const loadOptions = async () => {
-  const [projects, suppliers] = await Promise.all([
-    ProjectApi.getProjectNameList().catch(() => []),
-    SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => [])
-  ])
-  projectOptions.value = (projects || [])
-    .map((item) => toCodeName(item.code, item.label || item.value))
-    .filter((item) => item.code)
+  const suppliers = await SupplierApi.getSupplierNameList({ view: 'simple' }).catch(() => [])
   const supplierList = Array.isArray(suppliers) ? suppliers : suppliers?.list || []
   supplierOptions.value = supplierList
     .map((item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) =>
