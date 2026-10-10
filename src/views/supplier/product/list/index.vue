@@ -46,7 +46,7 @@
       </el-form-item>
 
       <el-form-item label="更新时间">
-        <el-date-picker v-model="updatedRange" type="datetimerange" value-format="YYYY-MM-DDTHH:mm:ss" start-placeholder="开始时间" end-placeholder="结束时间" />
+        <el-date-picker v-model="updatedRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" start-placeholder="开始时间" end-placeholder="结束时间" />
       </el-form-item>
       <el-form-item>
         <el-button @click="handleQuery">

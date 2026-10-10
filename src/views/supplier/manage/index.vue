@@ -87,7 +87,7 @@
       <el-form-item label="更新时间">
         <el-date-picker
           v-model="updatedRange"
-          value-format="YYYY-MM-DDTHH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
           type="datetimerange"
           start-placeholder="开始时间"
           end-placeholder="结束时间"

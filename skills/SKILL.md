@@ -272,7 +272,7 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - 订单金额若已是元：用该模块 `formatMoney`。
 - 不要把分直接当元显示。
 - 日期列：`dateFormatter`（`@/utils/formatTime`）。
-- 日期筛选：`el-date-picker` + `value-format` + `clearable`；接口要 ISO 时用 `YYYY-MM-DDTHH:mm:ss`，普通查询用 `YYYY-MM-DD HH:mm:ss`，跟已接接口保持一致。
+- 日期筛选：`el-date-picker` + `value-format` + `clearable`；接口要 ISO 时用 `YYYY-MM-DD HH:mm:ss`，普通查询用 `YYYY-MM-DD HH:mm:ss`，跟已接接口保持一致。
 
 ## 六、路由
 

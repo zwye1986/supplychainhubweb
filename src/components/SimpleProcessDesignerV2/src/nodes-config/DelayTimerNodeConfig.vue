@@ -61,7 +61,7 @@
             v-model="configForm.dateTime"
             type="datetime"
             placeholder="请选择日期和时间"
-            value-format="YYYY-MM-DDTHH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
           />
           <el-text>后进入下一节点</el-text>
         </el-form-item>

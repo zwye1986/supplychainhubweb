@@ -70,7 +70,7 @@
         <el-date-picker
           v-model="updateRange"
           type="datetimerange"
-          value-format="YYYY-MM-DDTHH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
           start-placeholder="开始时间"
           end-placeholder="结束时间"
           clearable
