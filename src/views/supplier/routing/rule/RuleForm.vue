@@ -60,7 +60,7 @@
 
       <el-divider content-position="left">优先级顺序设置</el-divider>
       <div class="mb-12px text-13px text-gray-500">支持拖拽调整优先级顺序，共 3 个优先级。</div>
-      <draggable v-model="formData.priorities" item-key="id" handle=".drag-handle" :animation="200">
+      <draggable v-model="formData.priorities" item-key="strategy" handle=".drag-handle" :animation="200">
         <template #item="{ element, index }">
           <div class="mb-12px flex items-center gap-12px rounded border p-12px">
             <Icon icon="ic:round-drag-indicator" class="drag-handle cursor-move text-gray-400" />
@@ -291,11 +291,19 @@ const submitForm = async () => {
   }
   formLoading.value = true
   try {
-    if (formData.ruleCode) await RoutingApi.update(formData.ruleCode, { ...formData })
-    else await RoutingApi.create({ ...formData })
+    const saved = formData.ruleCode
+      ? await RoutingApi.update(formData.ruleCode, { ...formData })
+      : await RoutingApi.create({ ...formData })
     message.success('保存成功')
     dialogVisible.value = false
-    emit('success')
+    emit('success', {
+      ...formData,
+      ...(saved && typeof saved === 'object' ? saved : {}),
+      priorities: formData.priorities.map((item, index) => ({
+        id: `p${index + 1}`,
+        strategy: item.strategy
+      }))
+    })
   } catch (error: any) {
     if (error?.message) message.error(error.message)
   } finally {

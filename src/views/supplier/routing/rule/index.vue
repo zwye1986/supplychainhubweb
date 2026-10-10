@@ -90,7 +90,7 @@
     </el-form>
   </ContentWrap>
   <ContentWrap>
-    <el-table v-loading="loading" :data="list">
+    <el-table v-loading="loading" :data="list" row-key="ruleCode">
       <el-table-column label="规则名称" prop="name" min-width="180">
         <template #default="{ row }">
           <span>{{ row.name }}</span>
@@ -114,17 +114,23 @@
       </el-table-column>
       <el-table-column label="稳定" width="80" align="center">
         <template #default="{ row }">
-          <el-tag size="small" type="success">{{ strategyRank(row, 'STABLE') }}</el-tag>
+          <el-tag :key="strategyRankKey(row, 'STABLE')" size="small" type="success">
+            {{ strategyRank(row, 'STABLE') }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="价格" width="80" align="center">
         <template #default="{ row }">
-          <el-tag size="small" type="warning">{{ strategyRank(row, 'PRICE') }}</el-tag>
+          <el-tag :key="strategyRankKey(row, 'PRICE')" size="small" type="warning">
+            {{ strategyRank(row, 'PRICE') }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="综合" width="80" align="center">
         <template #default="{ row }">
-          <el-tag size="small">{{ strategyRank(row, 'COMPOSITE') }}</el-tag>
+          <el-tag :key="strategyRankKey(row, 'COMPOSITE')" size="small">
+            {{ strategyRank(row, 'COMPOSITE') }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="90">
@@ -159,7 +165,7 @@
       @pagination="getList"
     />
   </ContentWrap>
-  <RuleForm ref="formRef" @success="getList" />
+  <RuleForm ref="formRef" @success="handleFormSuccess" />
 </template>
 
 <script lang="ts" setup>
@@ -219,10 +225,18 @@ const updateRange = computed<string[]>({
   }
 })
 
+const normalizeRule = (row: RouteRuleVO): RouteRuleVO => ({
+  ...row,
+  priorities: (row.priorities || []).map((item) => ({ ...item }))
+})
+
 const strategyRank = (row: RouteRuleVO, strategy: RouteStrategy) => {
   const index = (row.priorities || []).findIndex((item) => item.strategy === strategy)
   return index >= 0 ? index + 1 : '-'
 }
+
+const strategyRankKey = (row: RouteRuleVO, strategy: RouteStrategy) =>
+  `${row.ruleCode}-${strategy}-${(row.priorities || []).map((item) => item.strategy).join(',')}`
 
 const formatSuppliers = (row: RouteRuleVO) => {
   if (row.routeMode === 'FIXED') return row.primarySupplierName || row.supplierNames?.[0] || '-'
@@ -264,7 +278,7 @@ const getList = async () => {
   loading.value = true
   try {
     const data = await RoutingApi.getPage(queryParams)
-    list.value = data.list || []
+    list.value = (data.list || []).map(normalizeRule)
     total.value = data.total || 0
   } finally {
     loading.value = false
@@ -284,6 +298,14 @@ const resetQuery = () => {
 }
 
 const openForm = (ruleCode?: string) => formRef.value.open(ruleCode)
+
+const handleFormSuccess = async (saved?: RouteRuleVO) => {
+  await getList()
+  if (!saved?.ruleCode) return
+  list.value = list.value.map((row) =>
+    row.ruleCode === saved.ruleCode ? normalizeRule({ ...row, ...saved }) : row
+  )
+}
 
 const handleDelete = async (row: RouteRuleVO) => {
   try {

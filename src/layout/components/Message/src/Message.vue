@@ -40,19 +40,19 @@ const goMyList = () => {
 
 // ========== 初始化 =========
 onMounted(() => {
-  // 首次加载小红点
-  getUnreadCount()
-  // 轮询刷新小红点
-  unreadCountTimer = setInterval(
-    () => {
-      if (userStore.getIsSetUser) {
-        getUnreadCount()
-      } else {
-        unreadCount.value = 0
-      }
-    },
-    1000 * 60 * 2
-  )
+  // // 首次加载小红点
+  // getUnreadCount()
+  // // 轮询刷新小红点
+  // unreadCountTimer = setInterval(
+  //   () => {
+  //     if (userStore.getIsSetUser) {
+  //       getUnreadCount()
+  //     } else {
+  //       unreadCount.value = 0
+  //     }
+  //   },
+  //   1000 * 60 * 2
+  // )
 })
 
 onBeforeUnmount(() => {
