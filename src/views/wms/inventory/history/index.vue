@@ -77,6 +77,7 @@
       </el-form-item>
       <el-form-item label="操作时间" prop="createTime">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="queryParams.createTime"
           :shortcuts="defaultShortcuts"
           class="!w-240px"

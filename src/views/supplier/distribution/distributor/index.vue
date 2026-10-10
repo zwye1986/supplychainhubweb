@@ -28,7 +28,7 @@
         </el-select>
       </el-form-item>
       <el-form-item label="更新时间">
-        <el-date-picker v-model="updatedRange" value-format="YYYY-MM-DDTHH:mm:ss" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间" />
+        <el-date-picker v-model="updatedRange" value-format="YYYY-MM-DD HH:mm:ss" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]" />
       </el-form-item>
       <el-form-item style="float: right;">
         <el-button type="primary" @click="handleQuery">

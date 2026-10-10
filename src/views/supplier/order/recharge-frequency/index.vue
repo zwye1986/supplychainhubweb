@@ -61,9 +61,10 @@
       /></el-form-item>
       <el-form-item label="首次入队时间（上海）">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="enqueuedRange"
           type="datetimerange"
-          value-format="YYYY-MM-DDTHH:mm:ss"
+          value-format="YYYY-MM-DD HH:mm:ss"
           start-placeholder="开始"
           end-placeholder="截止（含边界）"
         />

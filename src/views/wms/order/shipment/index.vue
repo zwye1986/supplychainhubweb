@@ -135,6 +135,7 @@
       </el-form-item>
       <el-form-item label="创建时间" prop="createTime">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="queryParams.createTime"
           :shortcuts="defaultShortcuts"
           class="!w-240px"
@@ -146,6 +147,7 @@
       </el-form-item>
       <el-form-item label="更新时间" prop="updateTime">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="queryParams.updateTime"
           :shortcuts="defaultShortcuts"
           class="!w-240px"

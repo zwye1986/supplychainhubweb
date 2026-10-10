@@ -226,7 +226,7 @@
             <el-date-picker
               v-model="formData.onboardedAt"
               type="datetime"
-              value-format="YYYY-MM-DDTHH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
               placeholder="请选择接入时间"
               class="!w-full"
             />

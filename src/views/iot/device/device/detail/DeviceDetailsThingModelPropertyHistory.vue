@@ -12,6 +12,7 @@
       >
         <el-form-item label="" prop="createTime">
           <el-date-picker
+            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
             v-model="queryParams.times"
             value-format="YYYY-MM-DD HH:mm:ss"
             type="datetimerange"

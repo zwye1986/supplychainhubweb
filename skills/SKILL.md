@@ -157,7 +157,15 @@ export const XxxApi = {
     :value="dict.value"
   />
 </el-select>
-<el-date-picker v-model="queryParams.createTime" type="daterange" value-format="YYYY-MM-DD HH:mm:ss" clearable />
+<el-date-picker
+  v-model="queryParams.createTime"
+  type="datetimerange"
+  value-format="YYYY-MM-DD HH:mm:ss"
+  start-placeholder="开始时间"
+  end-placeholder="结束时间"
+  :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+  clearable
+/>
 ```
 
 ### 列表骨架（直接模式）
@@ -273,6 +281,7 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - 不要把分直接当元显示。
 - 日期列：`dateFormatter`（`@/utils/formatTime`）。
 - 日期筛选：`el-date-picker` + `value-format` + `clearable`；接口要 ISO 时用 `YYYY-MM-DDTHH:mm:ss`，普通查询用 `YYYY-MM-DD HH:mm:ss`，跟已接接口保持一致。
+- `el-date-picker` 只要 `type="datetimerange"`，一律加 `:default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"`，结束时间默认 23:59:59，不得漏写。
 
 ## 六、路由
 
@@ -323,6 +332,7 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 - Windows 反斜杠路径
 - 详情/表单/提交对象逐字段赋值（`item.foo = src.foo`），代码拥堵
 - 可清空的输入框、下拉框、级联、日期时间漏写 `clearable`
+- `type="datetimerange"` 的 `el-date-picker` 漏写 `:default-time`
 
 ## 对照范例
 

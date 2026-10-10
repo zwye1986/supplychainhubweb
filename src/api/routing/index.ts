@@ -65,8 +65,8 @@ const toSaveBody = (data: RouteRuleVO) => ({
   primarySupplierCode: data.routeMode === 'FIXED' ? data.primarySupplierCode : undefined,
   status: data.status,
   ruleCode: data.ruleCode || undefined,
-  priorities: (data.priorities || []).map((item) => ({
-    id: item.id || item.strategy,
+  priorities: (data.priorities || []).map((item, index) => ({
+    id: `p${index + 1}`,
     strategy: item.strategy
   })),
   weights: data.weights

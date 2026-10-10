@@ -250,7 +250,7 @@
             <el-date-picker
               v-model="formData.cooperationStartedAt"
               type="datetime"
-              value-format="YYYY-MM-DDTHH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
               placeholder="请选择合作开始时间"
               class="!w-full"
             />
