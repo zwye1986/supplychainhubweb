@@ -2,6 +2,7 @@ import dayjs from 'dayjs'
 import qs from 'qs'
 import request from '@/config/axios'
 import { OrderMockApi } from './mock'
+import { mapCardAsset } from './asset-valid-time'
 import type {
   AfterSalePageParam,
   AfterSaleVO,
@@ -124,7 +125,9 @@ const mapOrderView = (view: OrderView): OrderVO => {
     }))
   const itemCount = view.items?.length || 0
   const items: OrderItemVO[] = (view.items || []).map((item) => {
-    const matched = (view.supplierOrders || []).find((row) => row.skuCode && row.skuCode === item.skuCode)
+    const matched = (view.supplierOrders || []).find(
+      (row) => row.skuCode && row.skuCode === item.skuCode
+    )
     const supplyCents =
       matched?.supplierSettlementUnitPrice ?? view.supplierOrders?.[0]?.supplierSettlementUnitPrice
     const rechargeInfos = (item.rechargeInfo || []).map((row) => ({
@@ -139,19 +142,15 @@ const mapOrderView = (view: OrderView): OrderVO => {
       supplyPrice: centsToYuan(supplyCents) ?? 0,
       distPrice: centsToYuan(item.distPrice),
       salePrice: centsToYuan(item.salePrice) ?? 0,
-      serviceFee: itemCount === 1 ? centsToYuan(view.serviceFee) ?? 0 : 0,
-      couponAmount: itemCount === 1 ? centsToYuan(view.couponAmount) ?? 0 : 0,
+      serviceFee: itemCount === 1 ? (centsToYuan(view.serviceFee) ?? 0) : 0,
+      couponAmount: itemCount === 1 ? (centsToYuan(view.couponAmount) ?? 0) : 0,
       orderType: bizType,
       supplierName: view.supplierName,
       ticketCodes: item.ticketCode || [],
       pickupCodes: item.pickupCode || [],
       ticketCode: item.ticketCode?.[0],
       pickupCode: item.pickupCode?.[0],
-      cardInfos: (item.cardInfos || []).map((card) => ({
-        cardNo: card.cardCode,
-        password: card.cardSecret,
-        expireTime: [formatDateTime(card.validFrom), formatDateTime(card.validUntil)].filter(Boolean).join(' ~ ')
-      })),
+      cardInfos: (item.cardInfos || []).map((card) => mapCardAsset(card, formatDateTime)),
       rechargeInfos,
       rechargeInfo: rechargeInfos[0]
     }
@@ -301,7 +300,9 @@ export const OrderApi = {
     }
   },
   getSupplierOrder: async (bOrderNo: string) => {
-    const data = await request.get<SupplierOrderView>({ url: `/supply-chain/supplier-orders/${bOrderNo}` })
+    const data = await request.get<SupplierOrderView>({
+      url: `/supply-chain/supplier-orders/${bOrderNo}`
+    })
     return mapSupplierOrder(data)
   },
   shipOrder: async (orderNo: string, data: any) => {

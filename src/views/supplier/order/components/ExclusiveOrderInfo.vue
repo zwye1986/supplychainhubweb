@@ -3,13 +3,19 @@
     <div class="mb-8px font-600">专属订单信息</div>
     <el-table v-if="cardRows.length" :data="cardRows" class="mb-12px">
       <el-table-column label="卡号" min-width="160">
-        <template #default="{ row }">{{ row.cardNo || '-' }}</template>
+        <template #default="{ row }"
+          ><span class="asset-text">{{ row.cardNo || '-' }}</span></template
+        >
       </el-table-column>
       <el-table-column label="卡密" min-width="140">
-        <template #default="{ row }">{{ row.password || '-' }}</template>
+        <template #default="{ row }"
+          ><span class="asset-text">{{ row.password || '-' }}</span></template
+        >
       </el-table-column>
       <el-table-column label="有效期" min-width="200">
-        <template #default="{ row }">{{ row.expireTime || '-' }}</template>
+        <template #default="{ row }"
+          ><span class="asset-text">{{ row.expireTime || '-' }}</span></template
+        >
       </el-table-column>
     </el-table>
     <el-descriptions v-if="rechargeRows.length" :column="3" border class="mb-12px">
@@ -71,6 +77,19 @@ const visible = computed(
     rechargeRows.value.length > 0
 )
 const empty = computed(
-  () => visible.value && !cardRows.value.length && !rechargeRows.value.length && !ticketCodes.value.length && !pickupCodes.value.length
+  () =>
+    visible.value &&
+    !cardRows.value.length &&
+    !rechargeRows.value.length &&
+    !ticketCodes.value.length &&
+    !pickupCodes.value.length
 )
 </script>
+
+<style scoped>
+/* 供应商原文与卡密的空白属于交付值，按生产闭环设计 §7.2 保留。 */
+.asset-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+</style>

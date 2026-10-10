@@ -1,14 +1,18 @@
-export type OrderBizType = 'VIRTUAL_CARD' | 'VIRTUAL_RECHARGE' | 'DINING' | 'MOVIE' | 'HEMA' | 'INSTORE'
-export type FulfillmentStatus = 'WAITING' | 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'MANUAL'
+export type OrderBizType =
+  'VIRTUAL_CARD' | 'VIRTUAL_RECHARGE' | 'DINING' | 'MOVIE' | 'HEMA' | 'INSTORE'
+export type FulfillmentStatus =
+  'WAITING' | 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'MANUAL'
 export type SettlementStatus = 'PENDING' | 'MATCHED' | 'MISMATCH' | 'MANUAL'
 export type SupplierAttemptOrderType = 'CARD' | 'O2O' | 'INSTORE'
 export type PlatformOrderStatus = 'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED'
-export type SupplierOrderStatus = 'WAIT_PAY' | 'CLOSED' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'FAILED'
+export type SupplierOrderStatus =
+  'WAIT_PAY' | 'CLOSED' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'FAILED'
 export type OrderStatus = PlatformOrderStatus | SupplierOrderStatus
 export type SupplyMode = 'DROP_SHIP' | 'BATCH' | 'STORE_PICKUP' | 'API_DIRECT' | 'H5_DIRECT'
 export type LogisticsStatus = 'UNSHIPPED' | 'SHIPPED' | 'SIGNED'
 export type RouteResult = 'SUCCESS' | 'FAILED'
-export type RouteFailReason = 'API_TIMEOUT' | 'PRICE_OVER_THRESHOLD' | 'STOCK_SHORT' | 'SUPPLIER_REJECT' | 'API_ERROR'
+export type RouteFailReason =
+  'API_TIMEOUT' | 'PRICE_OVER_THRESHOLD' | 'STOCK_SHORT' | 'SUPPLIER_REJECT' | 'API_ERROR'
 export type AfterSaleType = 'RETURN_REFUND' | 'REFUND_ONLY' | 'OTHER'
 export type AfterSaleStatus =
   | 'NONE'
@@ -20,6 +24,19 @@ export type AfterSaleStatus =
   | 'FINISHED'
   | 'REJECTED'
   | 'CANCELLED'
+
+/** 华昇有效期三态；原文不保证日期格式。设计：后端生产闭环设计 §7.2。 */
+export type SupplierValidTime =
+  | { validTimeState: 'VALUE'; validTimeRaw: string }
+  | { validTimeState: 'ABSENT' | 'NULL'; validTimeRaw?: null }
+  | { validTimeState?: null; validTimeRaw?: null }
+
+export type OrderCardAssetView = {
+  cardCode?: string
+  cardSecret?: string
+  validFrom?: string
+  validUntil?: string
+} & SupplierValidTime
 
 export interface CardInfoVO {
   cardNo?: string
@@ -283,7 +300,7 @@ export interface OrderItemView {
   qty?: number
   salePrice?: number
   distPrice?: number
-  cardInfos?: { cardCode?: string; cardSecret?: string; validFrom?: string; validUntil?: string }[]
+  cardInfos?: OrderCardAssetView[]
   rechargeInfo?: { accountValue?: string; voucherCode?: string; assetNo?: string }[]
   ticketCode?: string[]
   pickupCode?: string[]
