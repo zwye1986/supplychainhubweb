@@ -1,4 +1,5 @@
 import {dirname, relative, resolve} from 'path'
+import {pathToFileURL} from 'url'
 import type {ConfigEnv, UserConfig} from 'vite'
 import {loadEnv, normalizePath} from 'vite'
 import {createVitePlugins} from './build/vite'
@@ -66,7 +67,19 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
                         }
                         return `@use "${getRelativeScssUsePath(filename, variablesScssPath)}" as *;\n${source}`
                     },
-                    api: 'modern-compiler'
+                    api: 'modern-compiler',
+                    importers: [
+                        {
+                            findFileUrl(url: string) {
+                                const atIndex = url.indexOf('@/')
+                                if (atIndex !== -1) {
+                                    const subPath = url.slice(atIndex + 2)
+                                    return pathToFileURL(pathResolve(`src/${subPath}`))
+                                }
+                                return null
+                            }
+                        }
+                    ]
                 }
             }
         },
@@ -74,8 +87,8 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
             extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.scss', '.css'],
             alias: [
                 {
-                    find: /\@\//,
-                    replacement: `${pathResolve('src')}/`
+                    find: '@',
+                    replacement: pathResolve('src')
                 }
             ]
         },

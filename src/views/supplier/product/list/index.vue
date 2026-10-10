@@ -140,16 +140,16 @@
         <template #default="{ row }">{{ formatSuppliers(row.suppliers) }}</template>
       </el-table-column>
 
-      <el-table-column label="下架方式" min-width="100">
+      <!-- <el-table-column label="下架方式" min-width="100">
         <template #default="{ row }">
           <el-tag v-if="row.status === PRODUCT_STATUS.OFF_SHELF" size="small" type="warning">
             {{ row.unshelveModeDisplay || getDictLabel('supply_chain_unshelve_mode', row.unshelveMode) || '-' }}
           </el-tag>
           <span v-else>—</span>
         </template>
-      </el-table-column>
-      <el-table-column label="更新时间" min-width="170">
-        <template #default="{ row }">{{ row.updatedAt || '—' }}</template>
+      </el-table-column> -->
+      <el-table-column label="更新时间" prop="updatedAt" min-width="170">
+        <template #default="{ row }">{{ formatDate(row.updatedAt) || '—' }}</template>
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="240">
         <template #default="{ row }">
@@ -189,6 +189,7 @@
     SupplierSimpleInfo
   } from '@/api/product'
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+  import { formatDate } from '@/utils/formatTime'
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
   import ProductPriceDialog from './components/PriceDialog.vue'

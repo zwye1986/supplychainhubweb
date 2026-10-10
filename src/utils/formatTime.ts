@@ -67,8 +67,10 @@ export function formatDate(date: dayjs.ConfigType, format?: string): string {
   if (!date) {
     return ''
   }
-  // 日期存在，则进行格式化
-  return date ? dayjs(date).format(format ?? 'YYYY-MM-DD HH:mm:ss') : ''
+  // 日期存在，则进行格式化（若为纯数字时间戳字符串先转为数字，避免 dayjs 将其误解析为年份）
+  const normalizedDate = typeof date === 'string' && /^\d+$/.test(date) ? Number(date) : date
+  const parsed = dayjs(normalizedDate)
+  return parsed.isValid() ? parsed.format(format ?? 'YYYY-MM-DD HH:mm:ss') : ''
 }
 
 /**
