@@ -148,8 +148,8 @@
           <span v-else>—</span>
         </template>
       </el-table-column> -->
-      <el-table-column label="更新时间" prop="updatedAt" min-width="170">
-        <template #default="{ row }">{{ formatDate(row.updatedAt) || '—' }}</template>
+      <el-table-column label="更新时间" prop="updatedAt" min-width="200">
+        <template #default="{ row }">{{ formatDate(row.updatedAt, 'YYYY-MM-DD HH:mm:ss.SSS') || '—' }}</template>
       </el-table-column>
       <el-table-column label="操作" fixed="right" width="240">
         <template #default="{ row }">
