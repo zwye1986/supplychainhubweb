@@ -34,6 +34,7 @@
       </el-form-item>
       <el-form-item label="创建时间" prop="createTime">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="queryParams.createTime"
           class="!w-240px"
           end-placeholder="结束日期"

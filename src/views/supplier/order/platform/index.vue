@@ -18,6 +18,7 @@
       </el-form-item>
       <el-form-item label="下单时间">
         <el-date-picker
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
           v-model="createRange"
           type="datetimerange"
           value-format="YYYY-MM-DD HH:mm:ss"
