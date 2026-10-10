@@ -4,7 +4,7 @@
     title="新增分销商品"
     width="1600px"
     :scroll="true"
-        max-height="78vh"
+    max-height="78vh"
   >
     <el-alert
       class="mb-12px"
@@ -158,7 +158,10 @@
               </div>
               <div v-for="item in group.items" :key="item.platformSkuCode" class="selected-sku">
                 <div class="selected-sku__header">
-                  <span class="selected-sku__name" :title="item.platformSkuName || item.platformSkuCode">
+                  <span
+                    class="selected-sku__name"
+                    :title="item.platformSkuName || item.platformSkuCode"
+                  >
                     {{ item.platformSkuName || item.platformSkuCode }}
                   </span>
                   <el-button link type="danger" @click="removeSelected(item.platformSkuCode)">
@@ -202,6 +205,10 @@ import {
   type BuyerProductCreatePricingReqVO,
   type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
+import {
+  buildCatalogSaveMessage,
+  isCatalogSaveUncertainError
+} from '@/views/supplier/distribution/utils/catalogSaveResult'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 import DistributionPriceForm from './DistributionPriceForm.vue'
 import type { DistPriceFormData } from './distributionPrice'
@@ -295,7 +302,13 @@ const formatSuggestTip = (item: SelectedSkuItem) => {
   }
   const baseLabel = rule.base === 'SUPPLY_PRICE' ? '供应价' : '市场价'
   const operator =
-    rule.operator === 'ADD' ? '+' : rule.operator === 'SUBTRACT' ? '-' : rule.operator === 'DIVIDE' ? '/' : '*'
+    rule.operator === 'ADD'
+      ? '+'
+      : rule.operator === 'SUBTRACT'
+        ? '-'
+        : rule.operator === 'DIVIDE'
+          ? '/'
+          : '*'
   return `销售建议价=${baseLabel}*${rule.percentage ?? 0}%${operator}${rule.operand ?? 0}元`
 }
 
@@ -326,7 +339,9 @@ const categoryTabs = computed(() => {
     return tabs
   }
   const source = allowedTypeCodes.value.length
-    ? typeList.value.filter((item) => item.typeCode && allowedTypeCodes.value.includes(item.typeCode))
+    ? typeList.value.filter(
+        (item) => item.typeCode && allowedTypeCodes.value.includes(item.typeCode)
+      )
     : typeList.value
   source.forEach((item) => {
     if (!item.typeCode) return
@@ -615,10 +630,16 @@ const handleSubmit = async () => {
         pricing: buildCreatePricing(item.price)
       }))
     }
-    await DistributorApi.createBuyerProducts(props.buyerCode, createPayload)
-    message.success('添加成功')
+    const saveResult = await DistributorApi.createBuyerProducts(props.buyerCode, createPayload)
+    const hint = buildCatalogSaveMessage(saveResult)
+    message[hint.type](hint.content)
     dialogVisible.value = false
     emit('success')
+  } catch (error) {
+    if (isCatalogSaveUncertainError(error)) {
+      const hint = buildCatalogSaveMessage()
+      message[hint.type](hint.content)
+    }
   } finally {
     submitting.value = false
   }

@@ -3,7 +3,9 @@ import qs from 'qs'
 import { DistributorMockApi } from './mock'
 
 export type {
+  AcceptanceCatalogRecalculateRespVO,
   AddBuyerProductsReqVO,
+  BuyerSelectionCatalogSaveRespVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
   BuyerChildItem,
@@ -46,7 +48,9 @@ export type {
 export { toProductTypeCodes, toProductTypeItems } from './types'
 
 import type {
+  AcceptanceCatalogRecalculateRespVO,
   AddBuyerProductsReqVO,
+  BuyerSelectionCatalogSaveRespVO,
   AddProjectProductsReqVO,
   BatchStatusReqVO,
   BuyerChildItem,
@@ -270,7 +274,7 @@ export const DistributorApi = {
 
   /** 从标品关联分销商品：POST /buyers/{buyerCode}/products，返回 BPD_ 编号列表 */
   createBuyerProducts: async (buyerCode: string, data: AddBuyerProductsReqVO) => {
-    return await request.post<string[]>({
+    return await request.post<BuyerSelectionCatalogSaveRespVO>({
       url: `/supply-chain/buyers/${buyerCode}/products`,
       data
     })
@@ -281,9 +285,18 @@ export const DistributorApi = {
    * 仅更新路径分销商下选中商品的通用定价版本；单事务全量成功或回滚，税务仅用于结算展示。
    */
   saveBuyerProductPricing: async (buyerCode: string, data: BuyerProductBatchPricingReqVO) => {
-    return await request.put<boolean>({
+    return await request.put<BuyerSelectionCatalogSaveRespVO>({
       url: `/supply-chain/buyers/${buyerCode}/products/pricing`,
       data
+    })
+  },
+
+  /**
+   * 同步重算受理目录：POST /buyers/{buyerCode}/products/{buyerProductCode}/acceptance-catalog/recalculate
+   */
+  recalculateAcceptanceCatalog: async (buyerCode: string, buyerProductCode: string) => {
+    return await request.post<AcceptanceCatalogRecalculateRespVO>({
+      url: `/supply-chain/buyers/${buyerCode}/products/${buyerProductCode}/acceptance-catalog/recalculate`
     })
   },
 
@@ -464,7 +477,7 @@ export const ProjectApi = {
 
   /** 从分销商品发布到项目目录：POST /projects/{projectCode}/products */
   createProducts: async (projectCode: string, data: AddProjectProductsReqVO) => {
-    return await request.post<string[]>({
+    return await request.post<BuyerSelectionCatalogSaveRespVO>({
       url: `/supply-chain/projects/${projectCode}/products`,
       data
     })
@@ -482,7 +495,7 @@ export const ProjectApi = {
    * 单事务全量成功或回滚；未配置的分组传 inherited=true。
    */
   saveProductPricing: async (projectCode: string, data: ProjectProductBatchPricingReqVO) => {
-    return await request.put<boolean>({
+    return await request.put<BuyerSelectionCatalogSaveRespVO>({
       url: `/supply-chain/projects/${projectCode}/products/pricing`,
       data
     })

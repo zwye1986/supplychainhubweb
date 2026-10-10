@@ -387,6 +387,70 @@ export interface BuyerProductListItem {
   productType?: string
   /** 商品分类封闭枚举名 */
   productClassification?: string
+  /** 标准规范下单编码（BPD_编号），项目下单以此为准，不使用 PLT_ */
+  canonicalBuyerSkuCode?: string
+  /** 关联的受理目录编号（LST_） */
+  acceptanceListingNo?: string
+  /** 目录管理模式：MANUAL 手工管理，AUTO_SELECTION 页面选品自动管理 */
+  managementMode?: string
+  /** 商业发布状态：DRAFT / PUBLISHED / SUSPENDED / RETIRED */
+  publicationState?: string
+  /** 目录层供给可用性投影状态：AVAILABLE / UNAVAILABLE / UNKNOWN */
+  availabilityStatus?: string
+  /** 目录最近一次评估或刷新原因 */
+  catalogRefreshReason?: string
+  /** 来源分销定价版本 ID */
+  sourceBuyerPricingVersionId?: number
+  /** 最近一次供给评估时间 */
+  lastEvaluatedAt?: string
+  /** 供给可用性投影下次必须重建时间 */
+  nextEvaluateAt?: string
+}
+
+/** 同步重算受理目录结果 */
+export interface AcceptanceCatalogRecalculateRespVO {
+  acceptanceListingNo?: string
+  publicationState?: string
+  availabilityStatus?: string
+  reason?: string
+  sourceBuyerPricingVersionId?: number
+  lastEvaluatedAt?: string
+  nextEvaluateAt?: string
+}
+
+/**
+ * 选品/定价保存结果：保存维度与逐目录刷新维度分开；COMMITTED 仅在原保存代理确认提交后产生。
+ * 与后端 tradecore.catalog.application.BuyerSelectionCatalogSaveRespVO 字段一一对应。
+ */
+export interface BuyerSelectionCatalogSaveRespVO {
+  /** 保存状态；仅原保存代理确认提交后为 COMMITTED */
+  saveState?: string
+  /** 真实已提交操作身份：分销操作 BPD，项目操作 PLT */
+  savedCodes?: string[]
+  /** 逐目录刷新结果 */
+  catalogResults?: CatalogRefreshResultVO[]
+  /** 后台扫描是否启用；关闭时不承诺自动重试收敛 */
+  automaticRecoveryEnabled?: boolean
+}
+
+/** 单个受理目录的刷新结果 */
+export interface CatalogRefreshResultVO {
+  /** 已提交操作身份：分销 BPD 或项目 PLT */
+  savedCode?: string
+  /** 受理目录稳定编号 */
+  listingNo?: string
+  /** 封闭刷新执行码：UPDATED/UNCHANGED/DEFERRED/FAILED/SKIPPED_MANUAL/PAUSED/TERMINAL */
+  refreshOutcome?: string
+  /** 真实生命周期：DRAFT/PUBLISHED/SUSPENDED/RETIRED */
+  publicationState?: string
+  /** 真实供给投影状态：AVAILABLE/UNAVAILABLE/UNKNOWN */
+  availabilityStatus?: string
+  /** 稳定等待/失败原因码 */
+  reasonCode?: string
+  /** 评估时间；仅真实评估结果提供，失败不放未确认时间 */
+  evaluatedAt?: string
+  /** 平台 traceId，诊断关联用 */
+  traceId?: string
 }
 
 /** 分销商品分页查询 */

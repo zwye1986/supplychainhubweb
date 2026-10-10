@@ -1,8 +1,17 @@
 <template>
-  <Dialog v-model="dialogVisible" title="新增分销商品" width="1600px" :scroll="true" max-height="78vh">
+  <Dialog
+    v-model="dialogVisible"
+    title="新增分销商品"
+    width="1600px"
+    :scroll="true"
+    max-height="78vh"
+  >
     <el-alert class="mb-12px" type="info" :closable="false">
       <template #title>
-        <div>为已勾选的 SKU 配置项目专属价。填入项目价后，该 SKU 在此项目中按项目价结算；不填则按基础分销价结算。</div>
+        <div
+          >为已勾选的 SKU 配置项目专属价。填入项目价后，该 SKU
+          在此项目中按项目价结算；不填则按基础分销价结算。</div
+        >
         <div>支持批量调价：按分销价=销售价或公式批量设置项目价。</div>
       </template>
     </el-alert>
@@ -166,6 +175,10 @@ import {
   type BuyerProductCreatePricingReqVO,
   type DistFormulaRuleReqVO
 } from '@/api/supplier/distribution'
+import {
+  buildCatalogSaveMessage,
+  isCatalogSaveUncertainError
+} from '@/views/supplier/distribution/utils/catalogSaveResult'
 import { ProductCategoryApi, type ProductCategoryVO } from '@/api/product'
 import { formatCentsYuan } from '@/views/supplier/utils/constants'
 import DistributionPriceForm from '@/views/supplier/distribution/distributor/detail/DistributionPriceForm.vue'
@@ -277,9 +290,7 @@ const getTypeCategoryLabel = (row: BuyerProductListItem) => {
   const typeName =
     props.productTypeItems?.find((item) => item.id === row.productType)?.name || row.productType
   const classification = row.productClassification
-  const categoryName = classification
-    ? categoryNameMap.value[classification] || classification
-    : ''
+  const categoryName = classification ? categoryNameMap.value[classification] || classification : ''
   return [typeName, categoryName].filter(Boolean).join('/') || '-'
 }
 
@@ -497,10 +508,16 @@ const handleSubmit = async () => {
       return row
     })
     const payload: AddProjectProductsReqVO = { items }
-    await ProjectApi.createProducts(props.projectCode, payload)
-    message.success('添加成功')
+    const saveResult = await ProjectApi.createProducts(props.projectCode, payload)
+    const hint = buildCatalogSaveMessage(saveResult)
+    message[hint.type](hint.content)
     dialogVisible.value = false
     emit('success')
+  } catch (error) {
+    if (isCatalogSaveUncertainError(error)) {
+      const hint = buildCatalogSaveMessage()
+      message[hint.type](hint.content)
+    }
   } finally {
     submitting.value = false
   }
