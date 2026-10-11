@@ -64,7 +64,7 @@
         <el-button type="warning" plain :disabled="batchStatusBusy || !selectedCodes.length" :loading="batchStatusBusy" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
           批量下架
         </el-button>
-        <el-button type="primary" plain :disabled="!selectedSkuCodes.length" @click="openPriceDialog()">
+        <el-button type="primary" plain :disabled="!selectedSkuCodes.length || !canPriceSelection" :title="pricingStatusHint" @click="openPriceDialog()">
           批量定价
         </el-button>
       </el-form-item>
@@ -154,7 +154,7 @@
       <el-table-column label="操作" fixed="right" width="240">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.spuCode)">详情</el-button>
-          <el-button link type="primary" @click="openSkuPriceDialog(row.skuCode)">定价</el-button>
+          <el-button link type="primary" :disabled="!canPriceSku(row)" :title="pricingStatusHint" @click="openSkuPriceDialog(row.skuCode)">定价</el-button>
           <el-button v-if="row.status === PRODUCT_STATUS.DRAFT" link type="danger" @click="handleDelete(row)">
             删除
           </el-button>
@@ -255,6 +255,8 @@
       skus.forEach((sku, index) => {
         rows.push({
           ...spu,
+          // 分别保留两层状态：SKU 启用不能替代所属 SPU 启用，人工定价准入必须同时核对。
+          spuStatus: spu.status == null ? undefined : Number(spu.status),
           skuName: sku.skuName,
           skuCode: sku.skuCode,
           marketPrice: sku.marketPrice,
@@ -290,6 +292,21 @@
       .filter((spu) => !!spu.spuCode && selectedCodes.value.includes(spu.spuCode))
       .flatMap((spu) => getSkuCodesBySpu(spu.spuCode))
   )
+
+  const pricingStatusHint = '商品 SPU 与 SKU 均须已上架，请先上架后再定价'
+
+  /**
+   * 人工定价只允许两层均启用；不把状态未知当启用，不从混合批次静默剔除受限 SKU。
+   * 此处是交互守卫，服务端仍会复核并发状态变化；与自动初始化默认定价的规则不同。
+   * 设计见后端 docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#6-管理端接口。
+   */
+  const canPriceSku = (row?: { spuStatus?: number; status?: number }) =>
+    row?.spuStatus === PRODUCT_STATUS.ON_SHELF && row.status === PRODUCT_STATUS.ON_SHELF
+
+  const canPriceCodes = (codes: string[]) =>
+    codes.length > 0 && codes.every((code) => canPriceSku(tableRows.value.find((row) => row.skuCode === code)))
+
+  const canPriceSelection = computed(() => canPriceCodes(selectedSkuCodes.value))
 
   const spanMethod = ({ row, columnIndex }: { row: any; columnIndex: number }) => {
     // SPU 级合并：勾选、商品名称、兑换方式、更新时间；总库存 / 商品状态 / 操作按 SKU 分行
@@ -406,6 +423,10 @@
       message.warning('缺少 SKU 编号，无法定价')
       return
     }
+    if (!canPriceCodes([skuCode])) {
+      message.warning(pricingStatusHint)
+      return
+    }
     priceRef.value.open([skuCode], false)
   }
 
@@ -413,6 +434,10 @@
     const skuCodes = spuCode ? getSkuCodesBySpu(spuCode) : selectedSkuCodes.value
     if (!skuCodes.length) {
       message.warning('请选择需要定价的商品 SKU')
+      return
+    }
+    if (!canPriceCodes(skuCodes)) {
+      message.warning(pricingStatusHint)
       return
     }
     priceRef.value.open(skuCodes, !spuCode)

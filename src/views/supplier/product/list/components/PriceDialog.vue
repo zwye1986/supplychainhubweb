@@ -54,6 +54,11 @@ const open = async (codes: string[], batch = false) => {
   }
 }
 
+/**
+ * 单条与批量均提交五组完整默认配置；税务只作结算展示，不含税仍携带 NON_TAXABLE。
+ * 表单负责税务归一化，本层完整转发，不能再按 taxIncluded 过滤编码。
+ * 设计见后端 docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#6-管理端接口。
+ */
 const submit = async () => {
   await pricingFormRef.value?.validate()
   if (!skuCodes.value.length) {
@@ -67,10 +72,8 @@ const submit = async () => {
     distributionRule: values.distributionRule,
     salesRule: values.salesRule,
     serviceFeeRule: values.serviceFeeRule,
-    taxIncluded: values.taxIncluded
-  }
-  if (values.taxIncluded) {
-    payload.taxRateCode = values.taxRateCode
+    taxIncluded: values.taxIncluded,
+    taxRateCode: values.taxRateCode
   }
   if (values.distributionHideThresholdPercent != null) {
     payload.distributionHideThresholdPercent = values.distributionHideThresholdPercent

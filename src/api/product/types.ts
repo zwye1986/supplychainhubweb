@@ -31,7 +31,13 @@ export interface ServiceFeeRuleReqVO {
   copy?: string
 }
 
-/** PUT /supply-chain/products/skus/pricing 平台商品 SKU 默认批量定价 */
+/**
+ * 税率动态字典中的“不征税”稳定编码；其它税率仍从启用字典读取，不枚举全部税率。
+ * 设计见后端 docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#4-税务展示属性。
+ */
+export const PRICING_TAX_RATE_CODES = { NON_TAXABLE: 'NON_TAXABLE' } as const
+
+/** PUT /supply-chain/products/skus/pricing 平台商品 SKU 默认批量定价；SPU 与 SKU 均须已上架。 */
 export interface PlatformSkuBatchPricingReqVO {
   platformSkuCodes: string[]
   distributionRule: FormulaRuleReqVO
@@ -39,9 +45,10 @@ export interface PlatformSkuBatchPricingReqVO {
   serviceFeeRule: ServiceFeeRuleReqVO
   distributionHideThresholdPercent?: number
   salesHideThresholdPercent?: number
+  /** 是否含税，须与税率编码同时提交；仅用于结算展示，不参与价格计算。 */
   taxIncluded: boolean
-  /** 含税时必填；不含税不要传 */
-  taxRateCode?: string
+  /** 启用税率字典编码；不含税时仍必填 NON_TAXABLE，含税时提交所选启用编码。 */
+  taxRateCode: string
 }
 
 /**

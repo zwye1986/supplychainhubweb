@@ -153,6 +153,7 @@ import {
   FormulaRuleOperator,
   FormulaRuleReqVO,
   PlatformPricingDetail,
+  PRICING_TAX_RATE_CODES,
   ServiceFeeRuleReqVO
 } from '@/api/product'
 import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
@@ -189,7 +190,8 @@ interface PricingFormValues {
   salesRule: FormulaRuleReqVO
   serviceFeeRule: ServiceFeeRuleReqVO
   taxIncluded: boolean
-  taxRateCode?: string
+  /** 完整税务组的编码；不含税时也输出 NON_TAXABLE，禁止按下拉框禁用状态省略字段。 */
+  taxRateCode: string
   distributionHideThresholdPercent?: number
   salesHideThresholdPercent?: number
 }
@@ -388,6 +390,11 @@ const validate = async () => {
   await formRef.value?.validate()
 }
 
+/**
+ * 生成商品默认层完整配置。税务组没有上游可继承，不含税时自动补“不征税”编码；
+ * 含税缺编码仍由表单校验拒绝，不猜测税率。下拉框禁用只影响交互，不改变 HTTP 必填契约。
+ * 设计见后端 docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#4-税务展示属性。
+ */
 const getValues = (): PricingFormValues => {
   const values: PricingFormValues = {
     distributionRule: buildFormulaRule(formData.distributionRule),
@@ -401,10 +408,8 @@ const getValues = (): PricingFormValues => {
         ? formData.serviceFeeRule.copy || undefined
         : formData.serviceFeeRule.copy
     },
-    taxIncluded: formData.taxIncluded
-  }
-  if (formData.taxIncluded) {
-    values.taxRateCode = formData.taxRateCode
+    taxIncluded: formData.taxIncluded,
+    taxRateCode: formData.taxIncluded ? formData.taxRateCode : PRICING_TAX_RATE_CODES.NON_TAXABLE
   }
   const distributionHide = toOptionalNumber(formData.distributionHideThresholdPercent)
   const salesHide = toOptionalNumber(formData.salesHideThresholdPercent)
