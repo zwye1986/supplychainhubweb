@@ -64,11 +64,27 @@ export interface ProductBatchStatusFailedItemVO {
   errorCode: number
   /** 错误消息 */
   errorMessage: string
+  /** 同步上架组内的具体失败实体类型 */
+  failedEntityType?: 'SPU' | 'SKU' | null
+  /** 同步上架组内的具体失败实体业务编码 */
+  failedEntityCode?: string | null
+}
+
+/**
+ * 同步上架以 SPU 与全部未归档 SKU 为原子组；失败组没有部分成功规格。
+ * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#5-结果与页面交互。
+ */
+export interface ProductBatchStatusGroupVO {
+  spuCode: string
+  skuCodes: string[]
+  succeeded: boolean
+  failedEntityType?: 'SPU' | 'SKU' | null
+  failedEntityCode?: string | null
 }
 
 /**
  * 批量上下架结果。
- * succeeded 与 failed 列表混合 SPU/SKU 编码；调用方须先校验完整回执，当前商品列表仅批量处理 SPU。
+ * 普通模式按实体计数；同步模式按 SPU 原子组计数并给出全部处理范围，调用方须先校验完整回执。
  * 用户核对当前状态后可主动重新选择失败项，异常不自动重发写请求。
  */
 export interface ProductBatchStatusResultVO {
@@ -76,6 +92,16 @@ export interface ProductBatchStatusResultVO {
   succeeded: string[]
   /** 失败明细列表 */
   failed: ProductBatchStatusFailedItemVO[]
+  /** true 表示按商品组同步上架，缺省/false 沿用逐实体模式 */
+  syncSkuOnShelf?: boolean
+  /** 同步模式下每个请求 SPU 的实际处理范围与整组结果 */
+  groups?: ProductBatchStatusGroupVO[]
+}
+
+/** 已通过模式、组范围与失败定位校验的同步上架回执。 */
+export interface ProductShelfSyncResultVO extends ProductBatchStatusResultVO {
+  syncSkuOnShelf: true
+  groups: ProductBatchStatusGroupVO[]
 }
 
 /** GET /supply-chain/products/skus/{skuCode}/pricing 定价状态 */
@@ -153,7 +179,7 @@ export interface ProductManagementSkuItem {
   totalInventory?: number
   fulfillmentType?: string
   fulfillmentTypeDisplay?: string
-  status?: number
+  status?: number | string
   suggestedSalePriceRule?: SuggestedSalePriceRule
 }
 
@@ -166,7 +192,7 @@ export interface ProductManagementSpuItem {
   productTypeName?: string
   primaryCategoryName?: string
   brandName?: string
-  status?: number
+  status?: number | string
   unshelveMode?: string
   unshelveModeDisplay?: string
   updatedAt?: string
@@ -200,6 +226,8 @@ export interface ProductManagementPageParam {
 
 /** 复合保存 SKU */
 export interface SkuItemSaveReqVO {
+  /** 管理状态：0草稿，10启用，20停用，90已归档；新增时省略以继承父商品管理状态 */
+  status?: number
   skuCode?: string
   skuName: string
   faceValue: number
@@ -239,7 +267,9 @@ export interface SpuSaveReqVO {
 }
 
 /** 详情 SKU */
-export interface SkuDetail extends SkuItemSaveReqVO {
+export interface SkuDetail extends Omit<SkuItemSaveReqVO, 'status'> {
+  /** 管理状态：0草稿，10启用，20停用，90已归档 */
+  status?: number | string
   supplyPrice?: number
   suppliers?: SupplierSimpleInfo[]
   totalInventory?: number

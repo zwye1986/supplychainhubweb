@@ -29,6 +29,7 @@ function boundary(reply) {
   }
 }
 const codes = count => Array.from({ length: count }, (_, i) => `SPU_${i + 1}`)
+const synced = (succeeded, failed = []) => ({ syncSkuOnShelf: true, succeeded, failed: failed.map(item => ({ ...item, failedEntityType: 'SPU', failedEntityCode: item.code })), groups: [...succeeded.map(spuCode => ({ spuCode, skuCodes: [`SKU_${spuCode}`], succeeded: true })), ...failed.map(item => ({ spuCode: item.code, skuCodes: [], succeeded: false, failedEntityType: 'SPU', failedEntityCode: item.code }))] })
 const failure = (code, errorMessage = '商品类型未启用') => ({ entityType: 'SPU', code, errorCode: 1050001082, errorMessage })
 async function mount(reply, selection = ['SPU_1'], confirm) {
   const http = boundary(reply)
@@ -71,7 +72,7 @@ for (const [name, reason] of [
 }
 test('确认在途两按钮禁用并加载，重复点击只确认一次且冻结选中编码', async () => {
   const confirmation = deferred()
-  const { http, view } = await mount({ succeeded: ['SPU_1'], failed: [] }, ['SPU_1'], () => confirmation.promise)
+  const { http, view } = await mount(synced(['SPU_1']), ['SPU_1'], () => confirmation.promise)
   try {
     const first = view.buttons()[0].props.onClick()
     const duplicate = view.buttons()[1].props.onClick()
@@ -86,7 +87,7 @@ test('确认在途两按钮禁用并加载，重复点击只确认一次且冻�
     assert.deepEqual(disabled, [true, true])
     assert.deepEqual(loading, [true, true])
     assertSingleWrite(http)
-    assert.deepEqual(http.writes[0].data, { spuCodes: ['SPU_1'], skuCodes: [], targetStatus: 10, unshelveMode: undefined })
+    assert.deepEqual(http.writes[0].data, { spuCodes: ['SPU_1'], skuCodes: [], targetStatus: 10, unshelveMode: undefined, syncSkuOnShelf: true })
     assert.equal(view.state.batchStatusBusy, false)
   } finally { view.unmount() }
 })
@@ -98,7 +99,7 @@ test('写请求在途两按钮禁用并加载，重复点击只发一次', async
     const duplicate = view.buttons()[1].props.onClick(); await flushProductList()
     const disabled = view.buttons().map(item => item.props.disabled)
     const loading = view.buttons().map(item => item.props.loading)
-    write.resolve({ succeeded: ['SPU_1'], failed: [] })
+    write.resolve(synced(['SPU_1']))
     await Promise.all([first, duplicate])
     assertSingleWrite(http); assert.deepEqual(disabled, [true, true])
     assert.deepEqual(loading, [true, true])
@@ -107,7 +108,7 @@ test('写请求在途两按钮禁用并加载，重复点击只发一次', async
 })
 test('读刷新在途两按钮禁用并加载，重复点击不再确认或写入，完成后解除反馈', async () => {
   const refresh = deferred()
-  const { http, view } = await mount({ succeeded: ['SPU_1'], failed: [] })
+  const { http, view } = await mount(synced(['SPU_1']))
   try {
     http.waitRefresh(refresh.promise)
     const first = view.buttons()[0].props.onClick(); await flushProductList()
@@ -140,7 +141,7 @@ test('21 个失败项完整可见且原因按文本渲染', async () => {
   const requested = codes(21)
   const { http, view } = await mount({ succeeded: [], failed: requested.map(code => failure(code, `<img src=x onerror=alert(1)>-${code}`)) }, requested)
   try {
-    await view.state.handleBatchStatus(10); await flushProductList()
+    await view.state.handleBatchStatus(20); await flushProductList()
     assertSingleWrite(http)
     const rendered = view.text()
     for (const code of requested) assert.ok(rendered.includes(`${code}：`), `缺少失败项 ${code}`)
@@ -163,7 +164,7 @@ test('21 个失败项完整可见且原因按文本渲染', async () => {
 for (const action of ['cancel', 'close']) {
   test(`确认 ${action} 是预期流程，解除busy并允许下一次操作`, async () => {
     let cancelled = true
-    const { http, view } = await mount({ succeeded: ['SPU_1'], failed: [] }, ['SPU_1'], () => cancelled ? Promise.reject(action) : Promise.resolve())
+    const { http, view } = await mount(synced(['SPU_1']), ['SPU_1'], () => cancelled ? Promise.reject(action) : Promise.resolve())
     try {
       await view.state.handleBatchStatus(10)
       assert.equal(view.state.batchStatusBusy, false)
@@ -197,12 +198,12 @@ for (const [name, reply, type, succeeded, failed] of [
   ['全失败', { succeeded: [], failed: [failure('SPU_1'), failure('SPU_2')] }, 'error', 0, 2]
 ]) {
   test(`合法${name}准确展示计数与失败项`, async () => {
-    const { http, view } = await mount(reply, ['SPU_1', 'SPU_2'])
+    const { http, view } = await mount(synced(reply.succeeded, reply.failed), ['SPU_1', 'SPU_2'])
     try {
       await view.state.handleBatchStatus(10); await flushProductList()
       assertSingleWrite(http); assertRefreshed(http)
       assert.ok(view.messages.some(item => item.type === type))
-      assert.ok(view.text().includes(`成功 ${succeeded} 项，失败 ${failed} 项`))
+      assert.ok(view.text().includes(`成功 ${succeeded} 个商品组`)); assert.ok(view.text().includes(`失败 ${failed} 个商品组`))
       for (const item of reply.failed) assert.ok(view.text().includes(`${item.code}：${item.errorMessage}`))
       assert.equal(view.state.batchStatusBusy, false)
     } finally { view.unmount() }

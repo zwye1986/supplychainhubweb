@@ -247,6 +247,7 @@
   interface SkuFormItem {
     skuCode?: string
     readonlyCode?: boolean
+    status?: number
     skuName: string
     faceValue?: number
     marketPrice?: number
@@ -445,10 +446,15 @@
   }
   const removeSku = (index: number) => formData.skus.splice(index, 1)
 
+  /**
+   * 已有规格保留独立状态，不能被父商品状态覆盖；新增规格省略状态交由后台继承。
+   * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#5-结果与页面交互。
+   */
   const mapSkuToForm = (sku: SkuDetail): SkuFormItem => ({
     ...createSku(),
     skuCode: sku.skuCode,
     readonlyCode: true,
+    status: sku.status == null || sku.status === '' ? undefined : Number(sku.status),
     skuName: sku.skuName,
     picUrl: sku.picUrl,
     detailPics: Array.isArray(sku.detailPics) ? sku.detailPics : [],
@@ -466,6 +472,7 @@
     const rule = sku.suggestedSalePriceRule
     return {
       skuCode: sku.skuCode,
+      ...(sku.readonlyCode && sku.status != null ? { status: sku.status } : {}),
       skuName: sku.skuName,
       picUrl: sku.picUrl,
       detailPics: sku.detailPics,

@@ -16,13 +16,14 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   const confirmations = []
   const priceOpens = []
   const cache = new Map()
+  globalThis.useI18n = () => ({ t: key => key })
   globalThis.useRoute = () => ({ query: {}, path: '/supplier/product/list' })
   globalThis.useRouter = () => ({ replace: () => {} })
   globalThis.useMessage = () => ({
     ...Object.fromEntries(['error', 'warning', 'success'].map(type => [type, text => messages.push({ type, text })])),
     confirm: text => { confirmations.push(text); return confirm(text) }
   })
-  const dictionary = { DICT_TYPE: { SUPPLY_CHAIN_TAX_RATE: 'supply_chain_tax_rate' }, getDictLabel: () => '', getStrDictOptions: () => [] }
+  const dictionary = { DICT_TYPE: { SUPPLY_CHAIN_TAX_RATE: 'supply_chain_tax_rate' }, getDictLabel: (type, value) => type === 'supply_chain_sku_status' ? ({ 0: '草稿', 10: '已上架', 20: '已下架' }[value] || '') : '', getStrDictOptions: () => [] }
   function evaluate(code, resolve) {
     const exports = {}
     const js = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
@@ -30,16 +31,25 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
     return exports
   }
   function stub(name) {
-    return { name, setup: (_props, { slots, expose }) => {
+    return { name, props: name === 'ElTable' ? ['data'] : [], setup: (_props, { slots, expose }) => {
       expose({ open: (...args) => { if (name === 'PriceDialog.vue') priceOpens.push(args) },
-        validate: async () => {}, clearValidate: () => {}, validateField: () => {} })
-      return () => name === 'ElTableColumn' ? null : vue.h('div', slots.default?.())
+        validate: async () => {}, resetFields: () => {}, clearValidate: () => {}, validateField: () => {} })
+      if (name === 'ElTable') vue.provide('tableRows', () => _props.data || [])
+      const rows = name === 'ElTableColumn' ? vue.inject('tableRows', () => []) : null
+      return () => name === 'ElTableColumn'
+        ? vue.h('div', rows().map((row, $index) => slots.default?.({ row, $index })))
+        : vue.h('div', slots.default?.())
     } }
   }
   function resolve(name, file) {
     if (name === 'vue') return vue
     if (name === '@/config/axios') return { __esModule: true, default: http }
     if (name === '@/utils/dict') return dictionary
+    // 裸包名交给 Node 读取真实依赖，不能当成当前源码目录中的 index.ts。
+    if (!name.startsWith('@/') && !name.startsWith('.')) {
+      const dependency = require(name)
+      return dependency.__esModule ? dependency : { __esModule: true, default: dependency, ...dependency }
+    }
     const target = name.startsWith('@/') ? path.join(sourceRoot, name.slice(2)) : path.resolve(path.dirname(file), name)
     if (name.endsWith('.vue')) {
       // 表单、详情、定价不参与批量上下架；结果组件必须执行真实模板。
@@ -87,7 +97,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   app.directive('loading', {})
   for (const name of ['ContentWrap', 'Icon', 'Pagination', 'ProductType', 'ProductCategory', 'ElTabs', 'ElTabPane',
     'ElForm', 'ElFormItem', 'ElInput', 'ElSelect', 'ElOption', 'ElDatePicker', 'ElButton', 'ElTable', 'ElTableColumn',
-    'ElImage', 'ElTag', 'ElDialog', 'ElScrollbar', 'ElAlert', 'ElRadioGroup', 'ElRadioButton', 'ElInputNumber', 'ElSwitch', 'ElRadio', 'ElDivider', 'ElCheckbox']) app.component(name, stub(name))
+    'ElImage', 'ElTag', 'ElDialog', 'ElScrollbar', 'ElAlert', 'ElRadioGroup', 'ElRadioButton', 'ElInputNumber', 'ElSwitch', 'ElRadio', 'ElDivider', 'ElCheckbox', 'ElRow', 'ElCol', 'ElDescriptions', 'ElDescriptionsItem', 'ElEmpty', 'UploadImg', 'UploadImgs']) app.component(name, stub(name))
   const container = { children: [] }
   const root = app.mount(container)
   const textContent = node => [node.text || '', ...(node.children || []).map(textContent)].join(' ')
@@ -103,9 +113,9 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
       if (Array.isArray(vnode.children)) vnode.children.forEach(visit)
     }
     visit(root.$.vnode)
-    return found.filter(button => button.text.includes('批量上架') || button.text.includes('批量下架'))
+    return found
   }
-  return { state: root.$.setupState, messages, confirmations, priceOpens, buttons, container,
+  return { state: root.$.setupState, messages, confirmations, priceOpens, buttons: () => buttons().filter(button => button.text.includes('批量上架') || button.text.includes('批量下架')), allButtons: buttons, container,
     text: () => textContent(container), unmount: () => app.unmount() }
 }
 

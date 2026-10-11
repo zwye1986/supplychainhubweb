@@ -107,7 +107,13 @@
       <el-table-column label="商品状态" min-width="90">
         <template #default="{ row }">
           <el-tag size="small">
-            {{ getDictLabel('supply_chain_sku_status', row.status) || '-' }}
+            SPU：{{ getDictLabel('supply_chain_sku_status', row.spuStatus) || '-' }}
+          </el-tag>
+          <el-tag size="small">
+            SKU：{{ getDictLabel('supply_chain_sku_status', row.status) || '-' }}
+          </el-tag>
+          <el-tag v-if="row.spuStatus !== PRODUCT_STATUS.ON_SHELF" size="small" type="warning">
+            父商品未上架，规格有效上架受阻
           </el-tag>
         </template>
       </el-table-column>
@@ -158,10 +164,10 @@
           <el-button v-if="row.status === PRODUCT_STATUS.DRAFT" link type="danger" @click="handleDelete(row)">
             删除
           </el-button>
-          <el-button v-if="row.status === PRODUCT_STATUS.OFF_SHELF" link type="success" @click="handleStatus(row, PRODUCT_STATUS.ON_SHELF)">
+          <el-button v-if="row.skuCode && [PRODUCT_STATUS.DRAFT, PRODUCT_STATUS.OFF_SHELF].includes(row.status)" link type="success" @click="handleStatus(row, PRODUCT_STATUS.ON_SHELF)">
             上架
           </el-button>
-          <el-button v-if="row.status === PRODUCT_STATUS.ON_SHELF" link type="warning" @click="handleStatus(row, PRODUCT_STATUS.OFF_SHELF)">
+          <el-button v-if="row.skuCode && row.status === PRODUCT_STATUS.ON_SHELF" link type="warning" @click="handleStatus(row, PRODUCT_STATUS.OFF_SHELF)">
             下架
           </el-button>
         </template>
@@ -194,7 +200,7 @@
   import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
   import ProductPriceDialog from './components/PriceDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
-  import { isSpuBatchStatusResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'
+  import { isSpuBatchStatusResult, isSpuShelfSyncResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'
   import ProductForm from './form/index.vue'
   import ProductDetail from './detail/index.vue'
 
@@ -310,8 +316,8 @@
   const canPriceSelection = computed(() => canPriceCodes(selectedSkuCodes.value))
 
   const spanMethod = ({ row, columnIndex }: { row: any; columnIndex: number }) => {
-    // SPU 级合并：勾选、商品名称、兑换方式、更新时间；总库存 / 商品状态 / 操作按 SKU 分行
-    if ([0, 1, 4, 16].includes(columnIndex)) {
+    // SPU 级合并仅勾选、商品名称、兑换方式；商品状态与操作按 SKU 分行。
+    if ([0, 1, 4].includes(columnIndex)) {
       return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
     }
   }
@@ -454,12 +460,16 @@
     } catch {}
   }
 
-  const handleStatus = async (row: ProductManagementSpuItem, targetStatus: number) => {
-    if (!row.spuCode) return
+  /**
+   * SKU 行独立上下架，避免用父编码改变整个商品；父未上架时 SKU 仍不能有效上架。
+   * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#2-推荐业务语义与边界。
+   */
+  const handleStatus = async (row: ProductManagementSkuItem, targetStatus: number) => {
+    if (!row.skuCode) return
     const text = targetStatus === PRODUCT_STATUS.ON_SHELF ? '上架' : '下架'
     try {
-      await message.confirm(`确认${text}商品「${row.spuName}」？`)
-      await ProductApi.changeProductStatus(row.spuCode, targetStatus)
+      await message.confirm(`确认${text}规格「${row.skuName || row.skuCode}」？`)
+      await ProductApi.changeSkuStatus(row.skuCode, targetStatus)
       message.success(`${text}成功`)
       getList()
     } catch {}
@@ -469,11 +479,13 @@
    * 冻结选中 SPU 后只提交一次批量写请求，确认与执行期间共同持有 busy。
    * 整体异常可能已有部分提交，因此不能降级重写或伪造逐项结果；始终尝试查询最新列表。
    * 刷新失败只反馈读错误，保留已确认的写回执。前后端批量回执契约须同批发布。
-   * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110-批量上下架接口put-supply-chainproductsbatch-status。
+   * 同步上架以后台完整未归档规格范围为准，包含主动下架规格；下架仍只改变 SPU。
+   * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#5-结果与页面交互。
    */
   const handleBatchStatus = async (targetStatus: number) => {
     if (batchStatusBusy.value) return
     const text = targetStatus === PRODUCT_STATUS.ON_SHELF ? '上架' : '下架'
+    const syncSkuOnShelf = targetStatus === PRODUCT_STATUS.ON_SHELF
     const spuCodes = [...selectedCodes.value]
     if (!spuCodes.length) {
       message.warning('请选择需要操作的商品')
@@ -486,7 +498,9 @@
     batchStatusBusy.value = true
     try {
       try {
-        await message.confirm(`确认批量${text}选中的 ${spuCodes.length} 个商品？`)
+        await message.confirm(syncSkuOnShelf
+          ? `确认同步上架选中的 ${spuCodes.length} 个商品及其全部未归档规格（包含此前单独下架规格，将恢复上架）？`
+          : `确认批量${text}选中的 ${spuCodes.length} 个商品？`)
       } catch (error) {
         // Element Plus 将用户取消/关闭确认框作为 Promise 拒绝，是预期的交互流程。
         if (error !== 'cancel' && error !== 'close') {
@@ -498,16 +512,26 @@
       batchStatusResultVisible.value = false
       batchStatusActionText.value = text
       try {
-        const response: unknown = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus)
-        if (!isSpuBatchStatusResult(response, spuCodes)) {
+        const response: unknown = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus, undefined, syncSkuOnShelf ? true : undefined)
+        const validResult = syncSkuOnShelf
+          ? isSpuShelfSyncResult(response, spuCodes)
+          : isSpuBatchStatusResult(response, spuCodes) && response.syncSkuOnShelf !== true
+        if (!validResult) {
           message.error('批量上下架回执契约不兼容，结果未确认，请核对当前商品状态；前后端须同批发布')
           return
         }
-        batchStatusResult.value = response
+        const result = response as ProductBatchStatusResultVO
+        batchStatusResult.value = result
         batchStatusResultVisible.value = true
-        const succeededCount = response.succeeded.length
-        const failedCount = response.failed.length
-        const summary = `批量${text}完成：成功 ${succeededCount} 项，失败 ${failedCount} 项`
+        const succeededCount = result.succeeded.length
+        const failedCount = result.failed.length
+        // 普通下架仅校验逐实体回执，不读取额外 groups；规格数量只消费已校验的同步回执。
+        const skuCount = syncSkuOnShelf
+          ? result.groups?.filter(group => group.succeeded).reduce((count, group) => count + group.skuCodes.length, 0) || 0
+          : 0
+        const summary = syncSkuOnShelf
+          ? `批量上架完成：${succeededCount} 个商品及 ${skuCount} 个规格已同步上架，失败 ${failedCount} 个商品组`
+          : `批量${text}完成：成功 ${succeededCount} 项，失败 ${failedCount} 项`
         if (failedCount === 0) message.success(summary)
         else if (succeededCount === 0) message.error(summary)
         else message.warning(summary)
