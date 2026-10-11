@@ -49,16 +49,25 @@
       <el-table-column label="类型/分类" min-width="180">
         <template #default="{ row }">
           <el-tag v-if="row.productType || row.productClassification" size="small" type="info">
-            <ProductType v-if="row.productType" :model-value="row.productType" :multiple="false" text />
+            <ProductType
+              v-if="row.productType"
+              :model-value="row.productType"
+              :multiple="false"
+              text
+            />
             <template v-if="row.productType && row.productClassification"> / </template>
-            <ProductCategory v-if="row.productClassification" :model-value="row.productClassification" text />
+            <ProductCategory
+              v-if="row.productClassification"
+              :model-value="row.productClassification"
+              text
+            />
           </el-tag>
           <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column label="销售建议价（元）" min-width="150" align="right">
         <template #default="{ row }">
-          {{ formatCentsYuan(row.suggestPriceCents) }}
+          {{ formatCentsYuan(row.suggestedSalePriceCents) }}
         </template>
       </el-table-column>
       <el-table-column label="供应价模式" min-width="110">
@@ -67,6 +76,14 @@
         </template>
       </el-table-column>
       <el-table-column label="供应价（元）" min-width="110" align="right">
+        <template #header>
+          <span class="inline-flex items-center gap-4px">
+            供应价（元）
+            <el-tooltip content="按当前商业条款展示；已发布履约版本按冻结价执行" placement="top">
+              <Icon icon="ep:question-filled" />
+            </el-tooltip>
+          </span>
+        </template>
         <template #default="{ row }">
           {{ formatSupplyPrice(row) }}
         </template>
@@ -162,7 +179,9 @@
             clearable
           />
         </el-form-item>
-        <el-form-item label="销售建议价">{{ formatCentsYuan(priceForm.suggestedPriceCents) }}</el-form-item>
+        <el-form-item label="销售建议价">{{
+          formatCentsYuan(priceForm.suggestedPriceCents)
+        }}</el-form-item>
         <el-form-item label="供应价模式" required>
           <el-select v-model="priceForm.priceMode" class="!w-full">
             <el-option
@@ -271,7 +290,9 @@
       </el-form>
       <template #footer>
         <el-button @click="batchScoreVisible = false">取 消</el-button>
-        <el-button type="primary" :loading="batchScoreSubmitting" @click="submitBatchScore">确 定</el-button>
+        <el-button type="primary" :loading="batchScoreSubmitting" @click="submitBatchScore"
+          >确 定</el-button
+        >
       </template>
     </Dialog>
   </ContentWrap>
@@ -351,7 +372,11 @@ const parseScore = (value?: number | string | null) => {
   return num
 }
 
-const validateScoreField = (_rule: unknown, value: number | undefined, callback: (error?: Error) => void) => {
+const validateScoreField = (
+  _rule: unknown,
+  value: number | undefined,
+  callback: (error?: Error) => void
+) => {
   if (value == null) {
     callback()
     return
@@ -375,7 +400,7 @@ const priceForm = reactive({
   priceMode: OfferPriceModeEnum.FIXED,
   unitPriceYuan: undefined as number | undefined,
   discountPercent: undefined as number | undefined,
-  suggestedPriceCents: undefined as number | undefined,
+  suggestedPriceCents: undefined as number | null | undefined,
   supplyMode: '',
   maxQuantity: undefined as number | undefined,
   minQuantity: undefined as number | undefined
@@ -450,14 +475,22 @@ const loadCategoryTags = async () => {
   }
 }
 
-/** 供应价展示：固定值取供应价；折扣取建议价×折扣基点；实时更新为 - */
+/**
+ * 当前商业条款投影：固定值取身份行供应价；折扣仅按正 SKU 销售建议价 HALF_UP 试算。
+ * 履约版本仍按冻结价执行；不得以旧 L1/市场价补齐缺失建议价。
+ * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-sale-price-alignment-design.md#5-前端展示与写入。
+ */
 const formatSupplyPrice = (row: OfferListItem) => {
   if (row.priceMode === OfferPriceModeEnum.FIXED) {
     return formatCentsYuan(row.unitPriceCents)
   }
   if (row.priceMode === OfferPriceModeEnum.DISCOUNT) {
-    if (row.suggestPriceCents != null && row.discountBp != null) {
-      return formatCentsYuan(Math.round((row.suggestPriceCents * row.discountBp) / 10000))
+    if (
+      row.suggestedSalePriceCents != null &&
+      row.suggestedSalePriceCents > 0 &&
+      row.discountBp != null
+    ) {
+      return formatCentsYuan(Math.round((row.suggestedSalePriceCents * row.discountBp) / 10000))
     }
     return '-'
   }
@@ -567,7 +600,9 @@ const submitBatchScore = async () => {
     return
   }
   const platformSkuCodes = [
-    ...new Set(selectedRows.value.map((row) => row.platformSkuCode).filter((code): code is string => !!code))
+    ...new Set(
+      selectedRows.value.map((row) => row.platformSkuCode).filter((code): code is string => !!code)
+    )
   ]
   if (!platformSkuCodes.length) {
     message.error('选中商品缺少平台 SKU 编号，无法批量修改评分')
@@ -615,7 +650,7 @@ const openEdit = (row: OfferListItem) => {
   priceForm.priceMode = row.priceMode || OfferPriceModeEnum.FIXED
   priceForm.unitPriceYuan = centsToYuan(row.unitPriceCents)
   priceForm.discountPercent = bpToPercent(row.discountBp)
-  priceForm.suggestedPriceCents = row.suggestPriceCents
+  priceForm.suggestedPriceCents = row.suggestedSalePriceCents
   priceForm.supplyMode = row.offerSupplyMode || ''
   priceForm.maxQuantity = row.maxQuantity
   priceForm.minQuantity = row.minQuantity
@@ -662,6 +697,10 @@ const submitPrice = async () => {
     }
     payload.unitPriceCents = unitPriceCents
   } else if (priceForm.priceMode === OfferPriceModeEnum.DISCOUNT) {
+    if (priceForm.suggestedPriceCents == null || priceForm.suggestedPriceCents <= 0) {
+      message.warning('折扣模式要求SKU销售建议价大于0，请先在商品中心配置')
+      return
+    }
     const percent = priceForm.discountPercent || 0
     if (percent < 0.01 || percent > 100) {
       message.warning('供货折扣需在 0.01%~100% 之间')

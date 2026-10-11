@@ -181,6 +181,8 @@ export interface OfferListItem {
   productClassification?: string
   /** L1 B端结算单价，CNY 分，允许0 */
   suggestPriceCents?: number
+  /** 建议零售价/销售建议价，单位为分 */
+  suggestedSalePriceCents?: number | null
   /** 供应价模式：FIXED固定值，REALTIME实时，DISCOUNT折扣 */
   priceMode?: string
   /** 草稿供应价，CNY分；REALTIME为空 */
@@ -223,7 +225,7 @@ export interface DraftReqVO {
   unitPriceCents?: number
   /** 折扣基点，10000=100% */
   discountBp?: number
-  /** L1 B端结算单价，CNY 分，允许 0 */
+  /** 历史兼容提示价，CNY 分；非权威基数，服务端折扣准入读取 SKU 销售建议价 */
   suggestedPriceCents?: number
   /** 该 Offer 供货模式 */
   supplyMode: string
@@ -295,7 +297,8 @@ export interface OfferPageParam {
 /** 合作商品表单行（列表展示字段 + 草稿提交字段） */
 export interface OfferFormItem extends OfferListItem {
   supplyMode?: string
-  suggestedPriceCents?: number
+  /** SKU 销售建议价的兼容提交提示，非服务端权威基数 */
+  suggestedPriceCents?: number | null
   taxIncluded?: boolean
   taxRateCode?: string
 }

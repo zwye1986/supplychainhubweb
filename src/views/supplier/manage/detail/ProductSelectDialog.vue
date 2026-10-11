@@ -64,7 +64,12 @@
               />
             </el-form-item>
             <el-form-item label="商品分类">
-              <ProductCategory v-model="queryParams.categoryId" node-key="id" placeholder="请选择" class="!w-140px" />
+              <ProductCategory
+                v-model="queryParams.categoryId"
+                node-key="id"
+                placeholder="请选择"
+                class="!w-140px"
+              />
             </el-form-item>
             <el-form-item>
               <el-button @click="handleQuery">搜索</el-button>
@@ -138,73 +143,73 @@
             </div>
 
             <div class="batch-config">
-                <div class="batch-config__title">
-                  <span>批量配置</span>
-                  <span class="batch-config__hint">对已选数据一键应用一下设置</span>
-                </div>
-                <div class="batch-config__row">
-                  <el-select v-model="batchConfig.priceMode" size="small" class="!w-130px">
-                    <template #label="{ label, value }">
-                      {{ label || getOfferPriceModeLabel(value) }}
-                    </template>
-                    <el-option
-                      v-for="item in priceModeOptions"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </el-select>
-                  <el-input-number
-                    v-if="batchConfig.priceMode === OfferPriceModeEnum.FIXED"
-                    :controls="false"
-                    v-model="batchConfig.priceOrDiscount"
-                    :min="0"
-                    :precision="2"
-                    placeholder="供应价"
-                    size="small"
-                    class="!w-130px"
-                  />
-                  <el-input-number
-                    v-else-if="batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT"
-                    :controls="false"
-                    v-model="batchConfig.priceOrDiscount"
-                    :min="0.01"
-                    :max="100"
-                    :precision="2"
-                    placeholder="折扣(%)"
-                    size="small"
-                    class="!w-130px"
-                  />
-                  <el-select v-model="batchConfig.supplyMode" size="small" class="!w-120px">
-                    <el-option
-                      v-for="item in supplyModeOptions"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </el-select>
-                  <el-input-number
-                    :controls="false"
-                    v-model="batchConfig.maxQuantity"
-                    :min="1"
-                    :precision="0"
-                    size="small"
-                    class="!w-110px"
-                  />
-                  <el-input-number
-                    :controls="false"
-                    v-model="batchConfig.minQuantity"
-                    :min="1"
-                    :precision="0"
-                    size="small"
-                    class="!w-90px"
-                  />
-                </div>
-                <div class="batch-config__actions">
-                  <el-button size="small" @click="resetBatchConfig">清空</el-button>
-                  <el-button size="small" type="primary" @click="applyBatch">应用</el-button>
-                </div>
+              <div class="batch-config__title">
+                <span>批量配置</span>
+                <span class="batch-config__hint">对已选数据一键应用一下设置</span>
               </div>
+              <div class="batch-config__row">
+                <el-select v-model="batchConfig.priceMode" size="small" class="!w-130px">
+                  <template #label="{ label, value }">
+                    {{ label || getOfferPriceModeLabel(value) }}
+                  </template>
+                  <el-option
+                    v-for="item in priceModeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+                <el-input-number
+                  v-if="batchConfig.priceMode === OfferPriceModeEnum.FIXED"
+                  :controls="false"
+                  v-model="batchConfig.priceOrDiscount"
+                  :min="0"
+                  :precision="2"
+                  placeholder="供应价"
+                  size="small"
+                  class="!w-130px"
+                />
+                <el-input-number
+                  v-else-if="batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT"
+                  :controls="false"
+                  v-model="batchConfig.priceOrDiscount"
+                  :min="0.01"
+                  :max="100"
+                  :precision="2"
+                  placeholder="折扣(%)"
+                  size="small"
+                  class="!w-130px"
+                />
+                <el-select v-model="batchConfig.supplyMode" size="small" class="!w-120px">
+                  <el-option
+                    v-for="item in supplyModeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+                <el-input-number
+                  :controls="false"
+                  v-model="batchConfig.maxQuantity"
+                  :min="1"
+                  :precision="0"
+                  size="small"
+                  class="!w-110px"
+                />
+                <el-input-number
+                  :controls="false"
+                  v-model="batchConfig.minQuantity"
+                  :min="1"
+                  :precision="0"
+                  size="small"
+                  class="!w-90px"
+                />
+              </div>
+              <div class="batch-config__actions">
+                <el-button size="small" @click="resetBatchConfig">清空</el-button>
+                <el-button size="small" type="primary" @click="applyBatch">应用</el-button>
+              </div>
+            </div>
 
             <div
               v-for="group in selectedGroups"
@@ -215,13 +220,12 @@
                 <span class="truncate font-600">{{ group.spuName }}</span>
                 <span class="selected-spu__count">{{ group.items.length }}个SKU</span>
               </div>
-              <div
-                v-for="item in group.items"
-                :key="item.platformSkuCode"
-                class="selected-sku"
-              >
+              <div v-for="item in group.items" :key="item.platformSkuCode" class="selected-sku">
                 <div class="sku-field sku-field--name">
-                  <span class="selected-sku__name" :title="item.platformSkuName || item.platformSkuCode">
+                  <span
+                    class="selected-sku__name"
+                    :title="item.platformSkuName || item.platformSkuCode"
+                  >
                     {{ item.platformSkuName || item.platformSkuCode }}
                   </span>
                 </div>
@@ -265,7 +269,9 @@
                     placeholder="供应价"
                     size="small"
                     class="sku-control !w-110px"
-                    @update:model-value="(val: number | undefined) => (item.unitPriceCents = yuanToCents(val))"
+                    @update:model-value="
+                      (val: number | undefined) => (item.unitPriceCents = yuanToCents(val))
+                    "
                   />
                   <el-input-number
                     v-else
@@ -277,7 +283,9 @@
                     placeholder="折扣(%)"
                     size="small"
                     class="sku-control !w-110px"
-                    @update:model-value="(val: number | undefined) => (item.discountBp = percentToBp(val))"
+                    @update:model-value="
+                      (val: number | undefined) => (item.discountBp = percentToBp(val))
+                    "
                   />
                 </div>
                 <div class="sku-field">
@@ -342,11 +350,7 @@
                 </div>
               </div>
             </div>
-            <el-empty
-              v-if="!selectedList.length"
-              description="请从左侧选择商品"
-              :image-size="60"
-            />
+            <el-empty v-if="!selectedList.length" description="请从左侧选择商品" :image-size="60" />
           </div>
         </ContentWrap>
       </el-col>
@@ -368,12 +372,7 @@ import {
   PRODUCT_STATUS,
   type ProductTypeVO
 } from '@/api/product'
-import {
-  SupplierApi,
-  DraftReqVO,
-  OfferFormItem,
-  SupplyScopeView
-} from '@/api/supplier/manage'
+import { SupplierApi, DraftReqVO, OfferFormItem, SupplyScopeView } from '@/api/supplier/manage'
 import {
   OFFER_PRICE_MODE_OPTIONS,
   OfferPriceModeEnum,
@@ -420,6 +419,8 @@ type SelectSkuRow = {
   productTypeName?: string
   primaryCategoryName?: string
   marketPrice?: number
+  /** 建议零售价/销售建议价，单位为分 */
+  suggestedSalePrice?: number | null
 }
 
 const priceModeOptions = computed(() => {
@@ -531,7 +532,9 @@ const getScopeCategoryIds = (tabCode?: string) => {
       : supplyScopes.value
   return [
     ...new Set(
-      scopes.map((item) => toScopeCategoryId(item.categoryId)).filter((id): id is number => id != null)
+      scopes
+        .map((item) => toScopeCategoryId(item.categoryId))
+        .filter((id): id is number => id != null)
     )
   ]
 }
@@ -571,6 +574,11 @@ const open = async () => {
 }
 defineExpose({ open })
 
+/**
+ * 选品投影分别保留市场价与 SKU 销售建议价，后者只作兼容提交提示；批量模式切换不能改写它。
+ * 服务端仍读取自身 SKU 快照做最终折扣准入，页面校验不能替代服务端校验。
+ * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-sale-price-alignment-design.md#5-前端展示与写入。
+ */
 const flattenProductPage = (spus: ProductManagementSpuItem[]): SelectSkuRow[] => {
   const rows: SelectSkuRow[] = []
   spus.forEach((spu) => {
@@ -586,7 +594,8 @@ const flattenProductPage = (spus: ProductManagementSpuItem[]): SelectSkuRow[] =>
         productType: spu.productType,
         productTypeName: spu.productTypeName,
         primaryCategoryName: spu.primaryCategoryName,
-        marketPrice: sku.marketPrice
+        marketPrice: sku.marketPrice,
+        suggestedSalePrice: sku.suggestedSalePrice
       })
     })
   })
@@ -675,8 +684,8 @@ const handleSelectionChange = (rows: SelectSkuRow[]) => {
       platformSkuName: row.skuName,
       productType: row.productType,
       externalSkuCode: '',
-      suggestPriceCents: row.marketPrice,
-      suggestedPriceCents: row.marketPrice,
+      // 仅保留 SKU 建议价作为兼容提示，禁止市场价或旧 L1 兜底；详见定价口径修复设计 §5。
+      suggestedPriceCents: row.suggestedSalePrice,
       priceMode: getDefaultPriceMode(),
       supplyMode: getDefaultSupplyMode(),
       maxQuantity: 9999999,
@@ -749,7 +758,7 @@ const toDraftReq = (item: OfferFormItem): DraftReqVO => {
     const discountBp = toDraftNumber(item.discountBp)
     if (discountBp != null) payload.discountBp = discountBp
   }
-  const suggestedPriceCents = toDraftNumber(item.suggestedPriceCents ?? item.suggestPriceCents)
+  const suggestedPriceCents = toDraftNumber(item.suggestedPriceCents)
   if (suggestedPriceCents != null) payload.suggestedPriceCents = suggestedPriceCents
   const maxQuantity = toDraftNumber(item.maxQuantity)
   if (maxQuantity != null && maxQuantity > 0) payload.maxQuantity = maxQuantity
@@ -784,6 +793,10 @@ const validateSelected = () => {
         return false
       }
     } else if (item.priceMode === OfferPriceModeEnum.DISCOUNT) {
+      if (item.suggestedPriceCents == null || item.suggestedPriceCents <= 0) {
+        message.warning(`SKU「${skuName}」折扣模式要求SKU销售建议价大于0，请先在商品中心配置`)
+        return false
+      }
       const percent = bpToPercent(item.discountBp) || 0
       if (percent < 0.01 || percent > 100) {
         message.warning(`SKU「${skuName}」供货折扣需在 0.01%~100% 之间`)
