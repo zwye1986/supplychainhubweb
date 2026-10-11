@@ -1,14 +1,14 @@
 /**
- * 合作商品「上架即发布」（B1）业务侧前端纯逻辑与展示常量。
+ * 合作商品独立上下架与履约配置展示常量。
  *
  * 本模块必须保持「无 @/ 值导入」，以便用 Node 内置测试运行器（node --test）直接对纯逻辑做单测；
  * 类型只用 `import type` 或就地定义（类型在 node 类型擦除后不产生运行时依赖）。
- * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#86-业务侧b1f1。
+ * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-lifecycle-design.md#2-单一读模型与前端契约。
  */
 
 /**
  * i-b 履约就绪度三态；对齐后端 OfferListItem.fulfillmentStatus 与 FulfillmentStatus 枚举。
- * NOT_CONFIGURED＝尚无已发布履约版本；STALE＝身份列与当前版本冻结值漂移；READY＝一致可履约。
+ * NOT_CONFIGURED＝尚无已发布履约版本；STALE＝有待发布变更；READY＝配置与冻结版本一致。发布资格另由后端canPublish判断。
  */
 export const FulfillmentStatusEnum = {
   NOT_CONFIGURED: 'NOT_CONFIGURED',
@@ -23,7 +23,7 @@ type TagType = 'success' | 'warning' | 'info' | 'danger' | 'primary'
 export const FULFILLMENT_STATUS_OPTIONS: { value: string; label: string; type: TagType }[] = [
   { value: FulfillmentStatusEnum.READY, label: '就绪', type: 'success' },
   { value: FulfillmentStatusEnum.NOT_CONFIGURED, label: '未配置', type: 'info' },
-  { value: FulfillmentStatusEnum.STALE, label: '过期', type: 'warning' }
+  { value: FulfillmentStatusEnum.STALE, label: '待发布变更', type: 'warning' }
 ]
 
 const findOption = (value?: string) =>
@@ -35,12 +35,18 @@ export const getFulfillmentStatusLabel = (status?: string): string =>
 export const getFulfillmentStatusType = (status?: string): TagType =>
   (findOption(status)?.type || 'info') as TagType
 
-/**
- * 上架动作按钮文案（§8.6）：就绪态为「重新上架」（带新 expectedOfferVersion 取代旧版本，k1），
- * 未配置/过期态为「上架」。状态缺失（旧数据）按未配置处理，仍可上架。
- */
-export const getOnShelfActionLabel = (status?: string): string =>
-  status === FulfillmentStatusEnum.READY ? '重新上架' : '上架'
+/** 合作商品生命周期与后端OfferStatus契约一致，不能用履约配置状态替代。 */
+export const OfferStatusEnum = {
+  PUBLISHED: 'PUBLISHED',
+  SUSPENDED: 'SUSPENDED'
+} as const
+
+/** 状态缺失或未知不推断为下架，避免旧数据误显示发布操作。 */
+export const getOnShelfActionLabel = (status?: string): '上架' | '下架' | undefined => {
+  if (status === OfferStatusEnum.PUBLISHED) return '下架'
+  if (status === OfferStatusEnum.SUSPENDED) return '上架'
+  return undefined
+}
 
 /** externalSkuCode 最大长度；对齐后端 f1 身份列与 DraftReqVO @Schema。 */
 export const EXTERNAL_SKU_CODE_MAX_LENGTH = 128

@@ -211,8 +211,12 @@ export interface OfferListItem {
   currentVersionId?: number | null
   /** Offer 聚合乐观锁版本号，上架须回传作为 expectedOfferVersion */
   offerVersion?: number
-  /** i-b 履约就绪度三态：NOT_CONFIGURED未配置，STALE过期，READY就绪 */
+  /** i-b 履约就绪度三态：NOT_CONFIGURED未发布版本，STALE待发布变更，READY配置一致 */
   fulfillmentStatus?: string
+  /** 是否满足上架/发布变更前置条件，后端正式接口做最终校验 */
+  canPublish?: boolean
+  /** 不可发布时的中文阻断原因；可发布时为空 */
+  publishBlockedReason?: string | null
 }
 
 /** 合作商品行（接口 DraftReqVO） */

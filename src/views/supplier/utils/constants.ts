@@ -1,4 +1,6 @@
 import { getDictLabel } from '@/utils/dict'
+import { OfferStatusEnum } from '../manage/detail/utils/fulfillment'
+export { OfferStatusEnum }
 
 /** 供应商合作状态（接口枚举名） */
 export const SupplierStatusEnum = {
@@ -117,11 +119,6 @@ export const PRODUCT_SHELF_STATUS_OPTIONS = [
 ]
 
 /** 合作商品状态（接口 status） */
-export const OfferStatusEnum = {
-  PUBLISHED: 'PUBLISHED',
-  SUSPENDED: 'SUSPENDED'
-} as const
-
 export const OFFER_STATUS_OPTIONS = [
   { value: OfferStatusEnum.PUBLISHED, label: '上架', type: 'success' as const },
   { value: OfferStatusEnum.SUSPENDED, label: '下架', type: 'info' as const }

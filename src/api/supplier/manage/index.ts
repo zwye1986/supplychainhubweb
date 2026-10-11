@@ -154,7 +154,7 @@ export const SupplierApi = {
     })
   },
 
-  /** 批量新增合作商品：POST /suppliers/{supplierCode}/offers，body.items 优先，新增即 PUBLISHED */
+  /** 批量新增合作商品：POST /suppliers/{supplierCode}/offers，body.items 优先，新增默认 SUSPENDED，保存报价后需正式发布上架 */
   createOffers: async (supplierCode: string, data: OfferItemsReqVO) => {
     return await request.post<string[]>({
       url: `/supply-chain/suppliers/${supplierCode}/offers`,

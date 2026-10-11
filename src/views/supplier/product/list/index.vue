@@ -130,8 +130,10 @@
       <el-table-column label="销售建议价（元）" min-width="150" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.suggestedSalePrice) }}</template>
       </el-table-column>
-      <el-table-column label="供应价（元）" min-width="110" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.supplyPrice) }}</template>
+      <el-table-column label="供应价（元）" min-width="150" align="right">
+        <template #default="{ row }">
+          {{ row.supplyPrice == null ? '暂无有效供货价' : formatCentsYuan(row.supplyPrice) }}
+        </template>
       </el-table-column>
       <!-- <el-table-column label="不含税供应价（元）" min-width="140" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.supplyPriceExclusive) }}</template>

@@ -137,19 +137,38 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="履约状态" min-width="100" align="center">
+      <el-table-column label="商品履约配置" min-width="130" align="center">
         <template #default="{ row }">
           <el-tag :type="getFulfillmentStatusType(row.fulfillmentStatus)" size="small">
             {{ getFulfillmentStatusLabel(row.fulfillmentStatus) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" align="center" fixed="right">
+      <el-table-column label="操作" width="240" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">改价</el-button>
-          <el-button link type="success" @click="handleListOnShelf(row)">
-            {{ getOnShelfActionLabel(row.fulfillmentStatus) }}
-          </el-button>
+          <el-button
+            v-if="row.status === OfferStatusEnum.PUBLISHED"
+            link
+            type="warning"
+            @click="handleTakeOffShelf(row)"
+            >下架</el-button
+          >
+          <el-tooltip
+            v-if="getOnShelfActionLabel(row.status)"
+            :disabled="row.canPublish !== false"
+            :content="row.publishBlockedReason || '当前不满足发布条件'"
+          >
+            <span>
+              <el-button
+                link
+                type="success"
+                :disabled="row.canPublish === false"
+                @click="handleListOnShelf(row)"
+                >{{ row.status === OfferStatusEnum.PUBLISHED ? '发布变更' : '上架' }}</el-button
+              >
+            </span>
+          </el-tooltip>
           <el-button link type="danger" @click="handleDelete(row.offerNo)">移除</el-button>
         </template>
       </el-table-column>
@@ -165,7 +184,7 @@
 
     <Dialog v-model="priceVisible" title="改价" width="560px">
       <el-alert class="mb-12px" type="info" :closable="false">
-        校验价格与供货配置后更新，不修改评分。
+        仅保存待发布变更；已有生效版本继续用于定价和履约，发布变更后新价格生效。
       </el-alert>
       <el-form label-width="120px">
         <el-form-item label="商品名称">{{ priceRow?.platformSpuName || '-' }}</el-form-item>
@@ -304,6 +323,7 @@ import { ProductTypeApi } from '@/api/product'
 import {
   OFFER_PRICE_MODE_OPTIONS,
   OfferPriceModeEnum,
+  OfferStatusEnum,
   bpToPercent,
   centsToYuan,
   formatCentsYuan,
@@ -722,7 +742,7 @@ const submitPrice = async () => {
   priceSubmitting.value = true
   try {
     await SupplierApi.updateOffer(props.supplierCode, priceForm.offerNo, payload)
-    message.success('改价成功')
+    message.success('待发布变更已保存')
     priceVisible.value = false
     await getList()
   } finally {
@@ -741,25 +761,35 @@ const handleDelete = async (offerNo?: string) => {
 }
 
 /**
- * 上架即发布（B1，§8.6）：只传 offerNo（长期有效，k1），无发布对话框；服务端自动引用唯一已发布连接器版本、
- * 开通库存、继承结算价、注入执行画像。连接器缺失/能力缺口由后端返回明确文案，经 axios 拦截器透传（本页不重复 toast）。
- * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#86-业务侧b1f1。
+ * Offer上下架独立于平台商品，已上架行保留下架与发布变更两种操作。
+ * 后端请求错误沿用axios统一提示，组件不重复toast。
+ * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-lifecycle-design.md#33-闭环三连接器切换后保留发布变更操作。
  */
-const handleListOnShelf = async (row: OfferListItem) => {
-  if (!row.offerNo) {
-    message.error('缺少合作商品编号，暂无法上架')
-    return
-  }
+const handleTakeOffShelf = async (row: OfferListItem) => {
+  if (!row.offerNo || row.status !== OfferStatusEnum.PUBLISHED) return
   try {
     await message.confirm(
-      `确认${getOnShelfActionLabel(row.fulfillmentStatus)}「${row.platformSkuName || row.platformSkuCode}」？将发布为可履约供给版本。`
+      `确认下架「${row.platformSkuName || row.platformSkuCode}」？下架后停止用于新交易。`
+    )
+    await SupplierApi.patchOffer(props.supplierCode, row.offerNo, {
+      status: OfferStatusEnum.SUSPENDED
+    })
+    message.success('下架成功')
+    await getList()
+  } catch {}
+}
+
+const handleListOnShelf = async (row: OfferListItem) => {
+  if (!row.offerNo || !getOnShelfActionLabel(row.status) || row.canPublish === false) return
+  const label = row.status === OfferStatusEnum.PUBLISHED ? '发布变更' : '上架'
+  try {
+    await message.confirm(
+      `确认${label}「${row.platformSkuName || row.platformSkuCode}」？将发布为可履约供给版本。`
     )
     await SupplierApi.listOfferOnShelf(props.supplierCode, row.offerNo)
-    message.success('上架成功')
+    message.success(`${label}成功`)
     await getList()
-  } catch (error: any) {
-    if (error?.message) message.error(error.message)
-  }
+  } catch {}
 }
 
 const reload = async () => {
