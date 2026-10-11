@@ -16,6 +16,8 @@ export type {
   PlatformSkuBatchPricingReqVO,
   ProductBatchStatusFailedItemVO,
   ProductBatchStatusResultVO,
+  ProductBatchStatusGroupVO,
+  ProductShelfSyncResultVO,
   ProductBrandVO,
   ProductCategoryVO,
   ProductManagementPageParam,
@@ -238,21 +240,32 @@ export const ProductApi = {
     })
   },
   /**
+   * 行内操作仅改变目标 SKU，所属 SPU 独立状态仍参与有效上架判断。
+   * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#2-推荐业务语义与边界。
+   */
+  changeSkuStatus: async (skuCode: string, targetStatus: number) => {
+    return await request.put({
+      url: `/supply-chain/products/skus/${encodeURIComponent(skuCode)}/status`,
+      data: { targetStatus }
+    })
+  },
+  /**
    * 批量变更商品上下架状态。
-   * 后端逐项独立事务：任一项失败仅回滚该项，已成功项保持结果。
+   * 同步上架按 SPU + 全部未归档 SKU 整组原子执行；旧模式保持逐项独立事务。
    * 返回未知 HTTP 数据，由调用方校验完整回执后呈现；异常和旧 Boolean 均不自动重发写请求。
    * 用户核对当前状态后可主动重新选择失败项；前后端必须同批发布。
-   * 设计见 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#4110
+   * 设计见后端 docs/superpowers/specs/2026-10-11-platform-product-batch-shelf-sync-design.md#3-接口方案比较与推荐契约。
    */
   batchChangeProductStatus: async (
     spuCodes: string[],
     skuCodes: string[],
     targetStatus: number,
-    unshelveMode?: string
+    unshelveMode?: string,
+    syncSkuOnShelf?: boolean
   ): Promise<unknown> => {
     return await request.put({
       url: '/supply-chain/products/batch-status',
-      data: { spuCodes, skuCodes, targetStatus, unshelveMode }
+      data: { spuCodes, skuCodes, targetStatus, unshelveMode, ...(syncSkuOnShelf === undefined ? {} : { syncSkuOnShelf }) }
     })
   },
   /** 批量保存商品 SKU 默认定价，单事务全量成功或回滚 */
