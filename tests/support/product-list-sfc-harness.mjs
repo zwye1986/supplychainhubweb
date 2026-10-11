@@ -11,9 +11,10 @@ const sourceRoot = fileURLToPath(new URL('../../src/', import.meta.url))
 Object.assign(globalThis, vue)
 
 /** 编译真实列表、结果组件和 API，仅 HTTP 与路由/字典/Element UI 壳替换。 */
-export function mountProductList(http, confirm = async () => {}) {
+export function mountProductList(http, confirm = async () => {}, options = {}) {
   const messages = []
   const confirmations = []
+  const priceOpens = []
   const cache = new Map()
   globalThis.useRoute = () => ({ query: {}, path: '/supplier/product/list' })
   globalThis.useRouter = () => ({ replace: () => {} })
@@ -21,7 +22,7 @@ export function mountProductList(http, confirm = async () => {}) {
     ...Object.fromEntries(['error', 'warning', 'success'].map(type => [type, text => messages.push({ type, text })])),
     confirm: text => { confirmations.push(text); return confirm(text) }
   })
-  const dictionary = { getDictLabel: () => '', getStrDictOptions: () => [] }
+  const dictionary = { DICT_TYPE: { SUPPLY_CHAIN_TAX_RATE: 'supply_chain_tax_rate' }, getDictLabel: () => '', getStrDictOptions: () => [] }
   function evaluate(code, resolve) {
     const exports = {}
     const js = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
@@ -30,7 +31,8 @@ export function mountProductList(http, confirm = async () => {}) {
   }
   function stub(name) {
     return { name, setup: (_props, { slots, expose }) => {
-      expose({ open: () => {} })
+      expose({ open: (...args) => { if (name === 'PriceDialog.vue') priceOpens.push(args) },
+        validate: async () => {}, clearValidate: () => {}, validateField: () => {} })
       return () => name === 'ElTableColumn' ? null : vue.h('div', slots.default?.())
     } }
   }
@@ -41,7 +43,7 @@ export function mountProductList(http, confirm = async () => {}) {
     const target = name.startsWith('@/') ? path.join(sourceRoot, name.slice(2)) : path.resolve(path.dirname(file), name)
     if (name.endsWith('.vue')) {
       // 表单、详情、定价不参与批量上下架；结果组件必须执行真实模板。
-      if (['PriceDialog.vue'].includes(path.basename(name)) || name.includes('/form/') || name.includes('/detail/')) {
+      if ((!options.pricing && ['PriceDialog.vue'].includes(path.basename(name))) || name.includes('/form/') || name.includes('/detail/')) {
         return { __esModule: true, default: stub(path.basename(name)) }
       }
       return { __esModule: true, default: load(target) }
@@ -81,11 +83,11 @@ export function mountProductList(http, confirm = async () => {}) {
     parentNode: node => node.parent,
     nextSibling: node => node.parent?.children[node.parent.children.indexOf(node) + 1] || null
   })
-  const app = renderer.createApp(load(path.join(sourceRoot, 'views/supplier/product/list/index.vue')))
+  const app = renderer.createApp(load(path.join(sourceRoot, options.entryFile || 'views/supplier/product/list/index.vue')))
   app.directive('loading', {})
   for (const name of ['ContentWrap', 'Icon', 'Pagination', 'ProductType', 'ProductCategory', 'ElTabs', 'ElTabPane',
     'ElForm', 'ElFormItem', 'ElInput', 'ElSelect', 'ElOption', 'ElDatePicker', 'ElButton', 'ElTable', 'ElTableColumn',
-    'ElImage', 'ElTag', 'ElDialog', 'ElScrollbar', 'ElAlert']) app.component(name, stub(name))
+    'ElImage', 'ElTag', 'ElDialog', 'ElScrollbar', 'ElAlert', 'ElRadioGroup', 'ElRadioButton', 'ElInputNumber', 'ElSwitch', 'ElRadio', 'ElDivider', 'ElCheckbox']) app.component(name, stub(name))
   const container = { children: [] }
   const root = app.mount(container)
   const textContent = node => [node.text || '', ...(node.children || []).map(textContent)].join(' ')
@@ -103,7 +105,7 @@ export function mountProductList(http, confirm = async () => {}) {
     visit(root.$.vnode)
     return found.filter(button => button.text.includes('批量上架') || button.text.includes('批量下架'))
   }
-  return { state: root.$.setupState, messages, confirmations, buttons, container,
+  return { state: root.$.setupState, messages, confirmations, priceOpens, buttons, container,
     text: () => textContent(container), unmount: () => app.unmount() }
 }
 

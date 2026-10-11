@@ -35,7 +35,13 @@ export type {
   SupplierSimpleInfo
 } from './types'
 
-export { BRAND_STATUS, CATEGORY_STATUS, PRODUCT_STATUS, PRODUCT_TYPE_STATUS } from './types'
+export {
+  BRAND_STATUS,
+  CATEGORY_STATUS,
+  PRODUCT_STATUS,
+  PRODUCT_TYPE_STATUS,
+  PRICING_TAX_RATE_CODES
+} from './types'
 
 import type {
   BrandPageParam,
