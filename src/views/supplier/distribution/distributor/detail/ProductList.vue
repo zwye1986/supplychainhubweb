@@ -171,7 +171,7 @@ import {
   isCatalogSaveUncertainError
 } from '@/views/supplier/distribution/utils/catalogSaveResult'
 import { DICT_TYPE, getDictLabel } from '@/utils/dict'
-import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import { formatCentsYuan } from '@/utils/money'
 import DistributionPriceForm from './DistributionPriceForm.vue'
 import type { DistPriceFormData } from './distributionPrice'
 import ProductSelectDialog from './ProductSelectDialog.vue'

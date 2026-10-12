@@ -150,7 +150,7 @@
               <div class="batch-config__row">
                 <el-select v-model="batchConfig.priceMode" size="small" class="!w-130px">
                   <template #label="{ label, value }">
-                    {{ label || getOfferPriceModeLabel(value) }}
+                    {{ label || getDictLabel('supply_chain_offer_price_mode', value) || value }}
                   </template>
                   <el-option
                     v-for="item in priceModeOptions"
@@ -160,7 +160,7 @@
                   />
                 </el-select>
                 <el-input-number
-                  v-if="batchConfig.priceMode === OfferPriceModeEnum.FIXED"
+                  v-if="batchConfig.priceMode === 'FIXED'"
                   :controls="false"
                   v-model="batchConfig.priceOrDiscount"
                   :min="0"
@@ -170,7 +170,7 @@
                   class="!w-130px"
                 />
                 <el-input-number
-                  v-else-if="batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT"
+                  v-else-if="batchConfig.priceMode === 'DISCOUNT'"
                   :controls="false"
                   v-model="batchConfig.priceOrDiscount"
                   :min="0.01"
@@ -242,7 +242,7 @@
                 <div class="sku-field">
                   <el-select v-model="item.priceMode" size="small" class="sku-control !w-110px">
                     <template #label="{ label, value }">
-                      {{ label || getOfferPriceModeLabel(value) }}
+                      {{ label || getDictLabel('supply_chain_offer_price_mode', value) || value }}
                     </template>
                     <el-option
                       v-for="opt in priceModeOptions"
@@ -254,14 +254,14 @@
                 </div>
                 <div class="sku-field">
                   <el-input
-                    v-if="item.priceMode === OfferPriceModeEnum.REALTIME"
+                    v-if="item.priceMode === 'REALTIME'"
                     model-value="API实时获取"
                     disabled
                     size="small"
                     class="sku-control !w-120px"
                   />
                   <el-input-number
-                    v-else-if="item.priceMode === OfferPriceModeEnum.FIXED"
+                    v-else-if="item.priceMode === 'FIXED'"
                     :controls="false"
                     :model-value="centsToYuan(item.unitPriceCents)"
                     :min="0"
@@ -374,17 +374,13 @@ import {
 } from '@/api/product'
 import { SupplierApi, DraftReqVO, OfferFormItem, SupplyScopeView } from '@/api/supplier/manage'
 import {
-  OFFER_PRICE_MODE_OPTIONS,
-  OfferPriceModeEnum,
-  OfferStatusEnum,
   bpToPercent,
   centsToYuan,
   formatCentsYuan,
-  getOfferPriceModeLabel,
   percentToBp,
   yuanToCents
-} from '@/views/supplier/utils/constants'
-import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
+} from '@/utils/money'
+import { DICT_TYPE, getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { validateExternalSkuCode } from './utils/fulfillment'
 
 defineOptions({ name: 'SupplierProductSelectDialog' })
@@ -423,13 +419,10 @@ type SelectSkuRow = {
   suggestedSalePrice?: number | null
 }
 
-const priceModeOptions = computed(() => {
-  const dict = getStrDictOptions('supply_chain_offer_price_mode')
-  return dict.length ? dict : OFFER_PRICE_MODE_OPTIONS
-})
+const priceModeOptions = computed(() => getStrDictOptions('supply_chain_offer_price_mode'))
 const supplyModeOptions = computed(() => getStrDictOptions('supply_chain_supply_mode'))
 
-const getDefaultPriceMode = () => priceModeOptions.value[0]?.value || OfferPriceModeEnum.FIXED
+const getDefaultPriceMode = () => priceModeOptions.value[0]?.value || 'FIXED'
 const getDefaultSupplyMode = () => supplyModeOptions.value[0]?.value || ''
 
 const getSkuTypeCategoryPath = (row: SelectSkuRow) => {
@@ -692,7 +685,7 @@ const handleSelectionChange = (rows: SelectSkuRow[]) => {
       minQuantity: 1,
       taxIncluded: false,
       taxRateCode: undefined,
-      status: OfferStatusEnum.PUBLISHED
+      status: 'PUBLISHED'
     })
   })
   const selectedCodes = new Set(rows.map((item) => item.skuCode).filter(Boolean))
@@ -719,10 +712,10 @@ const applyBatch = () => {
   }
   selectedList.value.forEach((item) => {
     item.priceMode = batchConfig.priceMode
-    if (batchConfig.priceMode === OfferPriceModeEnum.FIXED) {
+    if (batchConfig.priceMode === 'FIXED') {
       item.unitPriceCents = yuanToCents(batchConfig.priceOrDiscount)
       item.discountBp = undefined
-    } else if (batchConfig.priceMode === OfferPriceModeEnum.DISCOUNT) {
+    } else if (batchConfig.priceMode === 'DISCOUNT') {
       item.discountBp = percentToBp(batchConfig.priceOrDiscount)
       item.unitPriceCents = undefined
     } else {
@@ -750,11 +743,11 @@ const toDraftReq = (item: OfferFormItem): DraftReqVO => {
     supplyMode: item.supplyMode || item.offerSupplyMode || '',
     externalSkuCode: (item.externalSkuCode || '').trim()
   }
-  if (priceMode === OfferPriceModeEnum.FIXED) {
+  if (priceMode === 'FIXED') {
     const unitPriceCents = toDraftNumber(item.unitPriceCents)
     if (unitPriceCents != null) payload.unitPriceCents = unitPriceCents
   }
-  if (priceMode === OfferPriceModeEnum.DISCOUNT) {
+  if (priceMode === 'DISCOUNT') {
     const discountBp = toDraftNumber(item.discountBp)
     if (discountBp != null) payload.discountBp = discountBp
   }
@@ -787,12 +780,12 @@ const validateSelected = () => {
       message.warning(`SKU「${skuName}」请选择供应价模式`)
       return false
     }
-    if (item.priceMode === OfferPriceModeEnum.FIXED) {
+    if (item.priceMode === 'FIXED') {
       if (!item.unitPriceCents || item.unitPriceCents <= 0) {
         message.warning(`SKU「${skuName}」固定值模式下供应价必须大于 0`)
         return false
       }
-    } else if (item.priceMode === OfferPriceModeEnum.DISCOUNT) {
+    } else if (item.priceMode === 'DISCOUNT') {
       if (item.suggestedPriceCents == null || item.suggestedPriceCents <= 0) {
         message.warning(`SKU「${skuName}」折扣模式要求SKU销售建议价大于0，请先在商品中心配置`)
         return false

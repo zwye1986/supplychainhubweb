@@ -231,7 +231,7 @@
     SuggestedSalePriceRule
   } from '@/api/product'
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-  import { centsToYuan, yuanToCents } from '@/views/supplier/utils/constants'
+  import { centsToYuan, yuanToCents } from '@/utils/money'
 
   defineOptions({ name: 'ProductListForm' })
 

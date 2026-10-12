@@ -94,7 +94,7 @@
   import { ProductApi, SpuDetail } from '@/api/product'
   import { getDictLabel } from '@/utils/dict'
   import { formatNullableDate } from '@/utils/formatTime'
-  import { formatCentsYuan } from '@/views/supplier/utils/constants'
+  import { formatCentsYuan } from '@/utils/money'
 
   defineOptions({ name: 'ProductListDetail' })
 

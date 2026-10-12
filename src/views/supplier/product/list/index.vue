@@ -199,7 +199,7 @@
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
   import { formatDate } from '@/utils/formatTime'
   import { SupplierApi } from '@/api/supplier/manage'
-  import { formatCentsYuan, yuanToCents } from '@/views/supplier/utils/constants'
+  import { formatCentsYuan, yuanToCents } from '@/utils/money'
   import ProductPriceDialog from './components/PriceDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
   import { isSpuBatchStatusResult, isSpuShelfSyncResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'

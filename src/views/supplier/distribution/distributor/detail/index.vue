@@ -387,7 +387,7 @@ import {
   toProductTypeItems
 } from '@/api/supplier/distribution'
 import { getDictLabel } from '@/utils/dict'
-import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import { formatCentsYuan } from '@/utils/money'
 import InvoiceInfo from './InvoiceInfo.vue'
 import ProjectList from './ProjectList.vue'
 import ProductList from './ProductList.vue'

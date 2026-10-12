@@ -20,9 +20,12 @@
         <el-card shadow="hover" class="h-full">
           <div class="mb-10px flex items-start justify-between gap-8px">
             <div class="min-w-0 truncate text-16px font-600">{{ item.projectName }}</div>
-            <el-tag :type="getProjectStatusType(item.status)" size="small">
-              {{ getProjectStatusLabel(item.status) }}
-            </el-tag>
+            <dict-tag
+              v-if="item.status"
+              type="supply_chain_project_status"
+              :value="item.status"
+            />
+            <span v-else>-</span>
           </div>
           <div class="mb-6px text-13px text-gray-500">编号：{{ item.projectCode || '-' }}</div>
           <div class="mb-6px text-13px text-gray-500">
@@ -38,7 +41,9 @@
             </span>
           </div>
           <div class="mb-12px text-13px">
-            结算方：{{ getSettlementPartyTypeLabel(item.settlementPartyType) }}
+            结算方：{{
+              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) || '-'
+            }}
           </div>
           <el-button link type="primary" @click="handleViewDetail(item)">查看详情</el-button>
         </el-card>
@@ -63,11 +68,7 @@
 
 <script lang="ts" setup>
 import { DistributorApi, DistributorProjectVO } from '@/api/supplier/distribution'
-import {
-  getProjectStatusLabel,
-  getProjectStatusType,
-  getSettlementPartyTypeLabel
-} from '@/views/supplier/utils/constants'
+import { getDictLabel } from '@/utils/dict'
 import ProjectDetailDrawer from '@/views/supplier/distribution/project/detail/index.vue'
 import ProjectFormDialog from '@/views/supplier/distribution/project/form/index.vue'
 
