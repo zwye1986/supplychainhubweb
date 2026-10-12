@@ -16,6 +16,8 @@ export interface AdapterTypeView {
   adapterType?: string
   /** 该适配器支持的能力封闭集（Capability 枚举名） */
   capabilities?: string[]
+  /** 后端 Capability 定义的中文名称与职责说明，键与该适配器的 capabilities 一致 */
+  capabilityDescriptions?: Record<string, string>
   /** 该适配器声明的凭据键（credentialKeys()），UI 据此渲染凭据行数 */
   credentialKeys?: string[]
   /** 状态映射模板条数 */
