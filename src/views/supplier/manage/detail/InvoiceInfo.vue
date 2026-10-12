@@ -38,7 +38,7 @@
           v-if="isEditing"
           v-model="formData.socialCreditCode"
           placeholder="请输入统一社会信用代码"
-          :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
+          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.socialCreditCode) }}</span>
       </el-form-item>
@@ -51,7 +51,7 @@
           v-if="isEditing"
           v-model="formData.bankName"
           placeholder="请输入开户行"
-          :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
+          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.bankName) }}</span>
       </el-form-item>
@@ -60,7 +60,7 @@
           v-if="isEditing"
           v-model="formData.bankAccount"
           placeholder="请输入开户账号"
-          :disabled="formData.titleType === InvoiceTitleTypeEnum.PERSONAL"
+          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.bankAccount) }}</span>
       </el-form-item>
@@ -87,7 +87,6 @@
 import type { FormInstance, FormRules } from 'element-plus'
 import { InvoiceSaveReqVO, SupplierApi, SupplierInvoiceView } from '@/api/supplier/manage'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { InvoiceTitleTypeEnum } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierInvoiceInfo' })
 
@@ -105,7 +104,7 @@ const createDefaultForm = (): SupplierInvoiceView => ({
   id: undefined,
   persisted: false,
   supplierCode: props.supplierCode,
-  titleType: InvoiceTitleTypeEnum.ENTERPRISE,
+  titleType: 'ENTERPRISE',
   invoiceTitle: '',
   socialCreditCode: '',
   phone: '',
@@ -131,13 +130,13 @@ const restoreFormData = () => {
 const applyInvoice = (data?: SupplierInvoiceView | null) => {
   Object.assign(formData, createDefaultForm(), data || {})
   if (!formData.titleType) {
-    formData.titleType = InvoiceTitleTypeEnum.ENTERPRISE
+    formData.titleType = 'ENTERPRISE'
   }
 }
 
 const formRules = computed<FormRules>(() => {
   if (!isEditing.value) return {}
-  const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
+  const isEnterprise = formData.titleType === 'ENTERPRISE'
   return {
     titleType: [{ required: true, message: '请选择抬头类型', trigger: 'change' }],
     invoiceTitle: [{ required: true, message: '请输入开票抬头', trigger: 'blur' }],
@@ -181,7 +180,7 @@ const loadData = async () => {
 
 const handleTitleTypeChange = () => {
   formRef.value?.clearValidate(['socialCreditCode', 'bankName', 'bankAccount'])
-  if (formData.titleType === InvoiceTitleTypeEnum.PERSONAL) {
+  if (formData.titleType === 'PERSONAL') {
     formData.socialCreditCode = ''
     formData.bankName = ''
     formData.bankAccount = ''
@@ -201,7 +200,7 @@ const handleCancel = () => {
 }
 
 const buildSavePayload = (): InvoiceSaveReqVO => {
-  const isEnterprise = formData.titleType === InvoiceTitleTypeEnum.ENTERPRISE
+  const isEnterprise = formData.titleType === 'ENTERPRISE'
   return {
     titleType: formData.titleType,
     invoiceTitle: formData.invoiceTitle,

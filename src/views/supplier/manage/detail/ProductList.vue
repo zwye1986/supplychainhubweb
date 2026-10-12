@@ -72,7 +72,9 @@
       </el-table-column>
       <el-table-column label="供应价模式" min-width="110">
         <template #default="{ row }">
-          <el-tag size="small">{{ getOfferPriceModeLabel(row.priceMode) }}</el-tag>
+          <el-tag size="small">
+            {{ getDictLabel('supply_chain_offer_price_mode', row.priceMode) || '-' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="供应价（元）" min-width="110" align="right">
@@ -132,9 +134,8 @@
       </el-table-column>
       <el-table-column label="状态" min-width="90" align="center">
         <template #default="{ row }">
-          <el-tag :type="getOfferStatusType(row.status)" size="small">
-            {{ getOfferStatusLabel(row.status) }}
-          </el-tag>
+          <dict-tag v-if="row.status" type="supply_chain_offer_status" :value="row.status" />
+          <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column label="商品履约配置" min-width="130" align="center">
@@ -148,7 +149,7 @@
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">改价</el-button>
           <el-button
-            v-if="row.status === OfferStatusEnum.PUBLISHED"
+            v-if="row.status === 'PUBLISHED'"
             link
             type="warning"
             @click="handleTakeOffShelf(row)"
@@ -165,7 +166,7 @@
                 type="success"
                 :disabled="row.canPublish === false"
                 @click="handleListOnShelf(row)"
-                >{{ row.status === OfferStatusEnum.PUBLISHED ? '发布变更' : '上架' }}</el-button
+                >{{ row.status === 'PUBLISHED' ? '发布变更' : '上架' }}</el-button
               >
             </span>
           </el-tooltip>
@@ -212,7 +213,7 @@
           </el-select>
         </el-form-item>
         <el-form-item
-          v-if="priceForm.priceMode === OfferPriceModeEnum.FIXED"
+          v-if="priceForm.priceMode === 'FIXED'"
           label="供应价（元）"
           required
         >
@@ -226,7 +227,7 @@
           />
         </el-form-item>
         <el-form-item
-          v-else-if="priceForm.priceMode === OfferPriceModeEnum.DISCOUNT"
+          v-else-if="priceForm.priceMode === 'DISCOUNT'"
           label="供货折扣(%)"
           required
         >
@@ -321,15 +322,9 @@
 import { SupplierApi, DraftReqVO, OfferListItem, SupplyScopeView } from '@/api/supplier/manage'
 import { ProductTypeApi } from '@/api/product'
 import {
-  OFFER_PRICE_MODE_OPTIONS,
-  OfferPriceModeEnum,
-  OfferStatusEnum,
   bpToPercent,
   centsToYuan,
   formatCentsYuan,
-  getOfferPriceModeLabel,
-  getOfferStatusLabel,
-  getOfferStatusType,
   percentToBp,
   yuanToCents
 } from '@/views/supplier/utils/constants'
@@ -370,10 +365,7 @@ const queryParams = reactive({
   pageSize: 20
 })
 
-const priceModeOptions = computed(() => {
-  const dict = getStrDictOptions('supply_chain_offer_price_mode')
-  return dict.length ? dict : OFFER_PRICE_MODE_OPTIONS
-})
+const priceModeOptions = computed(() => getStrDictOptions('supply_chain_offer_price_mode'))
 const supplyModeOptions = computed(() => getStrDictOptions('supply_chain_supply_mode'))
 
 const batchScoreForm = reactive({
@@ -416,7 +408,7 @@ const priceForm = reactive({
   offerNo: '',
   platformSkuCode: '',
   externalSkuCode: '',
-  priceMode: OfferPriceModeEnum.FIXED,
+  priceMode: 'FIXED',
   unitPriceYuan: undefined as number | undefined,
   discountPercent: undefined as number | undefined,
   suggestedPriceCents: undefined as number | null | undefined,
@@ -500,10 +492,10 @@ const loadCategoryTags = async () => {
  * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-sale-price-alignment-design.md#5-前端展示与写入。
  */
 const formatSupplyPrice = (row: OfferListItem) => {
-  if (row.priceMode === OfferPriceModeEnum.FIXED) {
+  if (row.priceMode === 'FIXED') {
     return formatCentsYuan(row.unitPriceCents)
   }
-  if (row.priceMode === OfferPriceModeEnum.DISCOUNT) {
+  if (row.priceMode === 'DISCOUNT') {
     if (
       row.suggestedSalePriceCents != null &&
       row.suggestedSalePriceCents > 0 &&
@@ -666,7 +658,7 @@ const openEdit = (row: OfferListItem) => {
   priceForm.offerNo = row.offerNo
   priceForm.platformSkuCode = row.platformSkuCode
   priceForm.externalSkuCode = row.externalSkuCode || ''
-  priceForm.priceMode = row.priceMode || OfferPriceModeEnum.FIXED
+  priceForm.priceMode = row.priceMode || 'FIXED'
   priceForm.unitPriceYuan = centsToYuan(row.unitPriceCents)
   priceForm.discountPercent = bpToPercent(row.discountBp)
   priceForm.suggestedPriceCents = row.suggestedSalePriceCents
@@ -708,14 +700,14 @@ const submitPrice = async () => {
     supplyMode: priceForm.supplyMode,
     externalSkuCode: priceForm.externalSkuCode.trim()
   }
-  if (priceForm.priceMode === OfferPriceModeEnum.FIXED) {
+  if (priceForm.priceMode === 'FIXED') {
     const unitPriceCents = yuanToCents(priceForm.unitPriceYuan)
     if (!unitPriceCents || unitPriceCents <= 0) {
       message.warning('固定值模式下供应价必须大于 0')
       return
     }
     payload.unitPriceCents = unitPriceCents
-  } else if (priceForm.priceMode === OfferPriceModeEnum.DISCOUNT) {
+  } else if (priceForm.priceMode === 'DISCOUNT') {
     if (priceForm.suggestedPriceCents == null || priceForm.suggestedPriceCents <= 0) {
       message.warning('折扣模式要求SKU销售建议价大于0，请先在商品中心配置')
       return
@@ -765,13 +757,13 @@ const handleDelete = async (offerNo?: string) => {
  * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-lifecycle-design.md#33-闭环三连接器切换后保留发布变更操作。
  */
 const handleTakeOffShelf = async (row: OfferListItem) => {
-  if (!row.offerNo || row.status !== OfferStatusEnum.PUBLISHED) return
+  if (!row.offerNo || row.status !== 'PUBLISHED') return
   try {
     await message.confirm(
       `确认下架「${row.platformSkuName || row.platformSkuCode}」？下架后停止用于新交易。`
     )
     await SupplierApi.patchOffer(props.supplierCode, row.offerNo, {
-      status: OfferStatusEnum.SUSPENDED
+      status: 'SUSPENDED'
     })
     message.success('下架成功')
     await getList()
@@ -780,7 +772,7 @@ const handleTakeOffShelf = async (row: OfferListItem) => {
 
 const handleListOnShelf = async (row: OfferListItem) => {
   if (!row.offerNo || !getOnShelfActionLabel(row.status) || row.canPublish === false) return
-  const label = row.status === OfferStatusEnum.PUBLISHED ? '发布变更' : '上架'
+  const label = row.status === 'PUBLISHED' ? '发布变更' : '上架'
   try {
     await message.confirm(
       `确认${label}「${row.platformSkuName || row.platformSkuCode}」？将发布为可履约供给版本。`
