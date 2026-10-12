@@ -112,19 +112,6 @@ export const FULFILLMENT_STATUS_OPTIONS: { value: string; label: string; type: s
   { value: 'MANUAL', label: '人工处理', type: 'warning' }
 ]
 
-export const SETTLEMENT_STATUS_OPTIONS: { value: string; label: string; type: string }[] = [
-  { value: 'PENDING', label: '待报告', type: 'info' },
-  { value: 'MATCHED', label: '已匹配', type: 'success' },
-  { value: 'MISMATCH', label: '有差异', type: 'danger' },
-  { value: 'MANUAL', label: '人工处理', type: 'warning' }
-]
-
-export const SUPPLIER_ORDER_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'CARD', label: '卡券' },
-  { value: 'O2O', label: 'O2O' },
-  { value: 'INSTORE', label: '到店' }
-]
-
 export const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
   options.find((item) => item.value === value)?.label || '-'
 
@@ -139,12 +126,6 @@ export const formatMoney = (value?: number | null) => {
 export const formatAmount = (value?: number | null) => {
   if (value == null || Number.isNaN(Number(value))) return '0.00'
   return Number(value).toFixed(2)
-}
-
-/** 订单接口金额为分，展示为元 */
-export const formatOrderCents = (cents?: number | null) => {
-  if (cents == null || Number.isNaN(Number(cents))) return '-'
-  return `¥${(Number(cents) / 100).toFixed(2)}`
 }
 
 export const isUnpaidStatus = (status?: OrderStatus) => status === 'WAIT_PAY' || status === 'CLOSED'

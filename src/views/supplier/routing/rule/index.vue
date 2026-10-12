@@ -175,12 +175,6 @@ import { DistributorApi, ProjectApi } from '@/api/supplier/distribution'
 import { SupplierApi } from '@/api/supplier/manage'
 import { getSimpleUserList } from '@/api/system/user'
 import RuleForm from './RuleForm.vue'
-import {
-  ROUTE_MODE_OPTIONS,
-  ROUTE_STATUS_OPTIONS,
-  formatScope,
-  getOptionLabel
-} from '@/views/supplier/routing/rule/utils/constants'
 
 defineOptions({ name: 'RoutingRule' })
 
@@ -193,6 +187,22 @@ interface UserOption {
   id: string
   name: string
 }
+
+const ROUTE_MODE_OPTIONS = [
+  { value: 'AUTO', label: '自动路由' },
+  { value: 'FIXED', label: '固定供应商' }
+]
+const ROUTE_STATUS_OPTIONS = [
+  { value: 'ENABLED', label: '启用' },
+  { value: 'DISABLED', label: '停用' }
+]
+
+const formatScope = (mode?: string, names?: string[], allText = '全部') => {
+  if (mode !== 'SPECIFIED') return allText
+  return names?.length ? names.join('、') : allText
+}
+const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
+  options.find((item) => item.value === value)?.label || '-'
 
 const message = useMessage()
 const loading = ref(false)

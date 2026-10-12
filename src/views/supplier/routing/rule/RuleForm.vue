@@ -126,23 +126,63 @@
 
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
-import { RoutingApi, RouteRuleVO } from '@/api/routing'
+import { RoutingApi, RouteRuleVO, RouteStrategy, ScopeMode } from '@/api/routing'
 import { SupplierApi } from '@/api/supplier/manage'
-import {
-  ROUTE_MODE_OPTIONS,
-  ROUTE_STATUS_OPTIONS,
-  createPriorities,
-  createWeights,
-  getRoutingScopeError,
-  getStrategyHint,
-  getStrategyLabel
-} from '@/views/supplier/routing/rule/utils/constants'
 
 defineOptions({ name: 'RoutingRuleForm' })
 
 interface CodeNameOption {
   code: string
   name: string
+}
+
+const ROUTE_MODE_OPTIONS = [
+  { value: 'AUTO', label: '自动路由' },
+  { value: 'FIXED', label: '固定供应商' }
+]
+const ROUTE_STATUS_OPTIONS = [
+  { value: 'ENABLED', label: '启用' },
+  { value: 'DISABLED', label: '停用' }
+]
+const ROUTE_STRATEGY_META: Record<RouteStrategy, { label: string; hint: string }> = {
+  STABLE: { label: '稳定优先', hint: '稳定性评分越高，越优先分配' },
+  PRICE: { label: '价格优先', hint: '供货价越低，越优先分配' },
+  COMPOSITE: { label: '综合排序', hint: '按权重综合计算最优供应商' }
+}
+
+/** 七级范围模式；次序由后端匹配层级定义，不由页面推断优先级。 */
+const SUPPORTED_ROUTING_SCOPE_KEYS = new Set([
+  'SPECIFIED:SPECIFIED:SPECIFIED:SPECIFIED',
+  'SPECIFIED:SPECIFIED:SPECIFIED:ALL',
+  'SPECIFIED:ALL:SPECIFIED:ALL',
+  'ALL:SPECIFIED:SPECIFIED:ALL',
+  'ALL:ALL:SPECIFIED:ALL',
+  'SPECIFIED:SPECIFIED:ALL:ALL',
+  'ALL:ALL:ALL:ALL'
+])
+
+const createPriorities = () => [
+  { id: 'p1', strategy: 'STABLE' as RouteStrategy },
+  { id: 'p2', strategy: 'PRICE' as RouteStrategy },
+  { id: 'p3', strategy: 'COMPOSITE' as RouteStrategy }
+]
+const createWeights = () => ({ stability: 40, price: 30, timeliness: 30 })
+const getStrategyLabel = (value?: RouteStrategy) =>
+  (value && ROUTE_STRATEGY_META[value]?.label) || '-'
+const getStrategyHint = (value?: RouteStrategy) =>
+  (value && ROUTE_STRATEGY_META[value]?.hint) || ''
+
+/** 保存前检查四个范围模式是否能被后端七级路由匹配。 */
+const getRoutingScopeError = (
+  distributorMode: ScopeMode,
+  projectMode: ScopeMode,
+  productTypeMode: ScopeMode,
+  supplierMode: ScopeMode
+): string | null => {
+  const key = [distributorMode, projectMode, productTypeMode, supplierMode].join(':')
+  return SUPPORTED_ROUTING_SCOPE_KEYS.has(key)
+    ? null
+    : '当前适用范围组合不支持，请选择四维、分销商+项目+商品类型、分销商+商品类型、项目+商品类型、商品类型、分销商+项目或全局默认'
 }
 
 const message = useMessage()

@@ -1,4 +1,4 @@
-import type { ChannelMarkupVO, PricingTemplateVO, RegionMarkupVO } from '@/api/pricing/types'
+import type { ChannelMarkupVO, RegionMarkupVO } from '@/api/pricing/types'
 
 export const MOVIE_KIND_OPTIONS = [
   { value: 'FAST', label: '快充模板' },
