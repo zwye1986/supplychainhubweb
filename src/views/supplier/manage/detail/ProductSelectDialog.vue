@@ -379,7 +379,7 @@ import {
   formatCentsYuan,
   percentToBp,
   yuanToCents
-} from '@/views/supplier/utils/constants'
+} from '@/utils/money'
 import { DICT_TYPE, getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { validateExternalSkuCode } from './utils/fulfillment'
 

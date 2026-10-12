@@ -12,12 +12,16 @@
         <div class="min-w-0">
           <div class="mb-8px flex items-center gap-10px">
             <span class="truncate text-20px font-700">{{ project.projectName || '项目详情' }}</span>
-            <el-tag :type="getProjectStatusType(project.status)" size="small">
-              {{ getProjectStatusLabel(project.status) }}
-            </el-tag>
-            <el-tag v-if="project.projectType" size="small" type="primary">
-              {{ getProjectTypeLabel(project.projectType) }}
-            </el-tag>
+            <dict-tag
+              v-if="project.status"
+              type="supply_chain_project_status"
+              :value="project.status"
+            />
+            <dict-tag
+              v-if="project.projectType"
+              type="supply_chain_project_type"
+              :value="project.projectType"
+            />
           </div>
           <div class="text-13px text-gray-500">编号：{{ project.projectCode || '-' }}</div>
         </div>
@@ -31,7 +35,7 @@
           {{ project.buyerName || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="项目类型">
-          {{ getProjectTypeLabel(project.projectType) }}
+          {{ getDictLabel('supply_chain_project_type', project.projectType) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="项目周期">
           {{ periodText }}
@@ -45,7 +49,7 @@
           </span>
         </el-descriptions-item>
         <el-descriptions-item label="结算方">
-          {{ getSettlementPartyTypeLabel(project.settlementPartyType) }}
+          {{ getDictLabel('supply_chain_settlement_party_type', project.settlementPartyType) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="商品类型" :span="3">
           <template v-if="productTypeItems.length">
@@ -94,7 +98,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="项目类型">
-                  {{ getProjectTypeLabel(project.projectType) }}
+                  {{ getDictLabel('supply_chain_project_type', project.projectType) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -104,17 +108,20 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算方">
-                  {{ getSettlementPartyTypeLabel(project.settlementPartyType) }}
+                  {{
+                    getDictLabel('supply_chain_settlement_party_type', project.settlementPartyType) ||
+                    '-'
+                  }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="项目状态">
-                  {{ getProjectStatusLabel(project.status) }}
+                  {{ getDictLabel('supply_chain_project_status', project.status) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="目录模式">
-                  {{ getCatalogModeLabel(project.catalogMode) }}
+                  {{ getDictLabel('supply_chain_catalog_mode', project.catalogMode) || '-' }}
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -166,15 +173,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
 import { ProjectApi, ProjectVO, toProductTypeItems } from '@/api/supplier/distribution'
-import {
-  getCatalogModeLabel,
-  getProjectStatusLabel,
-  getProjectStatusType,
-  getProjectTypeLabel,
-  getSettlementPartyTypeLabel
-} from '@/views/supplier/utils/constants'
+import { getDictLabel } from '@/utils/dict'
 import ProductList from './ProductList.vue'
 import ProjectApplicationCredentials from './ProjectApplicationCredentials.vue'
 

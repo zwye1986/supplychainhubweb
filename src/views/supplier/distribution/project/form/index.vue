@@ -44,12 +44,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="项目类型" prop="projectType">
-        <el-select v-model="formData.projectType" placeholder="请选择项目类型" class="!w-full">
+        <el-select v-model="formData.projectType" placeholder="请选择项目类型" class="!w-full" clearable>
           <el-option
-            v-for="item in PROJECT_TYPE_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_project_type')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -61,16 +61,17 @@
           start-placeholder="开始日期"
           end-placeholder="结束日期"
           class="!w-full"
+          clearable
         />
       </el-form-item>
       <el-form-item label="结算方" prop="settlementPartyType">
         <el-radio-group v-model="formData.settlementPartyType">
           <el-radio
-            v-for="item in SETTLEMENT_PARTY_TYPE_OPTIONS"
-            :key="item.value"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_settlement_party_type')"
+            :key="dict.value"
+            :value="dict.value"
           >
-            {{ item.label }}
+            {{ dict.label }}
           </el-radio>
         </el-radio-group>
       </el-form-item>
@@ -110,13 +111,6 @@
 import type { FormInstance, FormRules } from 'element-plus'
 import { DistributorApi, ProjectApi, ProjectSaveReqVO, ProjectVO } from '@/api/supplier/distribution'
 import { getStrDictOptions } from '@/utils/dict'
-import {
-  PROJECT_STATUS_OPTIONS,
-  PROJECT_TYPE_OPTIONS,
-  ProjectStatusEnum,
-  SETTLEMENT_PARTY_TYPE_OPTIONS,
-  SettlementPartyTypeEnum
-} from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'DistributionProjectFormDialog' })
 
@@ -147,12 +141,9 @@ const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view'))
 
 const statusOptions = computed(() => {
-  const dict = getStrDictOptions('supply_chain_project_status')
-  const all = dict.length ? dict : PROJECT_STATUS_OPTIONS
+  const all = getStrDictOptions('supply_chain_project_status')
   if (isEdit.value) return all
-  return all.filter(
-    (item) => item.value === ProjectStatusEnum.DRAFT || item.value === ProjectStatusEnum.ACTIVE
-  )
+  return all.filter((item) => item.value === 'DRAFT' || item.value === 'ACTIVE')
 })
 
 const createDefaultForm = (): ProjectFormData => ({
@@ -161,11 +152,11 @@ const createDefaultForm = (): ProjectFormData => ({
   buyerCode: undefined,
   buyerName: '',
   projectType: undefined,
-  status: ProjectStatusEnum.DRAFT,
+  status: 'DRAFT',
   startDate: undefined,
   endDate: undefined,
   period: [],
-  settlementPartyType: SettlementPartyTypeEnum.DISTRIBUTOR,
+  settlementPartyType: 'DISTRIBUTOR',
   description: ''
 })
 
@@ -226,8 +217,8 @@ const loadDetail = async (projectCode: string) => {
       ...createDefaultForm(),
       ...data,
       projectCode: data.projectCode || projectCode,
-      status: data.status || ProjectStatusEnum.DRAFT,
-      settlementPartyType: data.settlementPartyType || SettlementPartyTypeEnum.DISTRIBUTOR,
+      status: data.status || 'DRAFT',
+      settlementPartyType: data.settlementPartyType || 'DISTRIBUTOR',
       period: data.startDate && data.endDate ? [data.startDate, data.endDate] : []
     }
   } finally {
@@ -243,9 +234,9 @@ const buildSavePayload = (): ProjectSaveReqVO => {
     projectType: formData.value.projectType,
     startDate: period[0],
     endDate: period[1],
-    settlementPartyType: SettlementPartyTypeEnum.DISTRIBUTOR,
+    settlementPartyType: 'DISTRIBUTOR',
     description: formData.value.description || undefined,
-    status: formData.value.status || ProjectStatusEnum.DRAFT
+    status: formData.value.status || 'DRAFT'
   }
 }
 

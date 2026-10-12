@@ -209,7 +209,7 @@ import {
   buildCatalogSaveMessage,
   isCatalogSaveUncertainError
 } from '@/views/supplier/distribution/utils/catalogSaveResult'
-import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import { formatCentsYuan } from '@/utils/money'
 import DistributionPriceForm from './DistributionPriceForm.vue'
 import type { DistPriceFormData } from './distributionPrice'
 

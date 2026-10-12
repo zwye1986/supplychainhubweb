@@ -180,7 +180,7 @@ import {
   isCatalogSaveUncertainError
 } from '@/views/supplier/distribution/utils/catalogSaveResult'
 import { ProductCategoryApi, type ProductCategoryVO } from '@/api/product'
-import { formatCentsYuan } from '@/views/supplier/utils/constants'
+import { formatCentsYuan } from '@/utils/money'
 import DistributionPriceForm from '@/views/supplier/distribution/distributor/detail/DistributionPriceForm.vue'
 import {
   createEmptyDistPrice,

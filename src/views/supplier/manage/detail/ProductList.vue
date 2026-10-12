@@ -327,7 +327,7 @@ import {
   formatCentsYuan,
   percentToBp,
   yuanToCents
-} from '@/views/supplier/utils/constants'
+} from '@/utils/money'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import type { FormInstance, FormRules } from 'element-plus'
 import ProductSelectDialog from './ProductSelectDialog.vue'

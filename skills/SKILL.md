@@ -272,11 +272,11 @@ import { getStrDictOptions, getDictLabel } from '@/utils/dict'
 </el-table-column>
 ```
 
-仅当**没有真实字典、接口也未提供选项**时，才允许在 `src/views/supplier/<feature>/utils/constants.ts`（跨功能则 `src/views/supplier/utils/constants.ts`）写临时选项；字典或接口就绪后删掉改回上面两个方法。
+仅当**没有真实字典、接口也未提供选项**时，才允许在 `src/views/supplier/<feature>/utils/constants.ts` 写临时选项；字典或接口就绪后删掉改回上面两个方法。
 
 ## 五、金额与时间
 
-- 商品/供应价接口多为**分**：展示用 `formatCentsYuan` / `centsToYuan`，提交用 `yuanToCents`（`src/views/supplier/utils/constants.ts`）。
+- 商品/供应价接口多为**分**：展示用 `formatCentsYuan` / `centsToYuan`，提交用 `yuanToCents`（`src/utils/money.ts`）。
 - 订单金额若已是元：用该模块 `formatMoney`。
 - 不要把分直接当元显示。
 - 日期列：`dateFormatter`（`@/utils/formatTime`）。

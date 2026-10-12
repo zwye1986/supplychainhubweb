@@ -39,9 +39,12 @@
           </el-table-column>
           <el-table-column label="状态" width="110" align="center">
             <template #default="{ row }">
-              <el-tag :type="getDistributorStatusType(row.status)" effect="light" size="small" round>
-                {{ formatStatus(row.status) }}
-              </el-tag>
+              <dict-tag
+                v-if="row.status"
+                type="supply_chain_buyer_status"
+                :value="row.status"
+              />
+              <span v-else>-</span>
             </template>
           </el-table-column>
         </el-table>
@@ -53,11 +56,6 @@
 <script lang="ts" setup>
 import { DistributorApi, type BuyerChildItem } from '@/api/supplier/distribution'
 import { getDictLabel } from '@/utils/dict'
-import {
-  DistributorStatusEnum,
-  getCooperationModeLabel,
-  getDistributorStatusType
-} from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'DistributorHierarchyList' })
 
@@ -73,26 +71,15 @@ const emit = defineEmits<{
 const loading = ref(false)
 const list = ref<BuyerChildItem[]>([])
 
-const STATUS_LABEL: Record<string, string> = {
-  [DistributorStatusEnum.NORMAL]: '正常合作',
-  [DistributorStatusEnum.PAUSED]: '暂停分销',
-  [DistributorStatusEnum.BLACKLIST]: '黑名单'
-}
-
 const formatLevel = (level?: number) => {
   const value = Number(level)
   return Number.isFinite(value) && value > 0 ? `${value}级` : '-'
 }
 
-const formatStatus = (status?: string) => {
-  if (!status) return '-'
-  return STATUS_LABEL[status] || getDictLabel('supply_chain_buyer_status', status) || status
-}
-
 const formatCooperationModes = (modes?: string[]) => {
   if (!modes?.length) return '-'
   return modes
-    .map((mode) => getDictLabel('supply_chain_cooperation_mode', mode) || getCooperationModeLabel(mode))
+    .map((mode) => getDictLabel('supply_chain_cooperation_mode', mode) || mode)
     .filter(Boolean)
     .join('、')
 }

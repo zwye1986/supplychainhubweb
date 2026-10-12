@@ -53,10 +53,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in PROJECT_STATUS_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_project_status')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -85,10 +85,10 @@
           collapse-tags-tooltip
         >
           <el-option
-            v-for="item in PROJECT_TYPE_OPTIONS"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            v-for="dict in getStrDictOptions('supply_chain_project_type')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
           />
         </el-select>
       </el-form-item>
@@ -136,9 +136,12 @@
             >
               {{ item.projectName }}
             </el-link>
-            <el-tag :type="getProjectStatusType(item.status)" size="small">
-              {{ getProjectStatusLabel(item.status) }}
-            </el-tag>
+            <dict-tag
+              v-if="item.status"
+              type="supply_chain_project_status"
+              :value="item.status"
+            />
+            <span v-else>-</span>
           </div>
           <div class="mb-6px text-13px text-gray-500">编号：{{ item.projectCode || '-' }}</div>
           <div class="mb-6px text-13px text-gray-500">
@@ -155,7 +158,9 @@
           </div>
           <div class="mb-6px text-13px">关联分销商：{{ item.buyerName || '-' }}</div>
           <div class="mb-12px text-13px">
-            结算方：{{ getSettlementPartyTypeLabel(item.settlementPartyType) }}
+            结算方：{{
+              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) || '-'
+            }}
           </div>
           <div class="flex items-center gap-8px">
             <el-button link type="primary" @click="openDetail(item.projectCode)">查看详情</el-button>
@@ -190,13 +195,7 @@
 
 <script lang="ts" setup>
 import { DistributorApi, ProjectApi, ProjectVO } from '@/api/supplier/distribution'
-import {
-  PROJECT_STATUS_OPTIONS,
-  PROJECT_TYPE_OPTIONS,
-  getProjectStatusLabel,
-  getProjectStatusType,
-  getSettlementPartyTypeLabel
-} from '@/views/supplier/utils/constants'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import ProjectFormDialog from './form/index.vue'
 import ProjectDetailDrawer from './detail/index.vue'
 

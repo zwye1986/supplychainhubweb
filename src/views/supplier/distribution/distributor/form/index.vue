@@ -434,7 +434,7 @@ import {
   toProductTypeCodes
 } from '@/api/supplier/distribution'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { DistributorStatusEnum, yuanToCents } from '@/views/supplier/utils/constants'
+import { yuanToCents } from '@/utils/money'
 
 const UNLIMITED_FILE_TYPES = ['']
 
@@ -481,7 +481,7 @@ const createDefaultForm = (): DistributorFormModel => ({
   id: undefined,
   buyerCode: undefined,
   buyerName: '',
-  status: DistributorStatusEnum.NORMAL,
+  status: 'ACTIVE',
   distributionLevel: '1',
   parentBuyerCode: undefined,
   cooperationModes: [],
@@ -718,7 +718,7 @@ const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): Distributo
     id: data.id,
     buyerCode: data.buyerCode || data.code,
     buyerName: data.buyerName || data.name || '',
-    status: data.status || DistributorStatusEnum.NORMAL,
+    status: data.status || 'ACTIVE',
     distributionLevel: String(data.distributionLevel ?? data.level ?? '1'),
     parentBuyerCode: data.parentBuyerCode || undefined,
     cooperationModes: normalizeCooperationModes(data.cooperationModes || data.cooperationMode),
