@@ -67,12 +67,27 @@ export const CREDENTIAL_STATUS_OPTIONS: { value: number; label: string; type: Ta
   { value: CredentialStatusEnum.ARCHIVED, label: '归档', type: 'info' }
 ]
 
+/** 错误分类封闭集；对齐后端 ErrorClass，禁止自由输入未支持的分类。 */
+export const ERROR_CLASS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'BUSINESS_REJECTED', label: '业务拒绝' },
+  { value: 'RETRYABLE', label: '可重试错误' },
+  { value: 'RESULT_UNKNOWN', label: '结果未知' },
+  { value: 'MANUAL_REQUIRED', label: '需人工处理' }
+]
+
+export const ErrorActionEnum = {
+  REJECT: 'REJECT',
+  RETRY_SAFE: 'RETRY_SAFE',
+  QUERY_FIRST: 'QUERY_FIRST',
+  MANUAL: 'MANUAL'
+} as const
+
 /** 错误码映射处置动作；对齐后端 AddErrorMappingReqVO.actionType。 */
 export const ERROR_ACTION_OPTIONS: { value: string; label: string }[] = [
-  { value: 'REJECT', label: '拒绝' },
-  { value: 'RETRY_SAFE', label: '安全重试' },
-  { value: 'QUERY_FIRST', label: '先查询' },
-  { value: 'MANUAL', label: '人工处理' }
+  { value: ErrorActionEnum.REJECT, label: '拒绝' },
+  { value: ErrorActionEnum.RETRY_SAFE, label: '安全重试' },
+  { value: ErrorActionEnum.QUERY_FIRST, label: '先查询' },
+  { value: ErrorActionEnum.MANUAL, label: '人工处理' }
 ]
 
 /** 状态映射业务阶段；对齐后端 AddStatusMappingReqVO.businessPhase。 */
@@ -172,7 +187,10 @@ export const validateCredentialItem = (form: CredentialItemForm): string | null 
   if (!itemKey) return '请填写凭据项标识 itemKey'
 
   const providerType = form.providerType
-  if (providerType !== CredentialProviderEnum.ENV && providerType !== CredentialProviderEnum.ENVELOPE) {
+  if (
+    providerType !== CredentialProviderEnum.ENV &&
+    providerType !== CredentialProviderEnum.ENVELOPE
+  ) {
     return '请选择凭据来源类型（ENV / ENVELOPE）'
   }
 

@@ -15,12 +15,9 @@
       <el-table-column label="最新版本" min-width="130">
         <template #default="{ row }">
           <span class="mr-6px">v{{ row.latestVersionNo ?? '-' }}</span>
-          <el-tag :type="getConnectorStatusType(row.latestVersionStatus)" size="small">
-            {{ getConnectorStatusLabel(row.latestVersionStatus) }}
-          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="已发布版本" min-width="110">
+      <el-table-column label="状态" min-width="110">
         <template #default="{ row }">
           <el-tag v-if="row.currentVersionId != null" type="success" size="small">已发布</el-tag>
           <span v-else class="text-gray-400">未发布</span>

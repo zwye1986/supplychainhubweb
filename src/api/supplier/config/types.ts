@@ -138,8 +138,24 @@ export interface ErrorCodeMappingView {
   status?: number
 }
 
-/** T5 映射明细：状态映射 + 错误码映射。 */
+/** T5 映射明细：版本、管理规则与两张映射表；缺少管理投影时前端默认不可写。 */
 export interface MappingsView {
+  /** 连接器版本主键 id */
+  connectorVersionId?: number
+  /** 版本号 */
+  versionNo?: number
+  /** 状态码：0草稿/5已验证/10已发布/90已退役 */
+  versionStatus?: number
+  /** 当前已发布版本主键 id；无已发布版本时为 null */
+  currentPublishedVersionId?: number | null
+  /** 当前版本是否允许从模板初始化 */
+  initializeAllowed?: boolean
+  /** 当前版本是否允许追加状态映射 */
+  statusAppendAllowed?: boolean
+  /** 当前版本是否允许追加错误码映射 */
+  errorAppendAllowed?: boolean
+  /** 适配器映射管理业务说明 */
+  mappingDescription?: string
   statusMappings?: StatusMappingView[]
   errorCodeMappings?: ErrorCodeMappingView[]
 }
