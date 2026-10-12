@@ -108,7 +108,7 @@
           type="warning"
           plain
           :disabled="pausableSelectedList.length === 0"
-          @click="handleBatchStatusChange(SupplierStatusEnum.PAUSED)"
+          @click="handleBatchStatusChange('SUSPENDED')"
         >
           <Icon icon="ep:video-pause" class="mr-5px" /> 批量暂停
         </el-button>
@@ -116,7 +116,7 @@
           type="success"
           plain
           :disabled="resumableSelectedList.length === 0"
-          @click="handleBatchStatusChange(SupplierStatusEnum.NORMAL)"
+          @click="handleBatchStatusChange('ACTIVE')"
         >
           <Icon icon="ep:video-play" class="mr-5px" /> 批量恢复
         </el-button>
@@ -191,9 +191,12 @@
       <el-table-column label="合作商品SKU数" align="center" prop="skuCount" min-width="160" />
       <el-table-column label="合作状态" align="center" prop="status" min-width="110">
         <template #default="{ row }">
-          <el-tag :type="getSupplierStatusType(row.status)" size="small">
-            {{ getDictLabel('supply_chain_supplier_status', row.status) || '-' }}
-          </el-tag>
+          <dict-tag
+            v-if="row.status"
+            type="supply_chain_supplier_status"
+            :value="row.status"
+          />
+          <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -216,37 +219,37 @@
           <el-button link type="primary" @click="openForm(row)">编辑</el-button>
           <!-- 正常：暂停 -->
           <el-button
-            v-if="row.status === SupplierStatusEnum.NORMAL"
+            v-if="row.status === 'ACTIVE'"
             link
             type="warning"
-            @click="handleStatusChange(row, SupplierStatusEnum.PAUSED)"
+            @click="handleStatusChange(row, 'SUSPENDED')"
           >
             暂停
           </el-button>
           <!-- 暂停供货：恢复 -->
           <el-button
-            v-if="row.status === SupplierStatusEnum.PAUSED"
+            v-if="row.status === 'SUSPENDED'"
             link
             type="success"
-            @click="handleStatusChange(row, SupplierStatusEnum.NORMAL)"
+            @click="handleStatusChange(row, 'ACTIVE')"
           >
             恢复
           </el-button>
           <!-- 正常 / 暂停供货：移入黑名单 -->
           <el-button
-            v-if="row.status !== SupplierStatusEnum.BLACKLIST"
+            v-if="row.status !== 'BLACKLIST'"
             link
             type="danger"
-            @click="handleStatusChange(row, SupplierStatusEnum.BLACKLIST)"
+            @click="handleStatusChange(row, 'BLACKLIST')"
           >
             移入黑名单
           </el-button>
           <!-- 黑名单：移出黑名单 -->
           <el-button
-            v-if="row.status === SupplierStatusEnum.BLACKLIST"
+            v-if="row.status === 'BLACKLIST'"
             link
             type="success"
-            @click="handleStatusChange(row, SupplierStatusEnum.NORMAL)"
+            @click="handleStatusChange(row, 'ACTIVE')"
           >
             移出黑名单
           </el-button>
@@ -282,7 +285,6 @@ import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import { NamedRef, SupplierApi, SupplierVO } from '@/api/supplier/manage'
 import SupplierFormDialog from './form/index.vue'
 import SupplierDetailDrawer from './detail/index.vue'
-import { SupplierStatusEnum, getSupplierStatusType } from '@/views/supplier/utils/constants'
 
 defineOptions({ name: 'SupplierManage' })
 
@@ -427,9 +429,9 @@ const getFilterOptions = async () => {
 
 /** 按当前状态展示对应操作文案并二次确认 */
 const getStatusActionText = (row: SupplierVO, targetStatus: string) => {
-  if (targetStatus === SupplierStatusEnum.PAUSED) return '暂停供货'
-  if (targetStatus === SupplierStatusEnum.BLACKLIST) return '移入黑名单'
-  if (row.status === SupplierStatusEnum.BLACKLIST) return '移出黑名单'
+  if (targetStatus === 'SUSPENDED') return '暂停供货'
+  if (targetStatus === 'BLACKLIST') return '移入黑名单'
+  if (row.status === 'BLACKLIST') return '移出黑名单'
   return '恢复合作'
 }
 
@@ -447,8 +449,7 @@ const handleStatusChange = async (row: SupplierVO, status: string) => {
     )
     // 暂停 / 恢复走批量接口（单条也复用）；移入/移出黑名单走单条状态变更
     const isPauseOrResume =
-      status === SupplierStatusEnum.PAUSED ||
-      (status === SupplierStatusEnum.NORMAL && row.status === SupplierStatusEnum.PAUSED)
+      status === 'SUSPENDED' || (status === 'ACTIVE' && row.status === 'SUSPENDED')
 
     if (isPauseOrResume) {
       await SupplierApi.batchUpdateSupplierStatus([supplierCode], status)
@@ -467,17 +468,17 @@ const handleSelectionChange = (rows: SupplierVO[]) => {
 
 /** 批量暂停：仅当前「正常」的选中项 */
 const pausableSelectedList = computed(() =>
-  selectedList.value.filter((row) => row.status === SupplierStatusEnum.NORMAL)
+  selectedList.value.filter((row) => row.status === 'ACTIVE')
 )
 
 /** 批量恢复：仅当前「暂停供货」的选中项 */
 const resumableSelectedList = computed(() =>
-  selectedList.value.filter((row) => row.status === SupplierStatusEnum.PAUSED)
+  selectedList.value.filter((row) => row.status === 'SUSPENDED')
 )
 
 /** 批量状态变更（暂停/恢复各自只处理符合状态的数据） */
 const handleBatchStatusChange = async (status: string) => {
-  const isPause = status === SupplierStatusEnum.PAUSED
+  const isPause = status === 'SUSPENDED'
   const targetList = isPause ? pausableSelectedList.value : resumableSelectedList.value
   const actionText = isPause ? '暂停供货' : '恢复合作'
   if (targetList.length === 0) {

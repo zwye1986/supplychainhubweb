@@ -91,7 +91,7 @@
       <el-table-column label="供货模式" min-width="180">
         <template #default="{ row }">
           <el-tag v-if="row.offerSupplyMode" size="small" type="success">
-            {{ getSupplyModeLabel(row.offerSupplyMode) }}
+            {{ getDictLabel('supply_chain_supply_mode', row.offerSupplyMode) || row.offerSupplyMode }}
           </el-tag>
           <span v-else>-</span>
         </template>
@@ -330,11 +330,10 @@ import {
   getOfferPriceModeLabel,
   getOfferStatusLabel,
   getOfferStatusType,
-  getSupplyModeLabel,
   percentToBp,
   yuanToCents
 } from '@/views/supplier/utils/constants'
-import { getStrDictOptions } from '@/utils/dict'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import type { FormInstance, FormRules } from 'element-plus'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 import {

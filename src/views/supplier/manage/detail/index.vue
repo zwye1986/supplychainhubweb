@@ -14,9 +14,12 @@
             <span class="truncate text-20px font-700">
               {{ supplier.supplierName || supplier.name || '供应商详情' }}
             </span>
-            <el-tag :type="getSupplierStatusType(supplier.status)" size="small">
-              {{ getDictLabel('supply_chain_supplier_status', supplier.status) || '-' }}
-            </el-tag>
+            <dict-tag
+              v-if="supplier.status"
+              type="supply_chain_supplier_status"
+              :value="supplier.status"
+            />
+            <span v-else>-</span>
           </div>
           <div class="text-13px text-gray-500">
             编号：{{ supplier.supplierCode || supplier.code || '-' }}
@@ -345,13 +348,6 @@ const productListRef = ref<InstanceType<typeof ProductList>>()
 const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
-}
-
-const getSupplierStatusType = (status?: string) => {
-  if (status === 'ACTIVE') return 'success'
-  if (status === 'SUSPENDED') return 'warning'
-  if (status === 'BLACKLIST') return 'danger'
-  return 'info'
 }
 
 const shippingSlaText = computed(() => {
