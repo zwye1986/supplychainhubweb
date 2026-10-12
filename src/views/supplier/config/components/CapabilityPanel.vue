@@ -30,7 +30,9 @@
     <el-empty v-if="!selectedConnectorNo" description="请选择一个连接器" />
     <template v-else>
       <el-descriptions v-if="detail" :column="2" border class="mb-12px">
-        <el-descriptions-item label="适配器类型">{{ detail.adapterType || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="适配器类型">{{
+          detail.adapterType || '-'
+        }}</el-descriptions-item>
         <el-descriptions-item label="版本状态">
           <el-tag :type="getConnectorStatusType(detail.status)" size="small">
             {{ getConnectorStatusLabel(detail.status) }}
@@ -39,6 +41,7 @@
       </el-descriptions>
       <el-table :data="capabilityRows" border>
         <el-table-column label="能力编码" prop="code" min-width="200" />
+        <el-table-column label="能力说明" prop="description" min-width="360" />
         <el-table-column label="启用态" min-width="120">
           <template #default="{ row }">
             <el-tag :type="row.enabled ? 'success' : 'info'" size="small">
@@ -47,7 +50,10 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!capabilityRows.length" description="该连接器版本尚未声明能力（草稿未校验）" />
+      <el-empty
+        v-if="!capabilityRows.length"
+        description="该连接器版本尚未声明能力（草稿未校验）"
+      />
     </template>
   </div>
 </template>
@@ -79,18 +85,31 @@ const detail = ref<ConnectorVersionDetail | null>(null)
 
 interface CapabilityRow {
   code: string
+  description: string
   enabled: boolean
 }
 
-/** 以适配器能力全集为基底，叠加版本已启用态；未在全集内的历史能力也补列，避免遗漏。 */
+/**
+ * 以适配器能力全集为基底，叠加版本已启用态；未在全集内的历史能力也补列，避免遗漏。
+ * 中文说明与能力目录同取后端适配器元数据，前端不维护能力字典；缺少说明时只展示回退提示。
+ * 设计见 docs/superpowers/specs/2026-10-03-supplier-offer-publication-admin-design.md#84-能力子页。
+ */
 const capabilityRows = computed<CapabilityRow[]>(() => {
   const enabledCodes = new Set(
     (detail.value?.capabilities || []).filter((c) => c.enabled).map((c) => c.capabilityCode!)
   )
-  const catalog =
-    adapterTypes.value.find((t) => t.adapterType === detail.value?.adapterType)?.capabilities || []
-  const codes = new Set<string>([...catalog, ...(detail.value?.capabilities || []).map((c) => c.capabilityCode!)])
-  return [...codes].filter(Boolean).map((code) => ({ code, enabled: enabledCodes.has(code) }))
+  const adapter = adapterTypes.value.find((t) => t.adapterType === detail.value?.adapterType)
+  const catalog = adapter?.capabilities || []
+  const descriptions = new Map(Object.entries(adapter?.capabilityDescriptions || {}))
+  const codes = new Set<string>([
+    ...catalog,
+    ...(detail.value?.capabilities || []).map((c) => c.capabilityCode!)
+  ])
+  return [...codes].filter(Boolean).map((code) => ({
+    code,
+    description: descriptions.get(code) || '暂无中文说明',
+    enabled: enabledCodes.has(code)
+  }))
 })
 
 const versionIdOf = (connectorNo: string): number | null => {
@@ -108,7 +127,10 @@ const loadDetail = async () => {
   }
   loading.value = true
   try {
-    detail.value = await SupplierConfigApi.getConnectorVersionDetail(selectedConnectorNo.value, versionId)
+    detail.value = await SupplierConfigApi.getConnectorVersionDetail(
+      selectedConnectorNo.value,
+      versionId
+    )
   } catch (error: any) {
     if (error?.message) message.error(error.message)
   } finally {

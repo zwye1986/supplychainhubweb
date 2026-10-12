@@ -3,6 +3,43 @@ import test from 'node:test'
 import { mountSupplierConfig, flushSfc } from './support/supplier-config-sfc-harness.mjs'
 
 const capabilities = ['ISSUE_ASSET', 'CREATE_RECHARGE', 'QUERY_ORDER', 'RECEIVE_CALLBACK', 'QUERY_BALANCE']
+
+test('capability panel explains codes while preserving enabled states and historical capabilities', async () => {
+  const api = apiStub()
+  api.replaceConnectors([{ connectorNo: 'CON_A', latestVersionId: 1 }])
+  api.listAdapterTypes = async () => [{
+    adapterType: 'QNM_GAME_ORDER_V1', capabilities,
+    capabilityDescriptions: { QUERY_ORDER: '后端定义的查询订单说明', CREATE_RECHARGE: '后端定义的充值说明' }
+  }]
+  api.getConnectorVersionDetail = async () => ({
+    adapterType: 'QNM_GAME_ORDER_V1',
+    capabilities: [
+      { capabilityCode: 'QUERY_ORDER', enabled: true },
+      { capabilityCode: 'LEGACY_CAPABILITY', enabled: true }
+    ]
+  })
+  const view = mountSupplierConfig(api, 'components/CapabilityPanel.vue', { supplierCode: 'SPL_A' })
+  try {
+    await flushSfc()
+    const state = view.root.setupState
+    state.selectedConnectorNo = 'CON_A'
+    await state.loadDetail()
+    await flushSfc()
+    assert.deepEqual({ ...state.capabilityRows.find(row => row.code === 'QUERY_ORDER') }, {
+      code: 'QUERY_ORDER', description: '后端定义的查询订单说明', enabled: true
+    })
+    assert.equal(state.capabilityRows.find(row => row.code === 'CREATE_RECHARGE').enabled, false)
+    assert.equal(state.capabilityRows.find(row => row.code === 'CREATE_RECHARGE').description, '后端定义的充值说明')
+    assert.equal(state.capabilityRows.find(row => row.code === 'ISSUE_ASSET').description, '暂无中文说明')
+    assert.deepEqual({ ...state.capabilityRows.find(row => row.code === 'LEGACY_CAPABILITY') }, {
+      code: 'LEGACY_CAPABILITY', description: '暂无中文说明', enabled: true
+    })
+    const columns = view.find('ElTable').subTree.children.map(vnode => vnode.props)
+    assert.deepEqual(columns.map(column => column.label), ['能力编码', '能力说明', '启用态'])
+    assert.equal(columns[1].prop, 'description')
+  } finally { view.unmount() }
+})
+
 function apiStub() {
   let connectors = []
   return {
