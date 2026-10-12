@@ -39,8 +39,11 @@
           <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="SKU规格" min-width="100">
-        <template #default="{ row }">{{ row.skuName || '-' }}</template>
+      <el-table-column label="SKU规格" min-width="160">
+        <template #default="{ row }">
+          <div>{{ row.skuName || '-' }}</div>
+          <div class="text-12px text-gray-500">{{ row.platformSkuCode || '-' }}</div>
+        </template>
       </el-table-column>
       <el-table-column label="下单编码(BPD)" min-width="160">
         <template #default="{ row }">
@@ -108,7 +111,7 @@
           {{ getTaxAmountLabel(row) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="200" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openAdjust(row)">改价</el-button>
           <el-button
@@ -118,7 +121,7 @@
             :loading="recalculatingCode === row.buyerProductCode"
             @click="handleRecalculate(row)"
           >
-            重算
+            刷新状态
           </el-button>
           <el-button link type="danger" @click="handleDelete(row)">移除</el-button>
         </template>
@@ -531,23 +534,23 @@ const getAvailabilityTagType = (
 const handleRecalculate = async (row: BuyerProductListItem) => {
   const code = row.buyerProductCode || row.canonicalBuyerSkuCode
   if (!props.buyerCode || !code) {
-    message.error('缺少分销商品编号，无法重算')
+    message.error('缺少分销商品编号，无法刷新状态')
     return
   }
   recalculatingCode.value = code
   try {
     const res = await DistributorApi.recalculateAcceptanceCatalog(props.buyerCode, code)
-    // 重算成功只代表目录发布与投影正常，不代替项目下单时的实时准入。
+    // 刷新成功只代表目录发布与投影正常，不代替项目下单时的实时准入。
     if (res?.publicationState === 'PUBLISHED' && res.availabilityStatus === 'AVAILABLE') {
-      message.success('受理目录重算完成')
+      message.success('受理目录状态已刷新')
     } else {
       message.warning(
-        `重算完成，目录尚未就绪：${res?.reason || res?.publicationState || '未知状态'}`
+        `状态已刷新，目录尚未就绪：${res?.reason || res?.publicationState || '未知状态'}`
       )
     }
     await getList()
   } catch (err: any) {
-    message.error(err?.message || '重算失败')
+    message.error(err?.message || '刷新状态失败')
   } finally {
     recalculatingCode.value = null
   }

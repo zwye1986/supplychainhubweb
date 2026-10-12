@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import { parse, compileScript } from 'vue/compiler-sfc'
 import ts from 'typescript'
 import * as vue from 'vue'
+import { mountProductList, flushProductList } from './support/product-list-sfc-harness.mjs'
 
 // 编译真实组件script setup，仅隔离网络和UI消息，不复制重算业务逻辑。
 const filename = 'src/views/supplier/distribution/distributor/detail/ProductList.vue'
@@ -81,6 +82,7 @@ test('已发布且供给CONFIRMED显示成功', async () => {
   })
   await component.handleRecalculate({ buyerProductCode: 'BPD_1' })
   assert.equal(notices[0].type, 'success')
+  assert.equal(notices[0].content, '受理目录状态已刷新')
 })
 
 test('缺失响应不默认为成功', async () => {
@@ -119,4 +121,33 @@ test('重算响应类型字段与RefreshResult一致', () => {
       'nextEvaluateAt'
     ].sort()
   )
+})
+
+test('分销商品规格展示平台SKU编码，操作显示刷新状态', async () => {
+  const row = {
+    buyerProductCode: 'BPD_1',
+    platformSkuCode: 'SKU_011_001',
+    skuName: '优惠卡券测试',
+    spuCode: 'SPU_011',
+    managementMode: 'AUTO_SELECTION',
+    publicationState: 'PUBLISHED',
+    availabilityStatus: 'UNKNOWN',
+    catalogRefreshReason: 'SOURCE_CHANGED'
+  }
+  const view = mountProductList({ get: async () => ({ list: [row], total: 1 }) }, undefined, {
+    props: { buyerCode: 'BYR_1' },
+    entryFile: 'views/supplier/distribution/distributor/detail/ProductList.vue'
+  })
+  try {
+    await flushProductList()
+    const sku = view.components('ElTableColumn').find((item) => item.props.label === 'SKU规格')
+    assert.ok(sku.text.includes('优惠卡券测试'))
+    assert.ok(sku.text.includes('SKU_011_001'))
+    assert.ok(view.allButtons().some((item) => item.text.trim() === '刷新状态'))
+    assert.ok(!view.allButtons().some((item) => item.text.trim() === '重算'))
+    assert.ok(view.text().includes('已发布'))
+    assert.ok(view.text().includes('待重新评估'))
+  } finally {
+    view.unmount()
+  }
 })
