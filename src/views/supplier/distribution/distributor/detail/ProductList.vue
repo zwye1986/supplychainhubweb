@@ -6,7 +6,10 @@
           <div
             >目录层供给可用性为全局投影（区分已发布/待发布/暂停/退役及供给状态），不代表各项目端实时授权。</div
           >
-          <div>项目标准下单统一使用分销商商品编码（BPD），非内部项目商品编号。</div>
+          <div
+            >新接入 v2 提交平台 SKU；旧 v1 保留
+            BPD／历史编码。是否可下单以本项目选品、价格与实时准入为准。</div
+          >
         </div>
       </el-alert>
       <el-button type="primary" round @click="openSelectDialog">+新增商品</el-button>
@@ -39,17 +42,20 @@
           <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="SKU规格" min-width="160">
+      <el-table-column label="SKU规格" min-width="190">
         <template #default="{ row }">
           <div>{{ row.skuName || '-' }}</div>
-          <div class="text-12px text-gray-500">{{ row.platformSkuCode || '-' }}</div>
+          <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
+            v2下单编码：{{ row.platformSkuCode || '-' }}
+          </div>
         </template>
       </el-table-column>
-      <el-table-column label="下单编码(BPD)" min-width="160">
+      <el-table-column label="分销商品编号(BPD)" min-width="170">
         <template #default="{ row }">
           <div class="font-mono text-13px">{{
             row.canonicalBuyerSkuCode || row.buyerProductCode || '-'
           }}</div>
+          <div class="text-11px text-gray-400">旧v1下单编码</div>
           <div v-if="row.acceptanceListingNo" class="text-11px text-gray-400">
             目录: {{ row.acceptanceListingNo }}
           </div>
