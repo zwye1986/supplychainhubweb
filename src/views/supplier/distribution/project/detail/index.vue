@@ -152,9 +152,9 @@
           />
         </el-tab-pane>
 
-        <el-tab-pane label="应用凭证" name="application" lazy>
+        <el-tab-pane label="应用接入" name="application" lazy>
           <ProjectApplicationCredentials
-            v-if="projectCode"
+            v-if="projectCode && modelValue"
             :key="projectCode"
             :project-code="projectCode"
             :active="project.status === 'ACTIVE'"

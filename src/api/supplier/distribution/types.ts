@@ -127,6 +127,15 @@ export interface ProjectDetail {
 /** 项目（项目管理 / 分销商关联项目共用） */
 export type ProjectVO = ProjectDetail
 
+/** 项目接入能力；无记录不能编造关闭状态或版本。见接入能力设计 §3。 */
+export interface ProjectCapability {
+  capabilityCode: 'STANDARD_PRODUCT' | 'O2O' | 'INSTORE'
+  status: 'NOT_ENABLED' | 'ENABLED' | 'DISABLED'
+  version: number | null
+  lastOperatorId: number | null
+  lastChangedAt: string | null
+}
+
 /** 项目应用凭证列表；服务端从不在查询响应中返回密钥明文。 */
 export interface ProjectApplicationCredentials {
   appId: string | null
