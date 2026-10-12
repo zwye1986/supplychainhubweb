@@ -146,7 +146,12 @@ test('分销商品规格展示平台SKU编码，操作显示刷新状态', async
     assert.ok(view.allButtons().some((item) => item.text.trim() === '刷新状态'))
     assert.ok(!view.allButtons().some((item) => item.text.trim() === '重算'))
     assert.ok(view.text().includes('已发布'))
-    assert.ok(view.text().includes('待重新评估'))
+    assert.ok(view.text().includes('供给待确认'))
+    assert.ok(view.text().includes('定价来源已更新，需重新评估'))
+    function findTitle(node) {
+      return node.props?.title === 'SOURCE_CHANGED' || (node.children || []).some(findTitle)
+    }
+    assert.ok(findTitle(view.container), '提示详情保留稳定诊断码')
   } finally {
     view.unmount()
   }

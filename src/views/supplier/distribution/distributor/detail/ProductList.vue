@@ -68,10 +68,10 @@
             </div>
             <div
               v-if="row.catalogRefreshReason"
-              class="text-11px text-gray-400 truncate"
+              class="text-11px text-gray-400 whitespace-normal leading-18px"
               :title="row.catalogRefreshReason"
             >
-              {{ row.catalogRefreshReason }}
+              {{ getCatalogReasonLabel(row.catalogRefreshReason) }}
             </div>
           </div>
         </template>
@@ -510,9 +510,34 @@ const getAvailabilityLabel = (row: BuyerProductListItem) => {
     case 'UNAVAILABLE':
       return '不可用'
     case 'UNKNOWN':
-      return '待重新评估'
+      return '供给待确认'
     default:
       return row.availabilityStatus || '未知'
+  }
+}
+
+// 仅解释目录层原因，不推导本项目实时授权；稳定诊断码保留在原 title 中。
+// 设计：docs/superpowers/specs/2026-10-12-catalog-source-freshness-correction-design.md §6。
+const getCatalogReasonLabel = (reason?: string) => {
+  switch (reason) {
+    case 'SOURCE_CHANGED':
+      return '定价来源已更新，需重新评估'
+    case 'PROJECTION_EXPIRED':
+      return '评估结果已过期，需获取最新状态'
+    case 'NOT_EVALUATED':
+      return '尚无有效供给评估'
+    case 'DEFERRED_PRICE':
+      return '分销定价尚未就绪'
+    case 'SUSPENDED':
+      return '目录已人工暂停'
+    case 'RETIRED':
+      return '目录已退役'
+    case 'BUYER_PRODUCT_REMOVED':
+      return '分销商品已移除'
+    case 'CONFIRMED':
+      return '供给条件已确认'
+    default:
+      return reason ? '供给条件尚未确认' : ''
   }
 }
 
