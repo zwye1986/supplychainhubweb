@@ -159,10 +159,18 @@
       <el-table-column label="更新时间" prop="updatedAt" min-width="200">
         <template #default="{ row }">{{ formatDate(row.updatedAt, 'YYYY-MM-DD HH:mm:ss.SSS') || '—' }}</template>
       </el-table-column>
-      <el-table-column label="操作" fixed="right" width="240">
+      <el-table-column label="操作" fixed="right" width="300">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.spuCode)">详情</el-button>
           <el-button link type="primary" :disabled="!canPriceSku(row)" :title="pricingStatusHint" @click="openSkuPriceDialog(row.skuCode)">定价</el-button>
+          <el-button
+            v-if="row.skuCode"
+            link
+            type="primary"
+            @click="openFulfillmentScoreDialog(row)"
+          >
+            履约能力
+          </el-button>
           <el-button v-if="row.status === PRODUCT_STATUS.DRAFT" link type="danger" @click="handleDelete(row)">
             删除
           </el-button>
@@ -181,6 +189,7 @@
   <ProductForm ref="formRef" @success="handleFormSuccess" />
   <ProductDetail ref="detailRef" @edit="handleEditFromDetail" />
   <ProductPriceDialog ref="priceRef" @success="getList" />
+  <FulfillmentScoreDialog ref="fulfillmentScoreRef" />
 </template>
 
 <script lang="ts" setup>
@@ -201,6 +210,7 @@
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/utils/money'
   import ProductPriceDialog from './components/PriceDialog.vue'
+  import FulfillmentScoreDialog from './components/FulfillmentScoreDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
   import { isSpuBatchStatusResult, isSpuShelfSyncResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'
   import ProductForm from './form/index.vue'
@@ -227,6 +237,7 @@
   const formRef = ref()
   const detailRef = ref()
   const priceRef = ref()
+  const fulfillmentScoreRef = ref<InstanceType<typeof FulfillmentScoreDialog>>()
   const queryParams = reactive({
     pageNo: 1,
     pageSize: 20,
@@ -437,6 +448,24 @@
       return
     }
     priceRef.value.open([skuCode], false)
+  }
+
+  const openFulfillmentScoreDialog = (row: {
+    skuCode?: string
+    skuName?: string
+    spuName?: string
+    productTypeName?: string
+  }) => {
+    if (!row.skuCode) {
+      message.warning('缺少 SKU 编号，无法查看履约能力')
+      return
+    }
+    fulfillmentScoreRef.value?.open({
+      skuCode: row.skuCode,
+      skuName: row.skuName,
+      spuName: row.spuName,
+      productTypeName: row.productTypeName
+    })
   }
 
   const openPriceDialog = (spuCode?: string) => {

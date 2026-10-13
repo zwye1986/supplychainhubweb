@@ -14,6 +14,11 @@ export type {
   FormulaVO,
   PlatformPricingDetail,
   PlatformSkuBatchPricingReqVO,
+  ScoreUpdateResult,
+  SkuFulfillmentScoreItem,
+  SkuFulfillmentScoreItemReqVO,
+  SkuFulfillmentScoreSaveReqVO,
+  SkuFulfillmentScoreView,
   ProductBatchStatusFailedItemVO,
   ProductBatchStatusResultVO,
   ProductBatchStatusGroupVO,
@@ -52,6 +57,9 @@ import type {
   CategorySaveReqVO,
   PlatformPricingDetail,
   PlatformSkuBatchPricingReqVO,
+  ScoreUpdateResult,
+  SkuFulfillmentScoreSaveReqVO,
+  SkuFulfillmentScoreView,
   ProductCategoryVO,
   ProductManagementPageParam,
   ProductTypePageParam,
@@ -276,6 +284,22 @@ export const ProductApi = {
   getSkuPricing: async (skuCode: string): Promise<PlatformPricingDetail> => {
     return await request.get({
       url: `/supply-chain/products/skus/${encodeURIComponent(skuCode)}/pricing`
+    })
+  },
+  /** 查询 SKU 当前合作供应商履约能力评分；无合作供应商时 items 为空 */
+  getSkuFulfillmentScores: async (skuCode: string): Promise<SkuFulfillmentScoreView> => {
+    return await request.get({
+      url: `/supply-chain/products/skus/${encodeURIComponent(skuCode)}/fulfillment-scores`
+    })
+  },
+  /** 保存 SKU 当前合作供应商履约能力评分；只更新提交行 */
+  saveSkuFulfillmentScores: async (
+    skuCode: string,
+    data: SkuFulfillmentScoreSaveReqVO
+  ): Promise<ScoreUpdateResult> => {
+    return await request.put({
+      url: `/supply-chain/products/skus/${encodeURIComponent(skuCode)}/fulfillment-scores`,
+      data
     })
   }
 }

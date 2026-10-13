@@ -124,6 +124,43 @@ export interface TaxMetadataVO {
   taxRateLabel?: string
 }
 
+/** GET /supply-chain/products/skus/{skuCode}/fulfillment-scores 合作供应商评分行 */
+export interface SkuFulfillmentScoreItem {
+  supplierCode?: string
+  supplierName?: string
+  offerNo?: string
+  /** 稳定性评分，0-100，默认 80 */
+  stabilityScore?: number
+  /** 时效性评分，0-100，默认 80 */
+  timelinessScore?: number
+}
+
+/** GET /supply-chain/products/skus/{skuCode}/fulfillment-scores */
+export interface SkuFulfillmentScoreView {
+  skuCode?: string
+  skuName?: string
+  spuCode?: string
+  spuName?: string
+  items?: SkuFulfillmentScoreItem[]
+}
+
+/** PUT /supply-chain/products/skus/{skuCode}/fulfillment-scores 保存行 */
+export interface SkuFulfillmentScoreItemReqVO {
+  supplierCode: string
+  stabilityScore?: number
+  timelinessScore?: number
+}
+
+/** PUT /supply-chain/products/skus/{skuCode}/fulfillment-scores */
+export interface SkuFulfillmentScoreSaveReqVO {
+  items: SkuFulfillmentScoreItemReqVO[]
+}
+
+/** PUT /supply-chain/products/skus/{skuCode}/fulfillment-scores 回执 */
+export interface ScoreUpdateResult {
+  updatedCount?: number
+}
+
 /** GET /supply-chain/products/skus/{skuCode}/pricing 当前完整默认定价 */
 export interface PlatformPricingDetail {
   platformSkuCode?: string
