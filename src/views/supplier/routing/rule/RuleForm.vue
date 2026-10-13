@@ -29,7 +29,13 @@
       <el-divider content-position="left">路由模式与供应商设置</el-divider>
       <el-form-item label="路由模式" prop="routeMode">
         <el-radio-group v-model="formData.routeMode">
-          <el-radio v-for="item in ROUTE_MODE_OPTIONS" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
+          <el-radio
+            v-for="dict in getStrDictOptions('supply_chain_routing_mode')"
+            :key="dict.value"
+            :value="dict.value"
+          >
+            {{ dict.label }}
+          </el-radio>
         </el-radio-group>
       </el-form-item>
       <el-form-item v-if="formData.routeMode === 'AUTO'" label="适用供应商" required>
@@ -54,7 +60,13 @@
       </el-form-item>
       <el-form-item label="状态">
         <el-radio-group v-model="formData.status">
-          <el-radio v-for="item in ROUTE_STATUS_OPTIONS" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
+          <el-radio
+            v-for="dict in getStrDictOptions('supply_chain_routing_rule_status')"
+            :key="dict.value"
+            :value="dict.value"
+          >
+            {{ dict.label }}
+          </el-radio>
         </el-radio-group>
       </el-form-item>
 
@@ -128,6 +140,7 @@
 import draggable from 'vuedraggable'
 import { RoutingApi, RouteRuleVO, RouteStrategy, ScopeMode } from '@/api/routing'
 import { SupplierApi } from '@/api/supplier/manage'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'RoutingRuleForm' })
 
@@ -136,14 +149,6 @@ interface CodeNameOption {
   name: string
 }
 
-const ROUTE_MODE_OPTIONS = [
-  { value: 'AUTO', label: '自动路由' },
-  { value: 'FIXED', label: '固定供应商' }
-]
-const ROUTE_STATUS_OPTIONS = [
-  { value: 'ENABLED', label: '启用' },
-  { value: 'DISABLED', label: '停用' }
-]
 const ROUTE_STRATEGY_META: Record<RouteStrategy, { label: string; hint: string }> = {
   STABLE: { label: '稳定优先', hint: '稳定性评分越高，越优先分配' },
   PRICE: { label: '价格优先', hint: '供货价越低，越优先分配' },
@@ -317,7 +322,9 @@ const submitForm = async () => {
     return
   }
   if (formData.routeMode === 'FIXED' && !formData.primarySupplierCode) {
-    message.warning('当路由模式为“固定供应商”时，必须指定主供应商')
+    message.warning(
+      `当路由模式为“${getDictLabel('supply_chain_routing_mode', 'FIXED')}”时，必须指定主供应商`
+    )
     return
   }
   const strategies = formData.priorities.map((item) => item.strategy)

@@ -51,7 +51,12 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" clearable placeholder="请选择状态">
-          <el-option v-for="item in ROUTE_STATUS_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+          <el-option
+            v-for="dict in getStrDictOptions('supply_chain_routing_rule_status')"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="更新人" prop="updaters">
@@ -108,7 +113,7 @@
         <template #default="{ row }">{{ formatScope(row.productTypeMode, row.productTypeNames, '全部类型') }}</template>
       </el-table-column>
       <el-table-column label="路由模式" min-width="110">
-        <template #default="{ row }">{{ getOptionLabel(ROUTE_MODE_OPTIONS, row.routeMode) }}</template>
+        <template #default="{ row }">{{ getDictLabel('supply_chain_routing_mode', row.routeMode) }}</template>
       </el-table-column>
       <el-table-column label="适用供应商" min-width="160">
         <template #default="{ row }">{{ formatSuppliers(row) }}</template>
@@ -140,8 +145,8 @@
             :model-value="row.status"
             active-value="ENABLED"
             inactive-value="DISABLED"
-            active-text="启用"
-            inactive-text="停用"
+            :active-text="getDictLabel('supply_chain_routing_rule_status', 'ENABLED')"
+            :inactive-text="getDictLabel('supply_chain_routing_rule_status', 'DISABLED')"
             inline-prompt
             @change="(val) => handleStatus(row, String(val))"
           />
@@ -174,6 +179,7 @@ import { RoutingApi, RouteRuleVO, RouteStrategy } from '@/api/routing'
 import { DistributorApi, ProjectApi } from '@/api/supplier/distribution'
 import { SupplierApi } from '@/api/supplier/manage'
 import { getSimpleUserList } from '@/api/system/user'
+import { getDictLabel, getStrDictOptions } from '@/utils/dict'
 import RuleForm from './RuleForm.vue'
 
 defineOptions({ name: 'RoutingRule' })
@@ -188,21 +194,10 @@ interface UserOption {
   name: string
 }
 
-const ROUTE_MODE_OPTIONS = [
-  { value: 'AUTO', label: '自动路由' },
-  { value: 'FIXED', label: '固定供应商' }
-]
-const ROUTE_STATUS_OPTIONS = [
-  { value: 'ENABLED', label: '启用' },
-  { value: 'DISABLED', label: '停用' }
-]
-
 const formatScope = (mode?: string, names?: string[], allText = '全部') => {
   if (mode !== 'SPECIFIED') return allText
   return names?.length ? names.join('、') : allText
 }
-const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
-  options.find((item) => item.value === value)?.label || '-'
 
 const message = useMessage()
 const loading = ref(false)
@@ -332,7 +327,9 @@ const handleDelete = async (row: RouteRuleVO) => {
 const handleStatus = async (row: RouteRuleVO, next: string) => {
   const target = next === 'ENABLED' ? 'ENABLED' : 'DISABLED'
   try {
-    await message.confirm(`确认${target === 'ENABLED' ? '启用' : '停用'}规则「${row.name}」？`)
+    await message.confirm(
+      `确认${getDictLabel('supply_chain_routing_rule_status', target)}规则「${row.name}」？`
+    )
     await RoutingApi.changeStatus(row.ruleCode, target)
     message.success('操作成功')
     getList()
