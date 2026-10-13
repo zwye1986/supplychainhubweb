@@ -49,7 +49,7 @@
           </span>
         </el-descriptions-item>
         <el-descriptions-item label="结算方">
-          {{ getDictLabel('supply_chain_settlement_party_type', project.settlementPartyType) || '-' }}
+          {{ settlementPartyText }}
         </el-descriptions-item>
         <el-descriptions-item label="商品类型" :span="3">
           <template v-if="productTypeItems.length">
@@ -108,10 +108,7 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="结算方">
-                  {{
-                    getDictLabel('supply_chain_settlement_party_type', project.settlementPartyType) ||
-                    '-'
-                  }}
+                  {{ settlementPartyText }}
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -209,6 +206,12 @@ const periodText = computed(() => {
 })
 
 const productTypeItems = computed(() => toProductTypeItems(project.value.productTypes))
+
+const settlementPartyText = computed(() => {
+  if (project.value.settlementBuyerName) return project.value.settlementBuyerName
+  if (project.value.settlementBuyerCode) return project.value.settlementBuyerCode
+  return getDictLabel('supply_chain_settlement_party_type', project.value.settlementPartyType) || '-'
+})
 
 const getDetail = async () => {
   const code = projectCode.value

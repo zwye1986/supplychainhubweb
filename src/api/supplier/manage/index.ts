@@ -26,7 +26,8 @@ export type {
   OfferPublishResult,
   FulfillmentScoreSaveReqVO,
   ScoreUpdateResult,
-  NamedRef
+  NamedRef,
+  NamedRefOrCode
 } from './types'
 
 import type {

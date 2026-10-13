@@ -46,29 +46,50 @@
       </el-form-item>
 
       <el-form-item label="更新时间">
-        <el-date-picker v-model="updatedRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" start-placeholder="开始时间" end-placeholder="结束时间" :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]" />
+        <el-date-picker v-model="updatedRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" start-placeholder="开始时间" end-placeholder="结束时间"
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]" />
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
+        <el-button @click="handleQuery" type="primary">
           <Icon icon="ep:search" class="mr-5px" /> 搜索
         </el-button>
         <el-button @click="resetQuery">
           <Icon icon="ep:refresh" class="mr-5px" /> 重置
         </el-button>
-        <el-button type="primary" plain @click="openForm()">
-          <Icon icon="ep:plus" class="mr-5px" /> 新增商品
-        </el-button>
-        <el-button type="success" plain :disabled="batchStatusBusy || !selectedCodes.length" :loading="batchStatusBusy" @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)">
-          批量上架
-        </el-button>
-        <el-button type="warning" plain :disabled="batchStatusBusy || !selectedCodes.length" :loading="batchStatusBusy" @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)">
-          批量下架
-        </el-button>
-        <el-button type="primary" plain :disabled="!selectedSkuCodes.length || !canPriceSelection" :title="pricingStatusHint" @click="openPriceDialog()">
-          批量定价
-        </el-button>
       </el-form-item>
     </el-form>
+    <div class="mt-12px flex flex-wrap items-center justify-start gap-8px">
+      <el-button type="primary" plain @click="openForm()">
+        <Icon icon="ep:plus" class="mr-5px" /> 新增商品
+      </el-button>
+      <el-button
+        type="success"
+        plain
+        :disabled="batchStatusBusy || !selectedCodes.length"
+        :loading="batchStatusBusy"
+        @click="handleBatchStatus(PRODUCT_STATUS.ON_SHELF)"
+      >
+        批量上架
+      </el-button>
+      <el-button
+        type="warning"
+        plain
+        :disabled="batchStatusBusy || !selectedCodes.length"
+        :loading="batchStatusBusy"
+        @click="handleBatchStatus(PRODUCT_STATUS.OFF_SHELF)"
+      >
+        批量下架
+      </el-button>
+      <el-button
+        type="primary"
+        plain
+        :disabled="!selectedSkuCodes.length || !canPriceSelection"
+        :title="pricingStatusHint"
+        @click="openPriceDialog()"
+      >
+        批量定价
+      </el-button>
+    </div>
   </ContentWrap>
 
   <ContentWrap>
@@ -163,12 +184,7 @@
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row.spuCode)">详情</el-button>
           <el-button link type="primary" :disabled="!canPriceSku(row)" :title="pricingStatusHint" @click="openSkuPriceDialog(row.skuCode)">定价</el-button>
-          <el-button
-            v-if="row.skuCode"
-            link
-            type="primary"
-            @click="openFulfillmentScoreDialog(row)"
-          >
+          <el-button v-if="row.skuCode" link type="primary" @click="openFulfillmentScoreDialog(row)">
             履约能力
           </el-button>
           <el-button v-if="row.status === PRODUCT_STATUS.DRAFT" link type="danger" @click="handleDelete(row)">
@@ -212,7 +228,11 @@
   import ProductPriceDialog from './components/PriceDialog.vue'
   import FulfillmentScoreDialog from './components/FulfillmentScoreDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
-  import { isSpuBatchStatusResult, isSpuShelfSyncResult, MAX_BATCH_STATUS_COUNT } from './utils/batch-status'
+  import {
+    isSpuBatchStatusResult,
+    isSpuShelfSyncResult,
+    MAX_BATCH_STATUS_COUNT
+  } from './utils/batch-status'
   import ProductForm from './form/index.vue'
   import ProductDetail from './detail/index.vue'
 
@@ -324,7 +344,8 @@
     row?.spuStatus === PRODUCT_STATUS.ON_SHELF && row.status === PRODUCT_STATUS.ON_SHELF
 
   const canPriceCodes = (codes: string[]) =>
-    codes.length > 0 && codes.every((code) => canPriceSku(tableRows.value.find((row) => row.skuCode === code)))
+    codes.length > 0 &&
+    codes.every((code) => canPriceSku(tableRows.value.find((row) => row.skuCode === code)))
 
   const canPriceSelection = computed(() => canPriceCodes(selectedSkuCodes.value))
 
@@ -529,9 +550,11 @@
     batchStatusBusy.value = true
     try {
       try {
-        await message.confirm(syncSkuOnShelf
-          ? `确认同步上架选中的 ${spuCodes.length} 个商品及其全部未归档规格（包含此前单独下架规格，将恢复上架）？`
-          : `确认批量${text}选中的 ${spuCodes.length} 个商品？`)
+        await message.confirm(
+          syncSkuOnShelf
+            ? `确认同步上架选中的 ${spuCodes.length} 个商品及其全部未归档规格（包含此前单独下架规格，将恢复上架）？`
+            : `确认批量${text}选中的 ${spuCodes.length} 个商品？`
+        )
       } catch (error) {
         // Element Plus 将用户取消/关闭确认框作为 Promise 拒绝，是预期的交互流程。
         if (error !== 'cancel' && error !== 'close') {
@@ -543,7 +566,13 @@
       batchStatusResultVisible.value = false
       batchStatusActionText.value = text
       try {
-        const response: unknown = await ProductApi.batchChangeProductStatus(spuCodes, [], targetStatus, undefined, syncSkuOnShelf ? true : undefined)
+        const response: unknown = await ProductApi.batchChangeProductStatus(
+          spuCodes,
+          [],
+          targetStatus,
+          undefined,
+          syncSkuOnShelf ? true : undefined
+        )
         const validResult = syncSkuOnShelf
           ? isSpuShelfSyncResult(response, spuCodes)
           : isSpuBatchStatusResult(response, spuCodes) && response.syncSkuOnShelf !== true
@@ -558,7 +587,9 @@
         const failedCount = result.failed.length
         // 普通下架仅校验逐实体回执，不读取额外 groups；规格数量只消费已校验的同步回执。
         const skuCount = syncSkuOnShelf
-          ? result.groups?.filter(group => group.succeeded).reduce((count, group) => count + group.skuCodes.length, 0) || 0
+          ? result.groups
+              ?.filter((group) => group.succeeded)
+              .reduce((count, group) => count + group.skuCodes.length, 0) || 0
           : 0
         const summary = syncSkuOnShelf
           ? `批量上架完成：${succeededCount} 个商品及 ${skuCount} 个规格已同步上架，失败 ${failedCount} 个商品组`

@@ -10,7 +10,7 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="SPU编号" prop="spuCode">
-            <el-input v-model="formData.spuCode" :disabled="isEdit" maxlength="7" placeholder="SPU_001；不填自动生成" />
+            <el-input v-model="formData.spuCode" disabled maxlength="7" placeholder="SPU_001；不填自动生成" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -33,12 +33,7 @@
         <el-col :span="12">
           <el-form-item label="商品状态">
             <el-select v-model="formData.status" clearable placeholder="请选择">
-              <el-option
-                v-for="dict in getStrDictOptions('supply_chain_sku_status')"
-                :key="dict.value"
-                :label="dict.label"
-                :value="dict.value"
-              />
+              <el-option v-for="dict in getStrDictOptions('supply_chain_sku_status')" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -66,12 +61,7 @@
         <el-table-column label="SKU详情图" min-width="110" align="center">
           <template #default="{ row }">
             <div class="sku-detail-pics-trigger" @click="openDetailPicsEditor(row)">
-              <el-image
-                v-if="row.detailPics?.[0]"
-                :src="row.detailPics[0]"
-                fit="cover"
-                class="h-100px w-100px rounded"
-              />
+              <el-image v-if="row.detailPics?.[0]" :src="row.detailPics[0]" fit="cover" class="h-100px w-100px rounded" />
               <div v-else class="sku-detail-pics-empty">
                 <Icon icon="ep:plus" />
               </div>
@@ -95,12 +85,7 @@
         </el-table-column>
         <el-table-column label="SKU编码" min-width="120">
           <template #default="{ row }">
-            <el-input
-              v-model="row.skuCode"
-              :disabled="row.readonlyCode"
-              maxlength="11"
-              :placeholder="skuCodeHint"
-            />
+            <el-input v-model="row.skuCode" :disabled="row.readonlyCode" maxlength="11" :placeholder="skuCodeHint" />
           </template>
         </el-table-column>
         <el-table-column label="市场价（元）" min-width="140" align="right">
@@ -132,14 +117,8 @@
               </div>
               <div v-if="row.suggestedSalePriceRule.mode === 'FIXED'" class="flex items-center gap-8px">
                 <span>固定售价</span>
-                <el-input-number
-                  :controls="false"
-                  :model-value="centsToYuan(row.suggestedSalePriceRule.fixedPriceCents)"
-                  :min="0"
-                  :precision="2"
-                  class="!w-140px"
-                  @update:model-value="(val) => onFixedPriceChange(row, val)"
-                />
+                <el-input-number :controls="false" :model-value="centsToYuan(row.suggestedSalePriceRule.fixedPriceCents)" :min="0" :precision="2" class="!w-140px"
+                  @update:model-value="(val) => onFixedPriceChange(row, val)" />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
             </div>
@@ -195,21 +174,8 @@
     </template>
   </el-dialog>
 
-  <el-dialog
-    v-model="detailPicsDialogVisible"
-    :title="detailPicsDialogTitle"
-    width="680px"
-    append-to-body
-    destroy-on-close
-  >
-    <UploadImgs
-      v-if="detailPicsEditingSku"
-      v-model="detailPicsEditingSku.detailPics"
-      :limit="5"
-      height="100px"
-      width="100px"
-      :drag="false"
-    />
+  <el-dialog v-model="detailPicsDialogVisible" :title="detailPicsDialogTitle" width="680px" append-to-body destroy-on-close>
+    <UploadImgs v-if="detailPicsEditingSku" v-model="detailPicsEditingSku.detailPics" :limit="5" height="100px" width="100px" :drag="false" />
     <template #footer>
       <el-button type="primary" @click="detailPicsDialogVisible = false">完成</el-button>
     </template>
@@ -323,7 +289,7 @@
     skuCode: '',
     faceValue: 0,
     marketPrice: 0,
-    picUrl:'',
+    picUrl: '',
     detailPics: [],
     description: '',
     suggestedSalePriceRule: createPriceRule(),
@@ -354,9 +320,7 @@
     const parentSegment = formData.codeScopeNo
       ? String(formData.codeScopeNo).padStart(3, '0')
       : /^SPU_([0-9]{3})$/.exec(formData.spuCode || '')?.[1]
-    return parentSegment
-      ? `SKU_${parentSegment}_001；不填自动生成`
-      : 'SKU_父段_001；不填自动生成'
+    return parentSegment ? `SKU_${parentSegment}_001；不填自动生成` : 'SKU_父段_001；不填自动生成'
   })
 
   const noLogistics = computed({
@@ -370,7 +334,9 @@
     const type = formData.fulfillmentType
     if (type == null || type === '') return false
     const code = String(type).toUpperCase()
-    if (['CARD', 'CARD_SECRET', 'CARD_CODE', 'CARD_PWD', 'CARD_KEY', 'CARD_PIN', 'CDK'].includes(code)) {
+    if (
+      ['CARD', 'CARD_SECRET', 'CARD_CODE', 'CARD_PWD', 'CARD_KEY', 'CARD_PIN', 'CDK'].includes(code)
+    ) {
       return true
     }
     const text = `${getDictLabel('supply_chain_fulfillment_type', type) || ''} ${type}`

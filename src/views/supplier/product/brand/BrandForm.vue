@@ -1,14 +1,14 @@
 <template>
   <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
     <el-form ref="formRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
+      <el-form-item label="品牌编码" prop="brandCode" disabled>
+        <el-input v-model="formData.brandCode" maxlength="7" placeholder="自动生成" disabled />
+      </el-form-item>
       <el-form-item label="品牌名称" prop="brandName">
         <el-input v-model="formData.brandName" maxlength="50" placeholder="请输入品牌名称" />
       </el-form-item>
       <el-form-item label="品牌简称" prop="shortName">
         <el-input v-model="formData.shortName" maxlength="20" placeholder="请输入品牌简称" />
-      </el-form-item>
-      <el-form-item label="品牌编码" prop="brandCode">
-        <el-input v-model="formData.brandCode" maxlength="7" placeholder="BRD_001；不填自动生成" :disabled="isEdit" />
       </el-form-item>
       <el-form-item label="品牌Logo" prop="logoUrl">
         <UploadImg v-model="formData.logoUrl" height="80px" width="80px" :file-type="['image/jpeg', 'image/png']" />

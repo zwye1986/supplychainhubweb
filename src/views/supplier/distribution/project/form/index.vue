@@ -34,6 +34,7 @@
           placeholder="请选择关联分销商"
           class="!w-full"
           :disabled="isEdit"
+          @change="handleBuyerChange"
         >
           <el-option
             v-for="item in buyerOptions"
@@ -64,16 +65,22 @@
           clearable
         />
       </el-form-item>
-      <el-form-item label="结算方" prop="settlementPartyType">
-        <el-radio-group v-model="formData.settlementPartyType">
-          <el-radio
-            v-for="dict in getStrDictOptions('supply_chain_settlement_party_type')"
-            :key="dict.value"
-            :value="dict.value"
-          >
-            {{ dict.label }}
-          </el-radio>
-        </el-radio-group>
+      <el-form-item label="结算方" prop="settlementBuyerCode">
+        <el-select
+          v-model="formData.settlementBuyerCode"
+          filterable
+          clearable
+          placeholder="请选择结算方"
+          class="!w-full"
+          @change="settlementTouched = true"
+        >
+          <el-option
+            v-for="item in buyerOptions"
+            :key="item.buyerCode"
+            :label="item.buyerName"
+            :value="item.buyerCode"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="项目状态" prop="status">
         <el-radio-group v-model="formData.status">
@@ -137,6 +144,8 @@ type ProjectFormData = ProjectVO & { period?: string[] }
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
 const buyerOptions = ref<{ buyerCode: string; buyerName: string }[]>([])
+/** 用户是否手动改过结算方；未改过时跟随关联分销商 */
+const settlementTouched = ref(false)
 const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view'))
 
@@ -157,6 +166,7 @@ const createDefaultForm = (): ProjectFormData => ({
   endDate: undefined,
   period: [],
   settlementPartyType: 'DISTRIBUTOR',
+  settlementBuyerCode: undefined,
   description: ''
 })
 
@@ -167,9 +177,14 @@ const formRules = reactive<FormRules>({
   buyerCode: [{ required: true, message: '请选择关联分销商', trigger: 'change' }],
   projectType: [{ required: true, message: '请选择项目类型', trigger: 'change' }],
   period: [{ required: true, message: '请选择项目周期', trigger: 'change', type: 'array' }],
-  settlementPartyType: [{ required: true, message: '请选择结算方', trigger: 'change' }],
+  settlementBuyerCode: [{ required: true, message: '请选择结算方', trigger: 'change' }],
   status: [{ required: true, message: '请选择项目状态', trigger: 'change' }]
 })
+
+const handleBuyerChange = (buyerCode?: string) => {
+  if (settlementTouched.value && formData.value.settlementBuyerCode) return
+  formData.value.settlementBuyerCode = buyerCode || undefined
+}
 
 const pageTitle = computed(() => {
   if (props.mode === 'view') return '项目详情'
@@ -204,6 +219,7 @@ const loadBuyerOptions = async () => {
 }
 
 const resetForm = async () => {
+  settlementTouched.value = false
   formData.value = createDefaultForm()
   await nextTick()
   formRef.value?.clearValidate()
@@ -213,14 +229,21 @@ const loadDetail = async (projectCode: string) => {
   formLoading.value = true
   try {
     const data = await ProjectApi.getProject(projectCode)
+    const settlementBuyerCode = data.settlementBuyerCode || data.buyerCode
     formData.value = {
       ...createDefaultForm(),
       ...data,
       projectCode: data.projectCode || projectCode,
       status: data.status || 'DRAFT',
       settlementPartyType: data.settlementPartyType || 'DISTRIBUTOR',
+      settlementBuyerCode,
       period: data.startDate && data.endDate ? [data.startDate, data.endDate] : []
     }
+    settlementTouched.value = !!(
+      data.settlementBuyerCode &&
+      data.buyerCode &&
+      data.settlementBuyerCode !== data.buyerCode
+    )
   } finally {
     formLoading.value = false
   }
@@ -235,6 +258,7 @@ const buildSavePayload = (): ProjectSaveReqVO => {
     startDate: period[0],
     endDate: period[1],
     settlementPartyType: 'DISTRIBUTOR',
+    settlementBuyerCode: formData.value.settlementBuyerCode || formData.value.buyerCode || undefined,
     description: formData.value.description || undefined,
     status: formData.value.status || 'DRAFT'
   }

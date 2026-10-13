@@ -159,7 +159,10 @@
           <div class="mb-6px text-13px">关联分销商：{{ item.buyerName || '-' }}</div>
           <div class="mb-12px text-13px">
             结算方：{{
-              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) || '-'
+              item.settlementBuyerName ||
+              item.settlementBuyerCode ||
+              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) ||
+              '-'
             }}
           </div>
           <div class="flex items-center gap-8px">

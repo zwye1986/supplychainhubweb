@@ -102,11 +102,14 @@ export interface SupplierSupplyScopeDO {
   updatedAt?: string
 }
 
-/** 命名引用（类目等） */
+/** 命名引用（类目等）；列表也可能直接返回业务编码字符串 */
 export interface NamedRef {
-  id?: number
+  id?: string | number
   name?: string
 }
+
+/** 列表字段：{ id, name }[] 或业务编码 string[] */
+export type NamedRefOrCode = string | number | NamedRef
 
 /** 供货配置（表单/详情旧结构，逐步迁移） */
 export interface SupplierSupplyConfigVO {
@@ -351,16 +354,18 @@ export interface SupplierVO {
   supplierName?: string
   /** 合作状态：ACTIVE / SUSPENDED / BLACKLIST */
   status?: string
-  /** 可售品类 */
-  sellableCategories?: NamedRef[]
+  /** 可售品类；封闭枚举，name 可用字典 supply_chain_sellable_category 解析 */
+  sellableCategories?: NamedRefOrCode[]
   /** @deprecated 使用 sellableCategories */
-  categories?: NamedRef[]
-  /** 商品类型 */
-  productTypes?: NamedRef[]
-  /** 商品分类 */
-  productCategories?: NamedRef[]
+  categories?: NamedRefOrCode[]
+  /** 商品类型；动态配置，name 来自商品类型接口 */
+  productTypes?: NamedRefOrCode[]
+  /** 商品分类；动态配置，name 来自分类树接口 */
+  productCategories?: NamedRefOrCode[]
+  /** @deprecated 同 productCategories，部分接口字段名 */
+  productClassifications?: NamedRefOrCode[]
   /** 供货模式（name 为枚举名，如 API_DIRECT） */
-  supplyModes?: NamedRef[]
+  supplyModes?: NamedRefOrCode[]
   skuCount?: number
   /** 正式接入时间 */
   onboardAt?: number | string | null

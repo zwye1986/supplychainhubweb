@@ -110,8 +110,12 @@ export interface ProjectDetail {
   startDate?: string
   /** 项目结束日 */
   endDate?: string
-  /** 结算方，本期仅 DISTRIBUTOR */
+  /** 结算方类型，本期仅 DISTRIBUTOR */
   settlementPartyType?: string
+  /** 结算方分销商业务编码；默认等于关联分销商，可改 */
+  settlementBuyerCode?: string
+  /** 结算方分销商名称（详情/列表回显） */
+  settlementBuyerName?: string
   /** 项目说明 */
   description?: string
   /** 目录模式：MANAGED 中台管理，INDEPENDENT 项目独立 */
@@ -167,6 +171,8 @@ export interface ProjectSaveReqVO {
   startDate?: string
   endDate?: string
   settlementPartyType?: string
+  /** 结算方分销商业务编码；默认等于关联分销商，可改 */
+  settlementBuyerCode?: string
   description?: string
   /** 创建允许 DRAFT / ACTIVE，空视为草稿；编辑可通过 PUT 整档替换修改状态 */
   status?: string

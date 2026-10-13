@@ -42,7 +42,10 @@
           </div>
           <div class="mb-12px text-13px">
             结算方：{{
-              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) || '-'
+              item.settlementBuyerName ||
+              item.settlementBuyerCode ||
+              getDictLabel('supply_chain_settlement_party_type', item.settlementPartyType) ||
+              '-'
             }}
           </div>
           <el-button link type="primary" @click="handleViewDetail(item)">查看详情</el-button>
