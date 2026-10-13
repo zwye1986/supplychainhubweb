@@ -37,9 +37,22 @@
       @selection-change="handleSelectionChange"
     >
       <el-table-column type="selection" width="48" :reserve-selection="true" />
-      <el-table-column label="商品名称" prop="platformSpuName" min-width="140" />
-      <el-table-column label="SKU规格" prop="platformSkuName" min-width="110" />
-      <el-table-column label="SKU编号" prop="platformSkuCode" min-width="120" />
+      <el-table-column label="商品名称" min-width="180">
+        <template #default="{ row }">
+          <div>{{ row.platformSpuName || '-' }}</div>
+          <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
+            {{ row.platformSpuCode || '-' }}
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="SKU规格" min-width="190">
+        <template #default="{ row }">
+          <div>{{ row.platformSkuName || '-' }}</div>
+          <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
+            {{ row.platformSkuCode || '-' }}
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="供应商商品编码" prop="externalSkuCode" min-width="140">
         <template #default="{ row }">
           <span v-if="row.externalSkuCode">{{ row.externalSkuCode }}</span>

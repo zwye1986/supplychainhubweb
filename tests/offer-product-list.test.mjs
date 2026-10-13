@@ -44,6 +44,52 @@ async function mountOffer(overrides = {}, requestError) {
 }
 const button = (view, label) => view.allButtons().find((item) => item.text.trim() === label)
 
+test('合作商品名称显示平台SPU编码，SKU规格与编号在同一列且缺失值独立占位', async () => {
+  const { view } = await mountOffer({
+    platformSpuName: '卡券测试',
+    platformSpuCode: 'SPU_011',
+    platformSkuName: '优惠卡券测试',
+    platformSkuCode: 'SKU_011_001',
+    externalSkuCode: '22'
+  })
+  try {
+    const columns = view.components('ElTableColumn')
+    const product = columns.find((item) => item.props.label === '商品名称')
+    const sku = columns.find((item) => item.props.label === 'SKU规格')
+    assert.equal(product.text.trim().replace(/\s+/g, ' '), '卡券测试 SPU_011')
+    assert.equal(sku.text.trim().replace(/\s+/g, ' '), '优惠卡券测试 SKU_011_001')
+    assert.equal(
+      columns.some((item) => item.props.label === 'SKU编号'),
+      false
+    )
+
+    Object.assign(view.state.list[0], {
+      platformSpuName: undefined,
+      platformSpuCode: 'SPU_011',
+      platformSkuName: '优惠卡券测试',
+      platformSkuCode: ''
+    })
+    await flushProductList()
+    const partial = view.components('ElTableColumn')
+    assert.equal(
+      partial
+        .find((item) => item.props.label === '商品名称')
+        .text.trim()
+        .replace(/\s+/g, ' '),
+      '- SPU_011'
+    )
+    assert.equal(
+      partial
+        .find((item) => item.props.label === 'SKU规格')
+        .text.trim()
+        .replace(/\s+/g, ' '),
+      '优惠卡券测试 -'
+    )
+  } finally {
+    view.unmount()
+  }
+})
+
 test('已上架且未配置行显示下架与发布变更，下架PATCH一次并刷新', async () => {
   const { view, reads, writes } = await mountOffer({
     status: 'PUBLISHED',

@@ -123,7 +123,7 @@ test('重算响应类型字段与RefreshResult一致', () => {
   )
 })
 
-test('分销商品规格展示平台SKU编码，操作显示刷新状态', async () => {
+test('分销商品规格直接展示SKU规格，操作显示刷新状态', async () => {
   const row = {
     buyerProductCode: 'BPD_1',
     platformSkuCode: 'SKU_011_001',
@@ -143,6 +143,13 @@ test('分销商品规格展示平台SKU编码，操作显示刷新状态', async
     const sku = view.components('ElTableColumn').find((item) => item.props.label === 'SKU规格')
     assert.ok(sku.text.includes('优惠卡券测试'))
     assert.ok(sku.text.includes('SKU_011_001'))
+    assert.ok(!view.text().includes('v2下单编码'))
+    assert.ok(
+      !view
+        .components('ElTableColumn')
+        .some((item) => item.props.label === '分销商品编号(BPD)'),
+      '分销列表不渲染分销商品编号(BPD)列'
+    )
     assert.ok(view.allButtons().some((item) => item.text.trim() === '刷新状态'))
     assert.ok(!view.allButtons().some((item) => item.text.trim() === '重算'))
     assert.ok(view.text().includes('已发布'))
@@ -158,7 +165,7 @@ test('分销商品规格展示平台SKU编码，操作显示刷新状态', async
 })
 
 for (const kind of ['distributor', 'project']) {
-  test(`${kind}真实列表区分v2平台SKU与旧v1商业编号`, async () => {
+  test(`${kind}真实列表直接展示SKU规格且不出现下单编码文案`, async () => {
     const row = { listingCode: 'PLT_2', buyerProductCode: 'BPD_1', canonicalBuyerSkuCode: 'BPD_1',
       platformSkuCode: 'SKU_011_001', skuName: '卡券规格', spuCode: 'SPU_011', acceptanceListingNo: 'LST_3' }
     const view = mountProductList({ get: async () => ({ list: [row], total: 1 }) }, undefined, {
@@ -168,15 +175,17 @@ for (const kind of ['distributor', 'project']) {
     try {
       await flushProductList()
       const sku = view.components('ElTableColumn').find((item) => item.props.label === 'SKU规格')
-      assert.ok(sku.text.includes('v2下单编码：'))
+      assert.ok(sku.text.includes('卡券规格'))
       assert.ok(sku.text.includes('SKU_011_001'))
-      assert.ok(view.text().includes('旧 v1'))
-      assert.ok(!view.text().includes('统一使用分销商商品编码'))
+      assert.ok(!view.text().includes('v2下单编码'))
+      assert.ok(!view.text().includes('旧 v1'))
       if (kind === 'distributor') {
-        const bpd = view.components('ElTableColumn').find((item) => item.props.label === '分销商品编号(BPD)')
-        assert.ok(bpd.text.includes('BPD_1'))
-        assert.ok(bpd.text.includes('旧v1下单编码'))
-        assert.ok(bpd.text.includes('LST_3'))
+        assert.ok(
+          !view
+            .components('ElTableColumn')
+            .some((item) => item.props.label === '分销商品编号(BPD)'),
+          '分销列表不渲染分销商品编号(BPD)列'
+        )
       }
     } finally { view.unmount() }
   })

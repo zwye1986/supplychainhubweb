@@ -1,19 +1,6 @@
 <template>
   <ContentWrap>
-    <div class="mb-12px flex flex-wrap items-center justify-between gap-10px">
-      <el-alert class="!mb-0 flex-1" type="info" :closable="false" title="项目专属价与下单编码说明">
-        <div class="leading-22px">
-          <div
-            >L1 平台默认定价 → L2 分销商基础价 → L3 项目专属价。结算优先级：L3 &gt; L2 &gt;
-            L1。</div
-          >
-          <div>若不配置项目专属价，则按关联分销商的分销价结算。已配置专属价的 SKU 以橙色标记。</div>
-          <div
-            >新接入 v2 提交平台 SKU；旧 v1 保留 BPD／历史编码。PLT、LST
-            不用于外部下单，是否可下单以本项目选品、价格与实时准入为准。</div
-          >
-        </div>
-      </el-alert>
+    <div class="mb-12px flex flex-wrap justify-end">
       <el-button type="primary" round @click="openSelectDialog">+新增商品</el-button>
     </div>
 
@@ -48,7 +35,7 @@
         <template #default="{ row }">
           <div>{{ row.skuName || '-' }}</div>
           <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
-            v2下单编码：{{ row.platformSkuCode || '-' }}
+            {{ row.platformSkuCode || '-' }}
           </div>
         </template>
       </el-table-column>
