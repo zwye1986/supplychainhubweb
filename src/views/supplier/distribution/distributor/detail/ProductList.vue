@@ -6,7 +6,10 @@
           <div
             >目录层供给可用性为全局投影（区分已发布/待发布/暂停/退役及供给状态），不代表各项目端实时授权。</div
           >
-          <div>项目标准下单统一使用分销商商品编码（BPD），非内部项目商品编号。</div>
+          <div
+            >新接入 v2 提交平台 SKU；旧 v1 保留
+            BPD／历史编码。是否可下单以本项目选品、价格与实时准入为准。</div
+          >
         </div>
       </el-alert>
       <el-button type="primary" round @click="openSelectDialog">+新增商品</el-button>
@@ -39,14 +42,20 @@
           <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="SKU规格" min-width="100">
-        <template #default="{ row }">{{ row.skuName || '-' }}</template>
+      <el-table-column label="SKU规格" min-width="190">
+        <template #default="{ row }">
+          <div>{{ row.skuName || '-' }}</div>
+          <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
+            v2下单编码：{{ row.platformSkuCode || '-' }}
+          </div>
+        </template>
       </el-table-column>
-      <el-table-column label="下单编码(BPD)" min-width="160">
+      <el-table-column label="分销商品编号(BPD)" min-width="170">
         <template #default="{ row }">
           <div class="font-mono text-13px">{{
             row.canonicalBuyerSkuCode || row.buyerProductCode || '-'
           }}</div>
+          <div class="text-11px text-gray-400">旧v1下单编码</div>
           <div v-if="row.acceptanceListingNo" class="text-11px text-gray-400">
             目录: {{ row.acceptanceListingNo }}
           </div>
@@ -65,10 +74,10 @@
             </div>
             <div
               v-if="row.catalogRefreshReason"
-              class="text-11px text-gray-400 truncate"
+              class="text-11px text-gray-400 whitespace-normal leading-18px"
               :title="row.catalogRefreshReason"
             >
-              {{ row.catalogRefreshReason }}
+              {{ getCatalogReasonLabel(row.catalogRefreshReason) }}
             </div>
           </div>
         </template>
@@ -108,7 +117,7 @@
           {{ getTaxAmountLabel(row) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="200" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openAdjust(row)">改价</el-button>
           <el-button
@@ -118,7 +127,7 @@
             :loading="recalculatingCode === row.buyerProductCode"
             @click="handleRecalculate(row)"
           >
-            重算
+            刷新状态
           </el-button>
           <el-button link type="danger" @click="handleDelete(row)">移除</el-button>
         </template>
@@ -507,9 +516,34 @@ const getAvailabilityLabel = (row: BuyerProductListItem) => {
     case 'UNAVAILABLE':
       return '不可用'
     case 'UNKNOWN':
-      return '待重新评估'
+      return '供给待确认'
     default:
       return row.availabilityStatus || '未知'
+  }
+}
+
+// 仅解释目录层原因，不推导本项目实时授权；稳定诊断码保留在原 title 中。
+// 设计：docs/superpowers/specs/2026-10-12-catalog-source-freshness-correction-design.md §6。
+const getCatalogReasonLabel = (reason?: string) => {
+  switch (reason) {
+    case 'SOURCE_CHANGED':
+      return '定价来源已更新，需重新评估'
+    case 'PROJECTION_EXPIRED':
+      return '评估结果已过期，需获取最新状态'
+    case 'NOT_EVALUATED':
+      return '尚无有效供给评估'
+    case 'DEFERRED_PRICE':
+      return '分销定价尚未就绪'
+    case 'SUSPENDED':
+      return '目录已人工暂停'
+    case 'RETIRED':
+      return '目录已退役'
+    case 'BUYER_PRODUCT_REMOVED':
+      return '分销商品已移除'
+    case 'CONFIRMED':
+      return '供给条件已确认'
+    default:
+      return reason ? '供给条件尚未确认' : ''
   }
 }
 
@@ -531,23 +565,23 @@ const getAvailabilityTagType = (
 const handleRecalculate = async (row: BuyerProductListItem) => {
   const code = row.buyerProductCode || row.canonicalBuyerSkuCode
   if (!props.buyerCode || !code) {
-    message.error('缺少分销商品编号，无法重算')
+    message.error('缺少分销商品编号，无法刷新状态')
     return
   }
   recalculatingCode.value = code
   try {
     const res = await DistributorApi.recalculateAcceptanceCatalog(props.buyerCode, code)
-    // 重算成功只代表目录发布与投影正常，不代替项目下单时的实时准入。
+    // 刷新成功只代表目录发布与投影正常，不代替项目下单时的实时准入。
     if (res?.publicationState === 'PUBLISHED' && res.availabilityStatus === 'AVAILABLE') {
-      message.success('受理目录重算完成')
+      message.success('受理目录状态已刷新')
     } else {
       message.warning(
-        `重算完成，目录尚未就绪：${res?.reason || res?.publicationState || '未知状态'}`
+        `状态已刷新，目录尚未就绪：${res?.reason || res?.publicationState || '未知状态'}`
       )
     }
     await getList()
   } catch (err: any) {
-    message.error(err?.message || '重算失败')
+    message.error(err?.message || '刷新状态失败')
   } finally {
     recalculatingCode.value = null
   }

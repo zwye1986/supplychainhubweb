@@ -33,6 +33,7 @@ export type {
   PatchProjectListingReqVO,
   ProjectDetail,
   ProjectApplicationCredentials,
+  ProjectCapability,
   ProjectIssuedCredential,
   ProjectFormulaRuleView,
   ProjectListingListItem,
@@ -68,6 +69,7 @@ import type {
   PatchProjectListingReqVO,
   ProjectDetail,
   ProjectApplicationCredentials,
+  ProjectCapability,
   ProjectIssuedCredential,
   ProjectListingListItem,
   ProjectPageParam,
@@ -367,6 +369,31 @@ const mapProjectSimpleList = (data: any) => {
 }
 
 export const ProjectApi = {
+  /** 接入能力独立于应用凭证，不因开通应用自动授予。 */
+  getCapabilities: async (projectCode: string) => {
+    return await request.get<ProjectCapability[]>({
+      url: `/supply-chain/projects/${projectCode}/capabilities`
+    })
+  },
+
+  enableStandardProduct: async (projectCode: string, expectedVersion: number | null) => {
+    return await request.post<{ changed: boolean }>({
+      url: `/supply-chain/projects/${projectCode}/capabilities/standard-product/enable`,
+      data: { expectedVersion }
+    })
+  },
+
+  disableStandardProduct: async (
+    projectCode: string,
+    expectedVersion: number | null,
+    reason: string
+  ) => {
+    return await request.post<{ changed: boolean }>({
+      url: `/supply-chain/projects/${projectCode}/capabilities/standard-product/disable`,
+      data: { expectedVersion, confirmed: true, reason: reason.trim() }
+    })
+  },
+
   /** 分页查询项目：GET /supply-chain/projects */
   getProjectPage: async (params: ProjectPageParam | any) => {
     return await request.get<{ list: ProjectDetail[]; total: number }>({

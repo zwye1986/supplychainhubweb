@@ -1,5 +1,6 @@
 <template>
   <div v-loading="loading">
+    <h3>应用凭证</h3>
     <el-alert
       class="mb-16px"
       type="info"
@@ -31,6 +32,114 @@
         <template #default="scope">{{ scope.row.validTo || '-' }}</template>
       </el-table-column>
     </el-table>
+
+    <section v-loading="capabilityLoading" class="mt-24px">
+      <h3>接入能力</h3>
+      <el-alert
+        class="mb-16px"
+        type="info"
+        :closable="false"
+        title="开通应用不自动授予接入能力；开启能力不等于商品可售，仍需配置凭证、商品、价格和路由。"
+      />
+      <el-alert
+        v-if="capabilityError"
+        class="mb-16px"
+        type="warning"
+        :closable="false"
+        :title="capabilityError"
+      />
+      <el-button
+        v-if="canQuery"
+        :disabled="capabilityLoading || capabilityWriting"
+        @click="reloadCapabilities"
+        >刷新能力状态</el-button
+      >
+      <el-table :data="capabilities" border empty-text="接入能力状态尚未确认">
+        <el-table-column label="能力" min-width="140">
+          <template #default="{ row }">{{ capabilityNames[row.capabilityCode] }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }"
+            ><el-tag :type="row.status === 'ENABLED' ? 'success' : 'info'">{{
+              capabilityStatuses[row.status]
+            }}</el-tag></template
+          >
+        </el-table-column>
+        <el-table-column label="最近操作人ID" width="140">
+          <template #default="{ row }">{{ row.lastOperatorId ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column label="最近操作时间" min-width="180">
+          <template #default="{ row }">{{ row.lastChangedAt ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="160">
+          <template #default="{ row }">
+            <template v-if="row.capabilityCode === 'STANDARD_PRODUCT' && canEdit">
+              <el-button
+                v-if="row.status === 'ENABLED'"
+                type="danger"
+                plain
+                :disabled="capabilityLoading || capabilityWriting"
+                @click="openDisable"
+                >关闭标准商品</el-button
+              >
+              <el-button
+                v-else
+                type="primary"
+                :disabled="!active || capabilityLoading || capabilityWriting"
+                @click="enableStandardProduct"
+                >开启标准商品</el-button
+              >
+            </template>
+            <span v-else>只读</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div v-if="standardCapability?.status === 'DISABLED'" class="mt-8px text-gray-500"
+        >已关闭：禁止新下单和卡密读取，仅保留订单摘要查询；不取消在途订单。</div
+      >
+      <div v-if="!active" class="mt-8px text-gray-500"
+        >项目未启用，不能开启能力；已开启能力仍可关闭。</div
+      >
+    </section>
+    <el-dialog
+      v-model="disableVisible"
+      title="关闭标准商品接入能力"
+      width="560px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="!capabilityWriting"
+      :show-close="!capabilityWriting"
+      @closed="disableReason = ''"
+    >
+      <el-alert
+        class="mb-16px"
+        type="warning"
+        :closable="false"
+        title="停止新下单和卡密读取，保留已开通项目的订单摘要查询；不取消在途订单。"
+      />
+      <el-form label-position="top">
+        <el-form-item label="关闭原因（必填，1～256字）">
+          <el-input
+            v-model="disableReason"
+            type="textarea"
+            :rows="3"
+            maxlength="256"
+            show-word-limit
+            :disabled="capabilityWriting"
+            placeholder="请输入关闭原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="capabilityWriting" @click="disableVisible = false">取消</el-button>
+        <el-button
+          type="danger"
+          :loading="capabilityWriting"
+          :disabled="!validDisableReason || capabilityWriting"
+          @click="submitDisable"
+          >确认关闭</el-button
+        >
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="issuedVisible"
@@ -64,8 +173,10 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useMessage } from '@/hooks/web/useMessage'
+import { checkPermi } from '@/utils/permission'
 import {
   ProjectApi,
+  type ProjectCapability,
   type ProjectApplicationCredentials,
   type ProjectIssuedCredential
 } from '@/api/supplier/distribution'
@@ -81,6 +192,26 @@ const emptyCredentials = (): ProjectApplicationCredentials => ({ appId: null, cr
 const credentials = ref<ProjectApplicationCredentials>(emptyCredentials())
 let projectGeneration = 0
 let loadSequence = 0
+let capabilityLoadSequence = 0
+const canQuery = computed(() => checkPermi(['supply-chain:admin', 'supply-chain:project:query']))
+const canEdit = computed(() => checkPermi(['supply-chain:admin', 'supply-chain:project:update']))
+const capabilityNames = { STANDARD_PRODUCT: '标准商品', O2O: 'O2O', INSTORE: '到店（INSTORE）' }
+const capabilityStatuses = { NOT_ENABLED: '未开通', ENABLED: '已开启', DISABLED: '已关闭' }
+const capabilities = ref<ProjectCapability[]>([])
+const capabilityLoading = ref(false)
+const capabilityWriting = ref(false)
+const capabilityError = ref('')
+const disableVisible = ref(false)
+const disableReason = ref('')
+const validDisableReason = computed(() => {
+  const length = disableReason.value.trim().length
+  return length >= 1 && length <= 256
+})
+const standardCapability = computed(() =>
+  capabilities.value.find((row) => row.capabilityCode === 'STANDARD_PRODUCT')
+)
+let disableContext: { projectCode: string; generation: number; version: number | null } | null =
+  null
 const hasActiveCredential = computed(() =>
   credentials.value.credentials.some((row) => row.status === 'CURRENT' || row.status === 'GRACE')
 )
@@ -88,6 +219,111 @@ const hasActiveCredential = computed(() =>
 // 仅允许当前项目的最后一次请求写入视图；见 docs/superpowers/specs/2026-09-29-project-app-issuance-platform-signing-callback-design.md#7-管理端配套和安全边界。
 const isCurrent = (projectCode: string, generation: number) =>
   projectGeneration === generation && props.projectCode === projectCode
+
+// 独立查询失败不补造能力；项目代次及请求序号隔离晚响应。
+// 设计：docs/superpowers/specs/2026-10-12-project-standard-product-capability-design.md#4-前端与安全交互。
+const loadCapabilities = async (projectCode: string, generation: number) => {
+  if (!canQuery.value || !projectCode) return false
+  const sequence = ++capabilityLoadSequence
+  capabilityLoading.value = true
+  capabilities.value = []
+  capabilityError.value = ''
+  try {
+    const result = await ProjectApi.getCapabilities(projectCode)
+    if (!isCurrent(projectCode, generation) || sequence !== capabilityLoadSequence) return false
+    if (
+      !Array.isArray(result) ||
+      result.length !== 3 ||
+      !Object.keys(capabilityNames).every(
+        (code) => result.filter((row) => row.capabilityCode === code).length === 1
+      ) ||
+      result.some(
+        (row) =>
+          !Object.keys(capabilityStatuses).includes(row.status) ||
+          (row.status === 'NOT_ENABLED'
+            ? row.version !== null
+            : !Number.isSafeInteger(row.version) || Number(row.version) < 0)
+      )
+    ) {
+      throw new Error('无效能力响应')
+    }
+    capabilities.value = result
+    return true
+  } catch {
+    if (isCurrent(projectCode, generation) && sequence === capabilityLoadSequence) {
+      capabilityError.value = '接入能力状态查询失败，当前状态未确认，请刷新后再操作。'
+    }
+    return false
+  } finally {
+    if (isCurrent(projectCode, generation) && sequence === capabilityLoadSequence)
+      capabilityLoading.value = false
+  }
+}
+const reloadCapabilities = () => loadCapabilities(props.projectCode, projectGeneration)
+const openDisable = () => {
+  const row = standardCapability.value
+  if (
+    !canEdit.value ||
+    !row ||
+    row.status !== 'ENABLED' ||
+    capabilityWriting.value ||
+    capabilityLoading.value
+  )
+    return
+  disableContext = {
+    projectCode: props.projectCode,
+    generation: projectGeneration,
+    version: row.version
+  }
+  disableReason.value = ''
+  disableVisible.value = true
+}
+
+// 写入不乐观更新，失败（包括版本冲突）只重新查询，不自动重发。
+// Axios普通错误可能已丢失业务码，因此所有失败均要求重新核实与确认。
+const writeCapability = async (disable: boolean) => {
+  const row = standardCapability.value
+  if (!canEdit.value || !row || capabilityWriting.value || capabilityLoading.value) return
+  const projectCode = props.projectCode
+  const generation = projectGeneration
+  if (
+    disable &&
+    (!disableVisible.value ||
+      !validDisableReason.value ||
+      !disableContext ||
+      !isCurrent(disableContext.projectCode, disableContext.generation))
+  )
+    return
+  if (!disable && !props.active) return
+  const version = disable ? disableContext!.version : row.version
+  capabilityWriting.value = true
+  try {
+    const result = disable
+      ? await ProjectApi.disableStandardProduct(projectCode, version, disableReason.value.trim())
+      : await ProjectApi.enableStandardProduct(projectCode, version)
+    if (!isCurrent(projectCode, generation)) return
+    disableVisible.value = false
+    disableContext = null
+    if (!result || typeof result.changed !== 'boolean') throw new Error('写入结果未确认')
+    const loaded = await loadCapabilities(projectCode, generation)
+    if (isCurrent(projectCode, generation)) {
+      if (loaded) message.success(result.changed ? '接入能力已更新' : '接入能力无需变更')
+      else message.warning('操作已返回，但当前能力状态查询失败，请刷新核实。')
+    }
+  } catch {
+    if (!isCurrent(projectCode, generation)) return
+    disableVisible.value = false
+    disableContext = null
+    message.warning(
+      '操作结果未确认或版本已变化，正在重新查询状态；请核实后重新确认，不会自动重试。'
+    )
+    await loadCapabilities(projectCode, generation)
+  } finally {
+    if (isCurrent(projectCode, generation)) capabilityWriting.value = false
+  }
+}
+const enableStandardProduct = () => writeCapability(false)
+const submitDisable = () => writeCapability(true)
 
 const load = async (projectCode: string, generation: number) => {
   if (!projectCode) return
@@ -187,15 +423,27 @@ watch(
     const generation = ++projectGeneration
     ++loadSequence
     clearIssued()
+    ++capabilityLoadSequence
+    disableVisible.value = false
+    disableContext = null
+    disableReason.value = ''
+    capabilities.value = []
+    capabilityError.value = canQuery.value ? '' : '无项目查询权限'
+    capabilityLoading.value = false
+    capabilityWriting.value = false
     credentials.value = emptyCredentials()
     loading.value = false
-    if (projectCode) await load(projectCode, generation)
+    if (projectCode)
+      await Promise.all([load(projectCode, generation), loadCapabilities(projectCode, generation)])
   },
   { immediate: true, flush: 'sync' }
 )
 onUnmounted(() => {
   ++projectGeneration
   ++loadSequence
+  ++capabilityLoadSequence
+  disableVisible.value = false
+  disableContext = null
   clearIssued()
 })
 </script>

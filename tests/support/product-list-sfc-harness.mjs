@@ -67,11 +67,12 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
                 slots.header?.({}),
                 ...rows().map((row, $index) => slots.default?.({ row, $index }))
               ])
-            : vue.h('div', slots.default?.())
+            : vue.h('div', [slots.default?.(), slots.footer?.()])
       }
     }
   }
   function resolve(name, file) {
+    if (options.modules?.[name]) return options.modules[name]
     if (name === 'vue') return vue
     if (name === '@/config/axios') return { __esModule: true, default: http }
     if (name === '@/utils/dict') return dictionary
@@ -218,6 +219,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   const buttons = () => components('ElButton')
   return {
     state: root.$.setupState,
+    setProps: (values) => Object.assign(root.$.props, values),
     messages,
     confirmations,
     priceOpens,

@@ -127,6 +127,15 @@ export interface ProjectDetail {
 /** 项目（项目管理 / 分销商关联项目共用） */
 export type ProjectVO = ProjectDetail
 
+/** 项目接入能力；无记录不能编造关闭状态或版本。见接入能力设计 §3。 */
+export interface ProjectCapability {
+  capabilityCode: 'STANDARD_PRODUCT' | 'O2O' | 'INSTORE'
+  status: 'NOT_ENABLED' | 'ENABLED' | 'DISABLED'
+  version: number | null
+  lastOperatorId: number | null
+  lastChangedAt: string | null
+}
+
 /** 项目应用凭证列表；服务端从不在查询响应中返回密钥明文。 */
 export interface ProjectApplicationCredentials {
   appId: string | null
@@ -223,7 +232,7 @@ export interface ProjectPricingConfigView {
 export interface ProjectListingListItem {
   /** 项目商品稳定业务编码 */
   listingCode?: string
-  /** 平台 SKU 编码 */
+  /** 平台 SKU 编码，v2项目下单商品定位字段；不等于PLT */
   platformSkuCode?: string
   skuName?: string
   spuCode?: string
@@ -340,6 +349,7 @@ export interface ProjectProductBatchPricingReqVO {
 export interface BuyerProductListItem {
   /** 分销商品稳定业务编码 */
   buyerProductCode?: string
+  /** 平台 SKU 编码，v2项目下单商品定位字段 */
   platformSkuCode?: string
   skuName?: string
   spuCode?: string
@@ -387,7 +397,7 @@ export interface BuyerProductListItem {
   productType?: string
   /** 商品分类封闭枚举名 */
   productClassification?: string
-  /** 标准规范下单编码（BPD_编号），项目下单以此为准，不使用 PLT_ */
+  /** 分销商品编码（BPD），旧v1下单编码；v2使用platformSkuCode，不改此字段真实含义 */
   canonicalBuyerSkuCode?: string
   /** 关联的受理目录编号（LST_） */
   acceptanceListingNo?: string

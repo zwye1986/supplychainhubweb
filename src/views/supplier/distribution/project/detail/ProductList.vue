@@ -9,7 +9,8 @@
           >
           <div>若不配置项目专属价，则按关联分销商的分销价结算。已配置专属价的 SKU 以橙色标记。</div>
           <div
-            >项目标准下单统一使用分销商商品编码（BPD），本项目内部商品编号（PLT）不可用于外部下单。</div
+            >新接入 v2 提交平台 SKU；旧 v1 保留 BPD／历史编码。PLT、LST
+            不用于外部下单，是否可下单以本项目选品、价格与实时准入为准。</div
           >
         </div>
       </el-alert>
@@ -43,8 +44,13 @@
           <div class="text-12px text-gray-500">{{ row.spuCode || '-' }}</div>
         </template>
       </el-table-column>
-      <el-table-column label="SKU规格" min-width="100">
-        <template #default="{ row }">{{ row.skuName || '-' }}</template>
+      <el-table-column label="SKU规格" min-width="190">
+        <template #default="{ row }">
+          <div>{{ row.skuName || '-' }}</div>
+          <div class="text-12px text-gray-500 whitespace-normal break-all leading-18px">
+            v2下单编码：{{ row.platformSkuCode || '-' }}
+          </div>
+        </template>
       </el-table-column>
       <el-table-column label="类型/分类" min-width="160">
         <template #default="{ row }">{{ getProductTypeLabel(row) }}</template>
