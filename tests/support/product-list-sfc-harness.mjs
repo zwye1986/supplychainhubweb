@@ -15,6 +15,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   const messages = []
   const confirmations = []
   const priceOpens = []
+  const permissions = []
   const cache = new Map()
   globalThis.useI18n = () => ({ t: (key) => key })
   globalThis.useRoute = () => ({ query: {}, path: '/supplier/product/list' })
@@ -52,6 +53,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
         expose({
           open: (...args) => {
             if (name === 'PriceDialog.vue') priceOpens.push(args)
+            options.onOpen?.(name, args)
           },
           clearSelection: () => {},
           validate: async () => {
@@ -168,6 +170,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
     options.props
   )
   app.directive('loading', {})
+  app.directive('hasPermi', (_el, binding) => permissions.push(binding.value))
   for (const name of [
     'ContentWrap',
     'Icon',
@@ -234,10 +237,12 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   const buttons = () => components('ElButton')
   return {
     state: root.$.setupState,
+    exposed: root.$.exposed,
     setProps: (values) => Object.assign(root.$.props, values),
     messages,
     confirmations,
     priceOpens,
+    permissions,
     buttons: () =>
       buttons().filter(
         (button) => button.text.includes('批量上架') || button.text.includes('批量下架')

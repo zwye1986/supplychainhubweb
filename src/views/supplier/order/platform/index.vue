@@ -1,9 +1,20 @@
 <template>
   <ContentWrap>
     <el-tabs v-model="queryParams.bizType" class="mb-12px" @tab-change="handleTabChange">
-      <el-tab-pane v-for="item in ORDER_TAB_OPTIONS" :key="item.value || 'ALL'" :label="item.label" :name="item.value" />
+      <el-tab-pane
+        v-for="item in ORDER_TAB_OPTIONS"
+        :key="item.value || 'ALL'"
+        :label="item.label"
+        :name="item.value"
+      />
     </el-tabs>
-    <el-form ref="queryFormRef" class="-mb-15px search-form" :model="queryParams" :inline="true" label-width="160px">
+    <el-form
+      ref="queryFormRef"
+      class="-mb-15px search-form"
+      :model="queryParams"
+      :inline="true"
+      label-width="160px"
+    >
       <el-form-item label="订单编号" prop="orderNo">
         <el-input
           v-model="queryParams.orderNo"
@@ -14,7 +25,12 @@
         />
       </el-form-item>
       <el-form-item label="商品名称" prop="productName">
-        <el-input v-model="queryParams.productName" maxlength="100" placeholder="商品名称或SPU" clearable />
+        <el-input
+          v-model="queryParams.productName"
+          maxlength="100"
+          placeholder="商品名称或SPU"
+          clearable
+        />
       </el-form-item>
       <el-form-item label="下单时间">
         <el-date-picker
@@ -28,7 +44,13 @@
         />
       </el-form-item>
       <el-form-item label="分销商名称" prop="distributorNames">
-        <el-select v-model="queryParams.distributorNames" multiple collapse-tags clearable filterable>
+        <el-select
+          v-model="queryParams.distributorNames"
+          multiple
+          collapse-tags
+          clearable
+          filterable
+        >
           <el-option
             v-for="item in distributorOptions"
             :key="item.code || item.name"
@@ -48,7 +70,13 @@
         </el-select>
       </el-form-item>
       <el-form-item label="订单类型" prop="bizTypes">
-        <el-select v-model="queryParams.bizTypes" multiple collapse-tags clearable @change="handleBizTypesChange">
+        <el-select
+          v-model="queryParams.bizTypes"
+          multiple
+          collapse-tags
+          clearable
+          @change="handleBizTypesChange"
+        >
           <el-option
             v-for="item in ORDER_BIZ_TYPE_OPTIONS"
             :key="item.value"
@@ -68,18 +96,25 @@
         </el-select>
       </el-form-item>
       <el-form-item label="下单人姓名或手机号" prop="buyerKeyword">
-        <el-input v-model="queryParams.buyerKeyword" maxlength="50" placeholder="姓名或手机号" clearable />
+        <el-input
+          v-model="queryParams.buyerKeyword"
+          maxlength="50"
+          placeholder="姓名或手机号"
+          clearable
+        />
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon icon="ep:search" class="mr-5px" /> 搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon icon="ep:refresh" class="mr-5px" /> 重置
-        </el-button>
+        <el-button @click="handleQuery"> <Icon icon="ep:search" class="mr-5px" /> 搜索 </el-button>
+        <el-button @click="resetQuery"> <Icon icon="ep:refresh" class="mr-5px" /> 重置 </el-button>
         <el-button type="success" plain :loading="exportLoading" @click="handleExport">
           <Icon icon="ep:download" class="mr-5px" /> 导出
         </el-button>
+        <el-button
+          v-hasPermi="['supply-chain:admin', 'supply-chain:order:create']"
+          type="primary"
+          @click="orderEntryRef?.open()"
+          >录入订单</el-button
+        >
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -120,7 +155,12 @@
               <el-table-column label="商品详情" min-width="220">
                 <template #default="{ row: item }">
                   <div class="product-cell">
-                    <el-image v-if="item.picUrl" :src="item.picUrl" class="product-thumb" fit="cover">
+                    <el-image
+                      v-if="item.picUrl"
+                      :src="item.picUrl"
+                      class="product-thumb"
+                      fit="cover"
+                    >
                       <template #error>
                         <div class="product-thumb product-thumb--placeholder">
                           <Icon icon="ep:picture" />
@@ -169,7 +209,10 @@
               </el-table-column>
               <el-table-column label="订单状态" min-width="90">
                 <template #default>
-                  <span class="status-pill" :class="`status-pill--${platformStatusTone(row.status)}`">
+                  <span
+                    class="status-pill"
+                    :class="`status-pill--${platformStatusTone(row.status)}`"
+                  >
                     {{ getOptionLabel(ORDER_STATUS_OPTIONS, row.status) }}
                   </span>
                 </template>
@@ -183,13 +226,23 @@
               <el-table-column label="操作" min-width="200" fixed="right">
                 <template #default>
                   <div class="action-links">
-                    <el-button link type="primary" @click="openPlatformDetail(row.orderNo)">详情</el-button>
-                    <el-tooltip v-if="canResend(row.status)" content="本期暂不考虑一键补发" placement="top">
+                    <el-button link type="primary" @click="openPlatformDetail(row.orderNo)"
+                      >详情</el-button
+                    >
+                    <el-tooltip
+                      v-if="canResend(row.status)"
+                      content="本期暂不考虑一键补发"
+                      placement="top"
+                    >
                       <span class="inline-flex">
                         <el-button link type="primary" disabled>一键补发</el-button>
                       </span>
                     </el-tooltip>
-                    <el-tooltip v-if="canRefund(row.status)" content="本期暂不考虑退款" placement="top">
+                    <el-tooltip
+                      v-if="canRefund(row.status)"
+                      content="本期暂不考虑退款"
+                      placement="top"
+                    >
                       <span class="inline-flex">
                         <el-button link type="primary" disabled>退款</el-button>
                       </span>
@@ -221,6 +274,7 @@
   <OrderPlatformDetail ref="platformDetailRef" @open-supplier="openSupplierDetail" />
   <OrderSupplierDetail ref="supplierDetailRef" @open-platform="openPlatformDetail" />
   <RouteRecordDialog ref="routeRecordRef" />
+  <OrderEntryDialog ref="orderEntryRef" @success="getList" @detail="openPlatformDetail" />
 </template>
 
 <script lang="ts" setup>
@@ -231,6 +285,7 @@ import download from '@/utils/download'
 import OrderPlatformDetail from './detail/index.vue'
 import OrderSupplierDetail from '../supplier/detail/index.vue'
 import RouteRecordDialog from '../components/RouteRecordDialog.vue'
+import OrderEntryDialog from './OrderEntryDialog.vue'
 import {
   ORDER_BIZ_TYPE_OPTIONS,
   ORDER_STATUS_OPTIONS,
@@ -256,6 +311,7 @@ const queryFormRef = ref()
 const platformDetailRef = ref()
 const supplierDetailRef = ref()
 const routeRecordRef = ref()
+const orderEntryRef = ref<InstanceType<typeof OrderEntryDialog>>()
 const supplierOptions = ref<{ supplierCode?: string; supplierName?: string }[]>([])
 const distributorOptions = ref<{ code?: string; name: string }[]>([])
 const queryParams = reactive({
@@ -311,10 +367,12 @@ const loadFilterOptions = async () => {
   try {
     const data = await SupplierApi.getSupplierNameList({ view: 'simple' })
     supplierOptions.value = (Array.isArray(data) ? data : data?.list || [])
-      .map((item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) => ({
-        supplierCode: item.supplierCode || item.code,
-        supplierName: item.supplierName || item.name
-      }))
+      .map(
+        (item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) => ({
+          supplierCode: item.supplierCode || item.code,
+          supplierName: item.supplierName || item.name
+        })
+      )
       .filter((item: { supplierName?: string }) => item.supplierName)
   } catch {
     supplierOptions.value = []
