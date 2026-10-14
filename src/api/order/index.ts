@@ -160,6 +160,10 @@ const mapOrderView = (view: OrderView): OrderVO => {
   const distributorPayAmount = centsToYuan(view.distributorPayAmount)
   return {
     orderNo: view.orderNo,
+    terminalReasonCode: view.terminalReasonCode,
+    failureClosures: (view.supplierOrders || [])
+      .map((item) => item.failureClosure)
+      .filter((item): item is NonNullable<typeof item> => !!item),
     relatedPlatformOrderNo: view.relatedPlatformOrderNo,
     supplierOrderNo: supplierOrders[0]?.supplierOrderNo,
     buyerOrderNo: view.supplierOrders?.find((item) => item.buyerOrderNo)?.buyerOrderNo,
@@ -234,6 +238,7 @@ const mapSupplierOrder = (view: SupplierOrderView): OrderVO => {
   const supplyPrice = centsToYuan(view.supplierSettlementUnitPrice) ?? 0
   return {
     orderNo: view.bOrderNo,
+    failureClosures: view.failureClosure ? [view.failureClosure] : [],
     supplierOrderNo: view.bOrderNo,
     relatedPlatformOrderNo: view.orderNo,
     createTime: formatDateTime(view.createdAt),

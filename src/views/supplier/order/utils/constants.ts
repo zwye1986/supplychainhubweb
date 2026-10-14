@@ -28,12 +28,15 @@ export const ORDER_BIZ_TYPE_OPTIONS: { value: OrderBizType; label: string }[] = 
 export const ORDER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: string }[] = [
   { value: 'WAIT_PAY', label: '待支付', type: 'info' },
   { value: 'PROCESSING', label: '处理中', type: 'warning' },
+  { value: 'MANUAL', label: '人工处理', type: 'warning' },
   { value: 'SUCCESS', label: '成功', type: 'success' },
   { value: 'FAILED', label: '失败', type: 'danger' },
   { value: 'CLOSED', label: '已关闭', type: 'info' }
 ]
 
-export const PLATFORM_STATUS_FILTER_OPTIONS = ORDER_STATUS_OPTIONS.filter((item) => item.value !== 'CLOSED')
+export const PLATFORM_STATUS_FILTER_OPTIONS = ORDER_STATUS_OPTIONS.filter(
+  (item) => item.value !== 'CLOSED'
+)
 
 export const SUPPLIER_STATUS_OPTIONS: { value: OrderStatus; label: string; type: string }[] = [
   { value: 'WAIT_PAY', label: '待支付', type: 'info' },
@@ -41,6 +44,8 @@ export const SUPPLIER_STATUS_OPTIONS: { value: OrderStatus; label: string; type:
   { value: 'WAIT_SHIP', label: '待发货', type: 'warning' },
   { value: 'SHIPPED', label: '已发货', type: 'primary' },
   { value: 'FINISHED', label: '已完成', type: 'success' },
+  { value: 'MANUAL', label: '人工处理', type: 'warning' },
+  { value: 'CANCELLED', label: '已取消', type: 'info' },
   { value: 'FAILED', label: '失败', type: 'danger' }
 ]
 
@@ -66,7 +71,11 @@ export const LOGISTICS_STATUS_OPTIONS: { value: LogisticsStatus; label: string; 
   { value: 'SIGNED', label: '已签收', type: 'success' }
 ]
 
-export const SUPPLIER_LOGISTICS_STATUS_OPTIONS: { value: LogisticsStatus; label: string; type: string }[] = [
+export const SUPPLIER_LOGISTICS_STATUS_OPTIONS: {
+  value: LogisticsStatus
+  label: string
+  type: string
+}[] = [
   { value: 'UNSHIPPED', label: '待发货', type: 'info' },
   { value: 'SHIPPED', label: '已发货', type: 'primary' },
   { value: 'SIGNED', label: '已签收', type: 'success' }
@@ -91,29 +100,33 @@ export const AFTER_SALE_REASON_OPTIONS = [
   '其他'
 ]
 
-export const AFTER_SALE_STATUS_OPTIONS: { value: AfterSaleStatus; label: string; type: string }[] = [
-  { value: 'NONE', label: '未申请', type: 'info' },
-  { value: 'WAIT_PLATFORM', label: '待平台审核', type: 'warning' },
-  { value: 'WAIT_DISTRIBUTOR', label: '待分销商处理', type: 'warning' },
-  { value: 'WAIT_USER_POST', label: '待用户邮寄', type: 'primary' },
-  { value: 'WAIT_SUPPLIER', label: '待供应商确认', type: 'primary' },
-  { value: 'WAIT_USER_CONFIRM', label: '待用户确认收货', type: 'warning' },
-  { value: 'FINISHED', label: '已完成', type: 'success' },
-  { value: 'REJECTED', label: '已拒绝', type: 'danger' },
-  { value: 'CANCELLED', label: '已撤销', type: 'info' }
-]
+export const AFTER_SALE_STATUS_OPTIONS: { value: AfterSaleStatus; label: string; type: string }[] =
+  [
+    { value: 'NONE', label: '未申请', type: 'info' },
+    { value: 'WAIT_PLATFORM', label: '待平台审核', type: 'warning' },
+    { value: 'WAIT_DISTRIBUTOR', label: '待分销商处理', type: 'warning' },
+    { value: 'WAIT_USER_POST', label: '待用户邮寄', type: 'primary' },
+    { value: 'WAIT_SUPPLIER', label: '待供应商确认', type: 'primary' },
+    { value: 'WAIT_USER_CONFIRM', label: '待用户确认收货', type: 'warning' },
+    { value: 'FINISHED', label: '已完成', type: 'success' },
+    { value: 'REJECTED', label: '已拒绝', type: 'danger' },
+    { value: 'CANCELLED', label: '已撤销', type: 'info' }
+  ]
 
 export const FULFILLMENT_STATUS_OPTIONS: { value: string; label: string; type: string }[] = [
   { value: 'WAITING', label: '待执行', type: 'info' },
   { value: 'PENDING', label: '执行中', type: 'warning' },
   { value: 'PROCESSING', label: '查询中', type: 'primary' },
   { value: 'SUCCEEDED', label: '成功', type: 'success' },
+  { value: 'CANCELLED', label: '已取消', type: 'info' },
   { value: 'FAILED', label: '失败', type: 'danger' },
   { value: 'MANUAL', label: '人工处理', type: 'warning' }
 ]
 
-export const getOptionLabel = <T extends { value: any; label: string }>(options: T[], value?: any) =>
-  options.find((item) => item.value === value)?.label || '-'
+export const getOptionLabel = <T extends { value: any; label: string }>(
+  options: T[],
+  value?: any
+) => options.find((item) => item.value === value)?.label || '-'
 
 export const getOptionType = <T extends { value: any; type?: string }>(options: T[], value?: any) =>
   (options.find((item) => item.value === value)?.type || 'info') as any
@@ -134,4 +147,5 @@ export const canRefund = (status?: OrderStatus) => status === 'SUCCESS' || statu
 export const canResend = (status?: OrderStatus) => status === 'FAILED'
 export const canRouteRecord = (status?: OrderStatus) =>
   status === 'CLOSED' || status === 'PROCESSING' || status === 'SUCCESS' || status === 'FAILED'
-export const canSupplierRefund = (status?: OrderStatus) => status === 'WAIT_SHIP' || status === 'SHIPPED'
+export const canSupplierRefund = (status?: OrderStatus) =>
+  status === 'WAIT_SHIP' || status === 'SHIPPED'

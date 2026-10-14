@@ -1,12 +1,13 @@
 export type OrderBizType =
   'VIRTUAL_CARD' | 'VIRTUAL_RECHARGE' | 'DINING' | 'MOVIE' | 'HEMA' | 'INSTORE'
 export type FulfillmentStatus =
-  'WAITING' | 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'MANUAL'
+  'WAITING' | 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'MANUAL' | 'CANCELLED'
 export type SettlementStatus = 'PENDING' | 'MATCHED' | 'MISMATCH' | 'MANUAL'
 export type SupplierAttemptOrderType = 'CARD' | 'O2O' | 'INSTORE'
-export type PlatformOrderStatus = 'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED'
+export type PlatformOrderStatus =
+  'WAIT_PAY' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'CLOSED' | 'MANUAL'
 export type SupplierOrderStatus =
-  'WAIT_PAY' | 'CLOSED' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'FAILED'
+  'WAIT_PAY' | 'CLOSED' | 'WAIT_SHIP' | 'SHIPPED' | 'FINISHED' | 'FAILED' | 'MANUAL' | 'CANCELLED'
 export type OrderStatus = PlatformOrderStatus | SupplierOrderStatus
 export type SupplyMode = 'DROP_SHIP' | 'BATCH' | 'STORE_PICKUP' | 'API_DIRECT' | 'H5_DIRECT'
 export type LogisticsStatus = 'UNSHIPPED' | 'SHIPPED' | 'SIGNED'
@@ -119,6 +120,8 @@ export interface OrderRouteRecordVO {
 }
 
 export interface OrderVO {
+  terminalReasonCode?: string
+  failureClosures?: import('./failure-closure').FailureClosure[]
   id?: number
   orderNo: string
   supplierOrderNo?: string
@@ -218,6 +221,7 @@ export interface OrderPageParam {
 
 /** 供应商履约尝试（GET /supply-chain/supplier-orders） */
 export interface SupplierOrderView {
+  failureClosure?: import('./failure-closure').FailureClosure
   bOrderNo: string
   attemptNo?: number
   active?: boolean
@@ -261,6 +265,7 @@ export interface SupplierOrderPageParam {
 
 /** 平台订单视图（GET /supply-chain/order-views），金额单位为分 */
 export interface OrderView {
+  terminalReasonCode?: string
   orderNo: string
   relatedPlatformOrderNo?: string
   bizType: OrderBizType
