@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import { parse, compileScript } from 'vue/compiler-sfc'
 import ts from 'typescript'
 import * as vue from 'vue'
+import { loadTypeScriptSource } from './support/typescript-source-loader.mjs'
 import { mountProductList, flushProductList } from './support/product-list-sfc-harness.mjs'
 
 // 编译真实组件script setup，仅隔离网络和UI消息，不复制重算业务逻辑。
@@ -43,6 +44,10 @@ function setup(response, error) {
     require: (name) => {
       if (name === 'vue') return vue
       if (name === '@/api/supplier/distribution') return { DistributorApi: api }
+      if (name === './distributionPrice')
+        return loadTypeScriptSource(
+          'src/views/supplier/distribution/distributor/detail/distributionPrice.ts'
+        )
       return {}
     }
   }
@@ -145,9 +150,7 @@ test('分销商品规格直接展示SKU规格，操作显示刷新状态', async
     assert.ok(sku.text.includes('SKU_011_001'))
     assert.ok(!view.text().includes('v2下单编码'))
     assert.ok(
-      !view
-        .components('ElTableColumn')
-        .some((item) => item.props.label === '分销商品编号(BPD)'),
+      !view.components('ElTableColumn').some((item) => item.props.label === '分销商品编号(BPD)'),
       '分销列表不渲染分销商品编号(BPD)列'
     )
     assert.ok(view.allButtons().some((item) => item.text.trim() === '刷新状态'))
@@ -166,8 +169,15 @@ test('分销商品规格直接展示SKU规格，操作显示刷新状态', async
 
 for (const kind of ['distributor', 'project']) {
   test(`${kind}真实列表直接展示SKU规格且不出现下单编码文案`, async () => {
-    const row = { listingCode: 'PLT_2', buyerProductCode: 'BPD_1', canonicalBuyerSkuCode: 'BPD_1',
-      platformSkuCode: 'SKU_011_001', skuName: '卡券规格', spuCode: 'SPU_011', acceptanceListingNo: 'LST_3' }
+    const row = {
+      listingCode: 'PLT_2',
+      buyerProductCode: 'BPD_1',
+      canonicalBuyerSkuCode: 'BPD_1',
+      platformSkuCode: 'SKU_011_001',
+      skuName: '卡券规格',
+      spuCode: 'SPU_011',
+      acceptanceListingNo: 'LST_3'
+    }
     const view = mountProductList({ get: async () => ({ list: [row], total: 1 }) }, undefined, {
       props: { buyerCode: 'BYR_1', projectCode: 'PRJ_1' },
       entryFile: `views/supplier/distribution/${kind}/detail/ProductList.vue`
@@ -187,6 +197,8 @@ for (const kind of ['distributor', 'project']) {
           '分销列表不渲染分销商品编号(BPD)列'
         )
       }
-    } finally { view.unmount() }
+    } finally {
+      view.unmount()
+    }
   })
 }

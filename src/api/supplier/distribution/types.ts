@@ -351,8 +351,66 @@ export interface ProjectProductBatchPricingReqVO {
   taxMetadata?: ProjectTaxMetadataReqVO
 }
 
+/** 分销商当前通用定价的身份状态；与商品定价状态契约一致。 */
+export const BUYER_PRICING_STATUSES = {
+  UNPRICED: 'UNPRICED',
+  READY: 'READY',
+  RECALCULATING: 'RECALCULATING',
+  DEPENDENCY_MISSING: 'DEPENDENCY_MISSING',
+  CALCULATION_FAILED: 'CALCULATION_FAILED',
+  MARGIN_HIDDEN: 'MARGIN_HIDDEN'
+} as const
+export type BuyerPricingStatus =
+  (typeof BUYER_PRICING_STATUSES)[keyof typeof BUYER_PRICING_STATUSES]
+
+/** 原始公式，直接等于市场价时其它字段为空。 */
+export interface BuyerFormulaRuleView {
+  mode: 'DIRECT_MARKET_PRICE' | 'CUSTOM' | null
+  base?: 'MARKET_PRICE' | 'SUGGESTED_SALE_PRICE' | 'SUPPLY_PRICE' | null
+  percentage?: number | null
+  operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE' | null
+  operand?: number | null
+}
+
+/** 当前版本保存的原始五组覆盖配置；继承组的原始规则不参与计算。
+ * 设计：docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#63-分销商品原始配置回显与无损编辑2026-10-14-修复。
+ */
+export interface BuyerPricingConfigView {
+  distributionInherited: boolean
+  distributionRule: BuyerFormulaRuleView | null
+  salesInherited: boolean
+  salesRule: BuyerFormulaRuleView | null
+  serviceFeeInherited: boolean
+  serviceFeeRule: {
+    percentage?: number | null
+    operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE' | null
+    operand?: number | null
+    hideCopy?: boolean | null
+    copy?: string | null
+  } | null
+  hideInherited: boolean
+  hideRule: {
+    /** 分销区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+    distributionThresholdPercent?: number | null
+    /** 销售区利润隐藏阈值百分数，0 到 100，最多 2 位小数 */
+    salesThresholdPercent?: number | null
+  } | null
+  taxInherited: boolean
+  taxMetadata: {
+    taxIncluded?: boolean | null
+    taxRateCode?: string | null
+    taxRateLabel?: string | null
+  } | null
+}
+
 /** 分销商品列表项（GET /buyers/{buyerCode}/products） */
 export interface BuyerProductListItem {
+  /** 当前通用定价版本主键，空表示未定价；大编号保留十进制字符串。 */
+  currentPricingVersionId?: number | string | null
+  /** 当前定价身份处理状态，无当前指针时为 UNPRICED。 */
+  pricingStatus?: BuyerPricingStatus | string
+  /** 当前版本保存的原始五组覆盖配置；无当前指针时为空。 */
+  buyerPricingConfig?: BuyerPricingConfigView | null
   /** 分销商品稳定业务编码 */
   buyerProductCode?: string
   /** 平台 SKU 编码，v2项目下单商品定位字段 */

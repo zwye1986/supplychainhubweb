@@ -24,8 +24,12 @@ export type {
   DistributorPageParam,
   DistPlatformSkuVO,
   DistFormulaRuleReqVO,
+  DistServiceFeeRuleReqVO,
   InvoiceSaveReqVO,
   BuyerProductListItem,
+  BuyerPricingConfigView,
+  BuyerFormulaRuleView,
+  BuyerPricingStatus,
   BuyerProductPageParam,
   PatchBuyerProductReqVO,
   NamedRef,
@@ -46,7 +50,7 @@ export type {
   ProjectVO
 } from './types'
 
-export { toProductTypeCodes, toProductTypeItems } from './types'
+export { toProductTypeCodes, toProductTypeItems, BUYER_PRICING_STATUSES } from './types'
 
 import type {
   AcceptanceCatalogRecalculateRespVO,
