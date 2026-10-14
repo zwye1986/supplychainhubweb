@@ -263,10 +263,27 @@ export interface SupplierOrderPageParam {
   createdTo?: string
 }
 
+/**
+ * order-views 内的供应商摘要，不是 supplier-orders 的完整履约尝试。
+ * supplierOrderNo 为平台 B 端履约尝试编号，用于供应商详情跳转，不是供应商外部订单号。
+ * 设计：后端 docs/superpowers/specs/2026-09-23-order-frontend-alignment-and-routing-prd-model-design.md §3.2.1。
+ */
+export interface OrderSupplierSummaryView {
+  supplierOrderNo: string
+  supplierName?: string
+  status?: SupplierOrderStatus
+  amount?: number
+  qty?: number
+  createdAt?: string
+  failureClosure?: import('./failure-closure').FailureClosure
+}
+
 /** 平台订单视图（GET /supply-chain/order-views），金额单位为分 */
 export interface OrderView {
   terminalReasonCode?: string
   orderNo: string
+  /** 采购商侧C端订单号，CARD场景必填 */
+  distributorOrderNo?: string
   relatedPlatformOrderNo?: string
   bizType: OrderBizType
   status: PlatformOrderStatus
@@ -291,7 +308,7 @@ export interface OrderView {
   distributorPayAmount?: number
   projectPayAmount?: number
   items?: OrderItemView[]
-  supplierOrders?: SupplierOrderView[]
+  supplierOrders?: OrderSupplierSummaryView[]
   traces?: any[]
   createdAt?: string
   supplyMode?: string

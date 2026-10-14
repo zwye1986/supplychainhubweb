@@ -118,18 +118,13 @@ const buildSupplierOrderQuery = (params: SupplierOrderPageParam) => {
 const mapOrderView = (view: OrderView): OrderVO => {
   const bizType = view.bizType || 'VIRTUAL_CARD'
   const supplierOrders = (view.supplierOrders || [])
-    .filter((item) => item.bOrderNo)
+    .filter((item) => item.supplierOrderNo)
     .map((item) => ({
-      supplierOrderNo: item.bOrderNo,
+      supplierOrderNo: item.supplierOrderNo,
       supplierName: item.supplierName
     }))
   const itemCount = view.items?.length || 0
   const items: OrderItemVO[] = (view.items || []).map((item) => {
-    const matched = (view.supplierOrders || []).find(
-      (row) => row.skuCode && row.skuCode === item.skuCode
-    )
-    const supplyCents =
-      matched?.supplierSettlementUnitPrice ?? view.supplierOrders?.[0]?.supplierSettlementUnitPrice
     const rechargeInfos = (item.rechargeInfo || []).map((row) => ({
       account: row.accountValue,
       voucherNo: row.voucherCode,
@@ -139,7 +134,8 @@ const mapOrderView = (view: OrderView): OrderVO => {
       name: item.skuName || '',
       skuCode: item.skuCode || '',
       qty: Number(item.qty || 0),
-      supplyPrice: centsToYuan(supplyCents) ?? 0,
+      // order-views 摘要没有供应商结算单价，保持缺值占位，不把尝试总金额当单价。
+      supplyPrice: 0,
       distPrice: centsToYuan(item.distPrice),
       salePrice: centsToYuan(item.salePrice) ?? 0,
       serviceFee: itemCount === 1 ? (centsToYuan(view.serviceFee) ?? 0) : 0,
@@ -166,7 +162,8 @@ const mapOrderView = (view: OrderView): OrderVO => {
       .filter((item): item is NonNullable<typeof item> => !!item),
     relatedPlatformOrderNo: view.relatedPlatformOrderNo,
     supplierOrderNo: supplierOrders[0]?.supplierOrderNo,
-    buyerOrderNo: view.supplierOrders?.find((item) => item.buyerOrderNo)?.buyerOrderNo,
+    buyerOrderNo: view.distributorOrderNo,
+    distributorOrderNo: view.distributorOrderNo,
     bizType,
     status,
     amount: centsToYuan(view.amount) ?? 0,
