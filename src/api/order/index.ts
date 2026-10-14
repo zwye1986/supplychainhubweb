@@ -134,8 +134,11 @@ const mapOrderView = (view: OrderView): OrderVO => {
       name: item.skuName || '',
       skuCode: item.skuCode || '',
       qty: Number(item.qty || 0),
-      // order-views 摘要没有供应商结算单价，保持缺值占位，不把尝试总金额当单价。
-      supplyPrice: 0,
+      // 只展示后端冻结事实，不把缺值变成零价或以当前商品价格替代历史价格。
+      // 设计：后端 docs/superpowers/specs/2026-09-23-order-frontend-alignment-and-routing-prd-model-design.md §3.2.2。
+      supplyPrice: centsToYuan(item.supplyPrice),
+      baseDistPrice: centsToYuan(item.baseDistPrice),
+      projectPrice: centsToYuan(item.projectPrice),
       distPrice: centsToYuan(item.distPrice),
       salePrice: centsToYuan(item.salePrice) ?? 0,
       serviceFee: itemCount === 1 ? (centsToYuan(view.serviceFee) ?? 0) : 0,
@@ -152,7 +155,6 @@ const mapOrderView = (view: OrderView): OrderVO => {
     }
   })
   const status = view.status || 'PROCESSING'
-  const payAmount = centsToYuan(view.projectPayAmount)
   const distributorPayAmount = centsToYuan(view.distributorPayAmount)
   return {
     orderNo: view.orderNo,
@@ -182,12 +184,9 @@ const mapOrderView = (view: OrderView): OrderVO => {
     freightAmount: centsToYuan(view.freightAmount),
     serviceFee: centsToYuan(view.serviceFee),
     couponAmount: centsToYuan(view.couponAmount),
-    projectPayAmount: payAmount,
-    projectGoodsAmount: payAmount,
-    projectFreightAmount: payAmount == null ? undefined : 0,
+    // 项目与分销商展示同一采购结算金额；不构造没有冻结依据的商品/运费拆分。
+    projectPayAmount: distributorPayAmount,
     distributorPayAmount,
-    distributorGoodsAmount: distributorPayAmount,
-    distributorFreightAmount: distributorPayAmount == null ? undefined : 0,
     supplyMode: view.supplyMode as OrderVO['supplyMode'],
     deliveryMode: view.deliveryMode,
     shipTime: formatDateTime(view.shipTime),

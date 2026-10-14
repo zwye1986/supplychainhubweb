@@ -30,33 +30,15 @@
         <el-descriptions-item label="支付流水号">{{
           unpaid ? '--' : order.payTradeNo || '--'
         }}</el-descriptions-item>
-        <el-descriptions-item label="用户支付金额">
-          <template v-if="unpaid">--</template>
-          <template v-else>
-            {{ formatAmount(userPayAmount) }}元 = 商品金额：{{ formatAmount(order.goodsAmount) }} +
-            运费：{{ formatAmount(order.freightAmount) }} + 服务费：{{
-              formatAmount(order.serviceFee)
-            }}
-            - 优惠券金额：{{ formatAmount(order.couponAmount) }}
-          </template>
-        </el-descriptions-item>
         <el-descriptions-item label="项目支付金额">
           <template v-if="unpaid">--</template>
-          <template v-else>
-            {{ formatAmount(projectPayAmount) }}元 = 商品金额：{{
-              formatAmount(projectGoodsAmount)
-            }}
-            + 运费：{{ formatAmount(projectFreightAmount) }}
-          </template>
+          <template v-else-if="order.projectPayAmount == null">—</template>
+          <template v-else>{{ formatAmount(order.projectPayAmount) }}元</template>
         </el-descriptions-item>
         <el-descriptions-item label="分销商支付金额">
           <template v-if="unpaid">--</template>
-          <template v-else>
-            {{ formatAmount(distributorPayAmount) }}元 = 商品金额：{{
-              formatAmount(distributorGoodsAmount)
-            }}
-            + 运费：{{ formatAmount(distributorFreightAmount) }}
-          </template>
+          <template v-else-if="order.distributorPayAmount == null">—</template>
+          <template v-else>{{ formatAmount(order.distributorPayAmount) }}元</template>
         </el-descriptions-item>
       </el-descriptions>
 
@@ -106,13 +88,19 @@
         <el-table-column label="规格" prop="spec" min-width="100" />
         <el-table-column label="数量" prop="qty" width="80" />
         <el-table-column label="供应价（元）" min-width="110">
-          <template #default="{ row }">{{ formatMoney(row.supplyPrice) }}</template>
+          <template #default="{ row }">{{
+            row.supplyPrice == null ? '—' : formatMoney(row.supplyPrice)
+          }}</template>
         </el-table-column>
-        <el-table-column label="分销价（元）" min-width="110">
-          <template #default="{ row }">{{ formatMoney(row.distPrice) }}</template>
+        <el-table-column label="基础分销价（元）" min-width="140">
+          <template #default="{ row }">{{
+            row.baseDistPrice == null ? '—' : formatMoney(row.baseDistPrice)
+          }}</template>
         </el-table-column>
         <el-table-column label="项目专属价（元）" min-width="130">
-          <template #default="{ row }">{{ formatMoney(row.projectPrice) }}</template>
+          <template #default="{ row }">{{
+            row.projectPrice == null ? '—' : formatMoney(row.projectPrice)
+          }}</template>
         </el-table-column>
         <el-table-column label="销售价（元）" min-width="110">
           <template #default="{ row }">{{ formatMoney(row.salePrice) }}</template>
@@ -192,31 +180,6 @@ const order = ref<OrderVO>({
   items: []
 })
 const unpaid = computed(() => isUnpaidStatus(order.value.status))
-const userPayAmount = computed(
-  () =>
-    Number(order.value.goodsAmount || 0) +
-    Number(order.value.freightAmount || 0) +
-    Number(order.value.serviceFee || 0) -
-    Number(order.value.couponAmount || 0)
-)
-const projectGoodsAmount = computed(
-  () => order.value.projectGoodsAmount ?? order.value.projectPayAmount ?? 0
-)
-const projectFreightAmount = computed(() => order.value.projectFreightAmount ?? 0)
-const projectPayAmount = computed(
-  () => order.value.projectPayAmount ?? projectGoodsAmount.value + projectFreightAmount.value
-)
-const distributorGoodsAmount = computed(
-  () => order.value.distributorGoodsAmount ?? order.value.distGoodsAmount ?? 0
-)
-const distributorFreightAmount = computed(
-  () => order.value.distributorFreightAmount ?? order.value.distFreightAmount ?? 0
-)
-const distributorPayAmount = computed(
-  () =>
-    order.value.distributorPayAmount ??
-    distributorGoodsAmount.value + distributorFreightAmount.value
-)
 const supplierOrderLinks = computed(() => {
   if (order.value.supplierOrders?.length)
     return order.value.supplierOrders.filter((item) => item.supplierOrderNo)

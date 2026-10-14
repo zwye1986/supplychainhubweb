@@ -60,7 +60,10 @@ export interface OrderItemVO {
   spec?: string
   qty: number
   afterSaleQty?: number
-  supplyPrice: number
+  /** 所选履约尝试的供应商结算单价（元）；缺值不代表零价 */
+  supplyPrice?: number
+  /** 订单冻结分销商版本的基础分销单价（元） */
+  baseDistPrice?: number
   distPrice?: number
   projectPrice?: number
   salePrice: number
@@ -153,11 +156,7 @@ export interface OrderVO {
   distFreightAmount?: number
   distFeeAmount?: number
   projectPayAmount?: number
-  projectGoodsAmount?: number
-  projectFreightAmount?: number
   distributorPayAmount?: number
-  distributorGoodsAmount?: number
-  distributorFreightAmount?: number
   supplyMode?: SupplyMode
   deliveryMode?: string
   shipTime?: string
@@ -322,6 +321,12 @@ export interface OrderItemView {
   qty?: number
   salePrice?: number
   distPrice?: number
+  /** 供应商结算单价（分），仅详情所选履约尝试有值 */
+  supplyPrice?: number | null
+  /** 冻结分销商版本的基础分销单价（分），缺历史引用为空 */
+  baseDistPrice?: number | null
+  /** 冻结项目版本的专属分销单价（分），继承或未知为空 */
+  projectPrice?: number | null
   cardInfos?: OrderCardAssetView[]
   rechargeInfo?: { accountValue?: string; voucherCode?: string; assetNo?: string }[]
   ticketCode?: string[]
