@@ -45,7 +45,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="项目类型" prop="projectType">
-        <el-select v-model="formData.projectType" placeholder="请选择项目类型" class="!w-full" clearable>
+        <el-select
+          v-model="formData.projectType"
+          placeholder="请选择项目类型"
+          class="!w-full"
+          clearable
+        >
           <el-option
             v-for="dict in getStrDictOptions('supply_chain_project_type')"
             :key="dict.value"
@@ -70,15 +75,17 @@
           v-model="formData.settlementBuyerCode"
           filterable
           clearable
+          :disabled="settlementLocked"
           placeholder="请选择结算方"
           class="!w-full"
           @change="settlementTouched = true"
         >
           <el-option
-            v-for="item in buyerOptions"
+            v-for="item in settlementBuyerOptions"
             :key="item.buyerCode"
             :label="item.buyerName"
             :value="item.buyerCode"
+            :disabled="item.disabled"
           />
         </el-select>
       </el-form-item>
@@ -116,7 +123,12 @@
 
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
-import { DistributorApi, ProjectApi, ProjectSaveReqVO, ProjectVO } from '@/api/supplier/distribution'
+import {
+  DistributorApi,
+  ProjectApi,
+  ProjectSaveReqVO,
+  ProjectVO
+} from '@/api/supplier/distribution'
 import { getStrDictOptions } from '@/utils/dict'
 
 defineOptions({ name: 'DistributionProjectFormDialog' })
@@ -144,10 +156,23 @@ type ProjectFormData = ProjectVO & { period?: string[] }
 const formLoading = ref(false)
 const formRef = ref<FormInstance>()
 const buyerOptions = ref<{ buyerCode: string; buyerName: string }[]>([])
+const BUYER_STATUS_ACTIVE = 'ACTIVE'
+const PROJECT_STATUS_DRAFT = 'DRAFT'
+const settlementBuyerOptions = ref<{ buyerCode: string; buyerName: string; disabled?: boolean }[]>(
+  []
+)
+// 使用已保存状态判断锁定，草稿表单选择“进行中”时仍可调整结算方。
+// 设计：docs/superpowers/specs/2026-10-14-project-settlement-buyer-design.md#4-前端。
+const loadedProjectStatus = ref(PROJECT_STATUS_DRAFT)
+const settlementLocked = computed(
+  () => isEdit.value && loadedProjectStatus.value !== PROJECT_STATUS_DRAFT
+)
 /** 用户是否手动改过结算方；未改过时跟随关联分销商 */
 const settlementTouched = ref(false)
 const isView = computed(() => props.mode === 'view')
-const isEdit = computed(() => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view'))
+const isEdit = computed(
+  () => props.mode === 'edit' || (!!props.projectCode && props.mode !== 'view')
+)
 
 const statusOptions = computed(() => {
   const all = getStrDictOptions('supply_chain_project_status')
@@ -206,8 +231,17 @@ watch(
 
 const loadBuyerOptions = async () => {
   try {
-    const list = (await DistributorApi.getDistributorNameList()) || []
-    buyerOptions.value = list
+    const [list, enabledList] = await Promise.all([
+      DistributorApi.getDistributorNameList(),
+      DistributorApi.getDistributorNameList({ status: [BUYER_STATUS_ACTIVE] })
+    ])
+    settlementBuyerOptions.value = (enabledList || [])
+      .map((item: any) => ({
+        buyerCode: item.code || item.buyerCode || '',
+        buyerName: item.label || item.value || item.buyerName || ''
+      }))
+      .filter((item) => item.buyerCode)
+    buyerOptions.value = (list || [])
       .map((item: any) => ({
         buyerCode: item.code || item.buyerCode || '',
         buyerName: item.label || item.value || item.buyerName || ''
@@ -215,12 +249,14 @@ const loadBuyerOptions = async () => {
       .filter((item) => item.buyerCode)
   } catch {
     buyerOptions.value = []
+    settlementBuyerOptions.value = []
   }
 }
 
 const resetForm = async () => {
   settlementTouched.value = false
   formData.value = createDefaultForm()
+  loadedProjectStatus.value = PROJECT_STATUS_DRAFT
   await nextTick()
   formRef.value?.clearValidate()
 }
@@ -230,6 +266,20 @@ const loadDetail = async (projectCode: string) => {
   try {
     const data = await ProjectApi.getProject(projectCode)
     const settlementBuyerCode = data.settlementBuyerCode || data.buyerCode
+    loadedProjectStatus.value = data.status || PROJECT_STATUS_DRAFT
+    if (
+      settlementBuyerCode &&
+      !settlementBuyerOptions.value.some((item) => item.buyerCode === settlementBuyerCode)
+    ) {
+      settlementBuyerOptions.value.push({
+        buyerCode: settlementBuyerCode,
+        buyerName:
+          data.settlementBuyerName ||
+          (settlementBuyerCode === data.buyerCode ? data.buyerName : undefined) ||
+          settlementBuyerCode,
+        disabled: true
+      })
+    }
     formData.value = {
       ...createDefaultForm(),
       ...data,
@@ -258,7 +308,8 @@ const buildSavePayload = (): ProjectSaveReqVO => {
     startDate: period[0],
     endDate: period[1],
     settlementPartyType: 'DISTRIBUTOR',
-    settlementBuyerCode: formData.value.settlementBuyerCode || formData.value.buyerCode || undefined,
+    settlementBuyerCode:
+      formData.value.settlementBuyerCode || formData.value.buyerCode || undefined,
     description: formData.value.description || undefined,
     status: formData.value.status || 'DRAFT'
   }
