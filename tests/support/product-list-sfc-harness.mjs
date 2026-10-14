@@ -47,14 +47,25 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
   function stub(name) {
     return {
       name,
-      props: name === 'ElTable' ? ['data'] : [],
+      props: name === 'ElTable' ? ['data'] : name === 'ElForm' ? ['model', 'rules'] : [],
       setup: (_props, { slots, expose }) => {
         expose({
           open: (...args) => {
             if (name === 'PriceDialog.vue') priceOpens.push(args)
           },
           clearSelection: () => {},
-          validate: async () => {},
+          validate: async () => {
+            if (name !== 'ElForm') return
+            for (const [field, rules] of Object.entries(_props.rules || {})) {
+              const value = field.split('.').reduce((item, key) => item?.[key], _props.model)
+              for (const rule of rules) {
+                if (rule.validator)
+                  await new Promise((resolve, reject) =>
+                    rule.validator(rule, value, (error) => (error ? reject(error) : resolve()))
+                  )
+              }
+            }
+          },
           resetFields: () => {},
           clearValidate: () => {},
           validateField: () => {}
@@ -91,7 +102,7 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
       if (
         (!options.pricing && ['PriceDialog.vue'].includes(path.basename(name))) ||
         name.includes('/form/') ||
-        name.includes('/detail/')
+        (name.includes('/detail/') && !options.realDetails?.includes(path.basename(name)))
       ) {
         return { __esModule: true, default: stub(path.basename(name)) }
       }
@@ -208,7 +219,11 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
       if (Array.isArray(vnode)) return vnode.forEach(visit)
       if (vnode.component) {
         if (vnode.type.name === name)
-          found.push({ props: vnode.props, text: textContent(vnode.el) })
+          found.push({
+            props: vnode.props,
+            text: textContent(vnode.el),
+            state: vnode.component.setupState
+          })
         visit(vnode.component.subTree)
       }
       if (Array.isArray(vnode.children)) vnode.children.forEach(visit)

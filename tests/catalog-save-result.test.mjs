@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import { parse, compileScript } from 'vue/compiler-sfc'
 import ts from 'typescript'
 import * as vue from 'vue'
+import { loadTypeScriptSource } from './support/typescript-source-loader.mjs'
 
 const utilityPath = 'src/views/supplier/distribution/utils/catalogSaveResult.ts'
 const compile = (source) =>
@@ -13,11 +14,7 @@ const compile = (source) =>
   }).outputText
 const utility = { exports: {} }
 vm.runInNewContext(compile(fs.readFileSync(utilityPath, 'utf8')), utility)
-const loadUtility = (path) => {
-  const context = { exports: {} }
-  vm.runInNewContext(compile(fs.readFileSync(path, 'utf8')), context)
-  return context.exports
-}
+const loadUtility = loadTypeScriptSource
 const distPrice = loadUtility(
   'src/views/supplier/distribution/distributor/detail/distributionPrice.ts'
 )
@@ -120,8 +117,15 @@ for (const [scope, name, entry, apiMethod] of [
       component.selectedList.value = [{ platformSkuCode: 'SKU_1', price }]
       component.skuFormRefs.set('SKU_1', { validate: async () => true })
     } else {
-      component.adjustRow.value = { buyerProductCode: 'BPD_1', listingCode: 'PLT_1' }
-      component.adjustFormRef.value = { validate: async () => true }
+      if (scope === 'distributor')
+        component.openAdjust({
+          buyerProductCode: 'BPD_1',
+          currentPricingVersionId: null,
+          pricingStatus: 'UNPRICED',
+          buyerPricingConfig: null
+        })
+      else component.adjustRow.value = { buyerProductCode: 'BPD_1', listingCode: 'PLT_1' }
+      component.adjustFormRef.value = { validate: async () => true, clearValidate() {} }
     }
     await component[entry]()
     assert.equal(calls.length, 1)

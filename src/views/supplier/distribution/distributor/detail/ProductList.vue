@@ -133,26 +133,35 @@
       <div v-if="adjustRow?.pricingRule" class="mb-12px text-13px text-gray-500">
         当前规则：{{ adjustRow.pricingRule }}
       </div>
+      <el-alert
+        v-if="adjustSnapshot?.initializing"
+        title="尚未定价：初始化配置默认继承商品定价"
+        type="info"
+        :closable="false"
+        class="mb-12px"
+      />
       <DistributionPriceForm
         ref="adjustFormRef"
+        edit-mode
         v-model="adjustPrice"
         :sale-price-tip="adjustSalePriceTip"
       />
       <template #footer>
         <el-button @click="adjustVisible = false">取 消</el-button>
-        <el-button type="primary" :loading="adjustSaving" @click="submitAdjust">确 定</el-button>
+        <el-button
+          type="primary"
+          :loading="adjustSaving"
+          :disabled="!adjustSnapshot || loading"
+          @click="submitAdjust"
+          >确 定</el-button
+        >
       </template>
     </Dialog>
   </ContentWrap>
 </template>
 
 <script lang="ts" setup>
-import {
-  BuyerProductListItem,
-  DistributorApi,
-  type BuyerProductBatchPricingReqVO,
-  type DistFormulaRuleReqVO
-} from '@/api/supplier/distribution'
+import { BuyerProductListItem, DistributorApi } from '@/api/supplier/distribution'
 import {
   buildCatalogSaveMessage,
   isCatalogSaveUncertainError
@@ -160,7 +169,14 @@ import {
 import { DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/utils/money'
 import DistributionPriceForm from './DistributionPriceForm.vue'
-import type { DistPriceFormData } from './distributionPrice'
+import {
+  createEmptyDistPrice,
+  readBuyerPricingEditSnapshot,
+  createBuyerPricingEditForm,
+  buildBuyerPricingEditPayload,
+  type BuyerPricingEditSnapshot,
+  type DistPriceFormData
+} from './distributionPrice'
 import ProductSelectDialog from './ProductSelectDialog.vue'
 
 type BuyerProductTableRow = BuyerProductListItem & { _rowspan?: number }
@@ -184,20 +200,8 @@ const adjustFormRef = ref<InstanceType<typeof DistributionPriceForm>>()
 const adjustRow = ref<BuyerProductListItem>()
 const DEFAULT_SALE_PRICE_TIP = '销售建议价=市场价*0.5%+0元'
 
-const createPriceConfig = (): DistPriceFormData => ({
-  distributionRule: {
-    mode: 'CUSTOM',
-    base: 'SUGGESTED_SALE_PRICE',
-    percentage: undefined,
-    operator: 'MULTIPLY',
-    operand: undefined
-  },
-  taxIncluded: true,
-  taxRateCode: '',
-  distributionHideThresholdPercent: undefined
-})
-
-const adjustPrice = ref<DistPriceFormData>(createPriceConfig())
+const adjustSnapshot = ref<BuyerPricingEditSnapshot | null>(null)
+const adjustPrice = ref<DistPriceFormData>(createEmptyDistPrice())
 
 const adjustSalePriceTip = computed(() => {
   const cents = adjustRow.value?.suggestedSalePriceCents
@@ -283,91 +287,6 @@ const spanMethod = ({ row, columnIndex }: { row: BuyerProductTableRow; columnInd
   return row._rowspan ? { rowspan: row._rowspan, colspan: 1 } : { rowspan: 0, colspan: 0 }
 }
 
-const inferPriceFromRow = (row: BuyerProductListItem): DistPriceFormData => {
-  const price = createPriceConfig()
-  if (row.displayThresholdPercent != null) {
-    price.distributionHideThresholdPercent = row.displayThresholdPercent
-  }
-  if (row.taxIncluded != null) {
-    price.taxIncluded = row.taxIncluded
-  }
-  price.taxRateCode = row.taxIncluded === false ? '' : row.taxRateCode || ''
-  const text = row.pricingRule || ''
-  if (text.includes('市场价') && (text.includes('=') || text.includes('等于'))) {
-    price.distributionRule.mode = 'DIRECT_MARKET_PRICE'
-    return price
-  }
-  const percentMatch = text.match(/×\s*([\d.]+)\s*%/)
-  if (percentMatch) {
-    price.distributionRule.mode = 'CUSTOM'
-    price.distributionRule.base = text.includes('供应')
-      ? 'SUPPLY_PRICE'
-      : text.includes('市场')
-        ? 'MARKET_PRICE'
-        : 'SUGGESTED_SALE_PRICE'
-    price.distributionRule.percentage = Number(percentMatch[1])
-    const amountMatch = text.match(/([+-])\s*([\d.]+)/)
-    if (amountMatch) {
-      price.distributionRule.operator = amountMatch[1] === '-' ? 'SUBTRACT' : 'ADD'
-      price.distributionRule.operand = Number(amountMatch[2])
-    } else {
-      price.distributionRule.operator = 'ADD'
-      price.distributionRule.operand = 0
-    }
-    return price
-  }
-  if (text.includes('等于L1') || text.includes('等于 L1') || text.includes('销售建议价')) {
-    price.distributionRule.mode = 'CUSTOM'
-    price.distributionRule.base = 'SUGGESTED_SALE_PRICE'
-    price.distributionRule.percentage = 100
-    price.distributionRule.operator = 'ADD'
-    price.distributionRule.operand = 0
-  }
-  return price
-}
-
-const toOptionalNumber = (value?: number | null) => {
-  if (value == null || Number.isNaN(Number(value))) return undefined
-  return Number(value)
-}
-
-const buildFormulaRule = (rule: DistPriceFormData['distributionRule']): DistFormulaRuleReqVO => {
-  if (rule.mode === 'DIRECT_MARKET_PRICE') {
-    return { mode: 'DIRECT_MARKET_PRICE' }
-  }
-  return {
-    mode: 'CUSTOM',
-    base: rule.base,
-    percentage: Number(rule.percentage),
-    operator: rule.operator,
-    operand: rule.operand ?? 0
-  }
-}
-
-const buildPricingPayload = (
-  buyerProductCode: string,
-  price: DistPriceFormData
-): BuyerProductBatchPricingReqVO => {
-  const hidePercent = toOptionalNumber(price.distributionHideThresholdPercent)
-  const payload: BuyerProductBatchPricingReqVO = {
-    buyerProductCodes: [buyerProductCode],
-    distributionInherited: false,
-    distributionRule: buildFormulaRule(price.distributionRule),
-    salesInherited: true,
-    serviceFeeInherited: true,
-    hideInherited: hidePercent == null,
-    taxInherited: false,
-    taxIncluded: price.taxIncluded
-  }
-  if (hidePercent != null) {
-    payload.distributionHideThresholdPercent = hidePercent
-  }
-  if (price.taxIncluded) {
-    payload.taxRateCode = price.taxRateCode
-  }
-  return payload
-}
-
 const getList = async () => {
   if (!props.buyerCode) return
   loading.value = true
@@ -380,6 +299,8 @@ const getList = async () => {
     list.value = attachSpuRowspan(data?.list || [])
     total.value = data?.total || 0
   } catch {
+    adjustSnapshot.value = null
+    message.error('定价配置无法读取，请刷新列表后再改价')
     list.value = []
     total.value = 0
   } finally {
@@ -398,30 +319,61 @@ const openSelectDialog = () => {
 }
 
 const openAdjust = (row: BuyerProductListItem) => {
+  adjustSnapshot.value = null
   if (!row.buyerProductCode) {
     message.error('缺少分销商品编号，无法改价')
     return
   }
-  adjustRow.value = row
-  adjustPrice.value = inferPriceFromRow(row)
+  const snapshot = readBuyerPricingEditSnapshot(row)
+  if (!snapshot || loading.value) {
+    message.error('定价配置不完整，请刷新列表后再改价')
+    return
+  }
+  adjustRow.value = { ...row }
+  adjustSnapshot.value = snapshot
+  adjustPrice.value = createBuyerPricingEditForm(snapshot)
   adjustVisible.value = true
   nextTick(() => adjustFormRef.value?.clearValidate())
 }
 
 const submitAdjust = async () => {
   const buyerProductCode = adjustRow.value?.buyerProductCode
+  const buyerCode = props.buyerCode
+  const snapshot = adjustSnapshot.value
   if (!props.buyerCode || !buyerProductCode) {
     message.error('缺少分销商品编号，无法改价')
     return
   }
+  if (!adjustSnapshot.value || loading.value) {
+    message.error('定价配置无法读取，请刷新列表后再改价')
+    return
+  }
   await adjustFormRef.value?.validate()
+  // 校验期间读取失败或切换编辑对象时，不再提交旧编辑快照。
+  // 设计：docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#63-分销商品原始配置回显与无损编辑2026-10-14-修复。
+  if (
+    !adjustSnapshot.value ||
+    loading.value ||
+    adjustSnapshot.value !== snapshot ||
+    props.buyerCode !== buyerCode ||
+    adjustRow.value?.buyerProductCode !== buyerProductCode
+  )
+    return
+  let payload: ReturnType<typeof buildBuyerPricingEditPayload>
+  try {
+    payload = buildBuyerPricingEditPayload(
+      buyerProductCode,
+      adjustPrice.value,
+      adjustSnapshot.value
+    )
+  } catch (error) {
+    message.error((error as Error).message)
+    return
+  }
   adjustSaving.value = true
   let saveResponded = false
   try {
-    const saveResult = await DistributorApi.saveBuyerProductPricing(
-      props.buyerCode,
-      buildPricingPayload(buyerProductCode, adjustPrice.value)
-    )
+    const saveResult = await DistributorApi.saveBuyerProductPricing(props.buyerCode, payload)
     saveResponded = true
     const hint = buildCatalogSaveMessage(saveResult)
     message[hint.type](hint.content)
@@ -568,6 +520,7 @@ const handleRecalculate = async (row: BuyerProductListItem) => {
 watch(
   () => [props.buyerCode, productTypeCodes.value.join(',')] as const,
   () => {
+    adjustSnapshot.value = null
     queryParams.pageNo = 1
     getList()
   },

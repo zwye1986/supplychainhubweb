@@ -1,32 +1,59 @@
 <template>
-  <el-form
-    ref="formRef"
-    :model="model"
-    :rules="formRules"
-    :label-width="labelWidth"
-    :size="size"
-  >
-    <el-form-item label="调价方式" prop="distributionRule.mode" :required="!optional">
+  <el-form ref="formRef" :model="model" :rules="formRules" :label-width="labelWidth" :size="size">
+    <el-form-item v-if="editMode" label="分销价继承">
+      <el-switch v-model="model.distributionInherited" active-text="继承商品默认分销价" />
+    </el-form-item>
+    <el-form-item
+      v-if="!editMode || !model.distributionInherited"
+      label="调价方式"
+      prop="distributionRule.mode"
+      :required="!optional"
+    >
       <el-radio-group v-model="model.distributionRule.mode">
         <el-radio value="DIRECT_MARKET_PRICE">按照{{ priceLabel }}=市场价</el-radio>
         <el-radio value="CUSTOM">自定义设置</el-radio>
       </el-radio-group>
     </el-form-item>
-    <el-form-item v-if="model.distributionRule.mode === 'CUSTOM'" :label="priceLabel" prop="distributionRule">
+    <el-form-item
+      v-if="(!editMode || !model.distributionInherited) && model.distributionRule.mode === 'CUSTOM'"
+      :label="priceLabel"
+      prop="distributionRule"
+    >
       <div>
         <FormulaRuleInput v-model="customRuleModel" />
-        <div v-if="salePriceTip && model.distributionRule.base === 'SUGGESTED_SALE_PRICE'" class="mt-6px text-12px text-[var(--el-color-danger)]">
+        <div
+          v-if="salePriceTip && model.distributionRule.base === 'SUGGESTED_SALE_PRICE'"
+          class="mt-6px text-12px text-[var(--el-color-danger)]"
+        >
           {{ salePriceTip }}
         </div>
       </div>
     </el-form-item>
-    <el-form-item label="是否含税" prop="taxIncluded" :required="!optional">
-      <el-select v-model="model.taxIncluded" class="!w-160px" placeholder="请选择" @change="onTaxIncludedChange">
+    <el-form-item v-if="editMode" label="税务继承">
+      <el-switch v-model="model.taxInherited" active-text="继承商品默认税务" />
+    </el-form-item>
+    <el-form-item
+      v-if="!editMode || !model.taxInherited"
+      label="是否含税"
+      prop="taxIncluded"
+      :required="!optional"
+    >
+      <el-select
+        v-model="model.taxIncluded"
+        class="!w-160px"
+        placeholder="请选择"
+        @change="onTaxIncludedChange"
+      >
         <el-option label="含税" :value="true" />
         <el-option label="不含税" :value="false" />
       </el-select>
     </el-form-item>
-    <el-form-item label="税率" prop="taxRateCode" :required="model.taxIncluded">
+    <el-form-item
+      v-if="!editMode || !model.taxInherited"
+      label="税率"
+      prop="taxRateCode"
+      :required="model.taxIncluded"
+    >
       <el-select
         v-model="model.taxRateCode"
         class="!w-160px"
@@ -34,10 +61,18 @@
         clearable
         :disabled="!model.taxIncluded"
       >
-        <el-option v-for="dict in taxRateOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
+        <el-option
+          v-for="dict in taxRateOptions"
+          :key="dict.value"
+          :label="dict.label"
+          :value="dict.value"
+        />
       </el-select>
     </el-form-item>
-    <el-form-item>
+    <el-form-item v-if="editMode" label="隐藏继承">
+      <el-switch v-model="model.hideInherited" active-text="继承商品默认隐藏阈值" />
+    </el-form-item>
+    <el-form-item v-if="!editMode || !model.hideInherited">
       <div class="flex flex-wrap items-center gap-8px">
         <span>商品展示：总利润空间低于</span>
         <el-input-number
@@ -72,6 +107,10 @@ const props = withDefaults(
     size?: 'large' | 'default' | 'small'
     /** 项目专属价可整表留空 */
     optional?: boolean
+    /** 编辑时显式切换三组继承；新增选品继续使用原有可选整表语义。
+     * 设计：docs/superpowers/specs/2026-09-15-generic-batch-pricing-design.md#63-分销商品原始配置回显与无损编辑2026-10-14-修复。
+     */
+    editMode?: boolean
     priceLabel?: string
   }>(),
   {
@@ -79,6 +118,7 @@ const props = withDefaults(
     labelWidth: '90px',
     size: 'small',
     optional: false,
+    editMode: false,
     priceLabel: '分销价'
   }
 )
@@ -89,7 +129,7 @@ const customRuleModel = computed<FormulaRuleReqVO>({
   get() {
     const rule = model.value.distributionRule
     return {
-      mode: 'CUSTOM',
+      mode: 'CUSTOM' as const,
       base: rule.base,
       percentage: rule.percentage,
       operator: rule.operator,
@@ -110,7 +150,10 @@ const configured = () => isDistPriceConfigured(model.value)
 
 const validateMode = {
   validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
-    if (props.optional && !configured()) {
+    if (
+      (props.editMode && model.value.distributionInherited) ||
+      (props.optional && !configured())
+    ) {
       callback()
       return
     }
@@ -124,8 +167,15 @@ const validateMode = {
 }
 
 const validateCustomRule = {
-  validator: (_rule: any, value: DistPriceFormData['distributionRule'], callback: (error?: Error) => void) => {
-    if (props.optional && !configured()) {
+  validator: (
+    _rule: any,
+    value: DistPriceFormData['distributionRule'],
+    callback: (error?: Error) => void
+  ) => {
+    if (
+      (props.editMode && model.value.distributionInherited) ||
+      (props.optional && !configured())
+    ) {
       callback()
       return
     }
@@ -160,7 +210,7 @@ const formRules = computed(() => ({
   taxIncluded: [
     {
       validator: (_rule: any, value: boolean | undefined, callback: (error?: Error) => void) => {
-        if (props.optional && !configured()) {
+        if ((props.editMode && model.value.taxInherited) || (props.optional && !configured())) {
           callback()
           return
         }
@@ -176,11 +226,11 @@ const formRules = computed(() => ({
   taxRateCode: [
     {
       validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
-        if (props.optional && !configured()) {
+        if ((props.editMode && model.value.taxInherited) || (props.optional && !configured())) {
           callback()
           return
         }
-        if (model.value.taxIncluded && !value) {
+        if (model.value.taxIncluded && !value?.trim()) {
           callback(new Error('请选择税率'))
           return
         }
