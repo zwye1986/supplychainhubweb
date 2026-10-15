@@ -1,11 +1,27 @@
 <template>
   <ContentWrap>
     <el-tabs v-model="queryParams.bizType" class="mb-12px" @tab-change="handleTabChange">
-      <el-tab-pane v-for="item in ORDER_TAB_OPTIONS" :key="item.value || 'ALL'" :label="item.label" :name="item.value" />
+      <el-tab-pane
+        v-for="item in ORDER_TAB_OPTIONS"
+        :key="item.value || 'ALL'"
+        :label="item.label"
+        :name="item.value"
+      />
     </el-tabs>
-    <el-form ref="queryFormRef" class="-mb-15px search-form" :model="queryParams" :inline="true" label-width="160px">
+    <el-form
+      ref="queryFormRef"
+      class="-mb-15px search-form"
+      :model="queryParams"
+      :inline="true"
+      label-width="160px"
+    >
       <el-form-item label="供应商名称" prop="supplierName">
-        <el-select v-model="queryParams.supplierName" clearable filterable placeholder="请选择供应商">
+        <el-select
+          v-model="queryParams.supplierName"
+          clearable
+          filterable
+          placeholder="请选择供应商"
+        >
           <el-option
             v-for="item in supplierCodeOptions"
             :key="item.supplierCode"
@@ -24,7 +40,12 @@
         />
       </el-form-item>
       <el-form-item label="商品名称" prop="productName">
-        <el-input v-model="queryParams.productName" maxlength="100" placeholder="商品名称或SPU" clearable />
+        <el-input
+          v-model="queryParams.productName"
+          maxlength="100"
+          placeholder="商品名称或SPU"
+          clearable
+        />
       </el-form-item>
       <el-form-item label="下单时间">
         <el-date-picker
@@ -48,7 +69,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="订单类型" prop="bizType">
-        <el-select v-model="queryParams.bizType" clearable placeholder="请选择订单类型" @change="handleQuery">
+        <el-select
+          v-model="queryParams.bizType"
+          clearable
+          placeholder="请选择订单类型"
+          @change="handleQuery"
+        >
           <el-option
             v-for="item in ORDER_BIZ_TYPE_OPTIONS"
             :key="item.value"
@@ -68,12 +94,8 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon icon="ep:search" class="mr-5px" /> 搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon icon="ep:refresh" class="mr-5px" /> 重置
-        </el-button>
+        <el-button @click="handleQuery"> <Icon icon="ep:search" class="mr-5px" /> 搜索 </el-button>
+        <el-button @click="resetQuery"> <Icon icon="ep:refresh" class="mr-5px" /> 重置 </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -85,7 +107,12 @@
           <el-table :data="[]" class="order-header-table">
             <el-table-column label="供应商名称" min-width="140" />
             <el-table-column label="商品信息" min-width="240" />
-            <el-table-column label="供货模式" min-width="110" />
+            <el-table-column label="供货模式" min-width="110">
+              <template #header>
+                <div>供货模式</div>
+                <div class="product-sub">当前合作商品配置</div>
+              </template>
+            </el-table-column>
             <el-table-column label="供货数量" min-width="90" />
             <el-table-column label="供货价结算" min-width="130" />
             <el-table-column label="订单类型" min-width="110" />
@@ -124,7 +151,12 @@
               <el-table-column label="商品信息" min-width="240">
                 <template #default="{ row: item }">
                   <div class="product-cell">
-                    <el-image v-if="item.picUrl" :src="item.picUrl" class="product-thumb" fit="cover">
+                    <el-image
+                      v-if="item.picUrl"
+                      :src="item.picUrl"
+                      class="product-thumb"
+                      fit="cover"
+                    >
                       <template #error>
                         <div class="product-thumb product-thumb--placeholder">
                           <Icon icon="ep:picture" />
@@ -142,7 +174,9 @@
                 </template>
               </el-table-column>
               <el-table-column label="供货模式" min-width="110">
-                <template #default>{{ getOptionLabel(SUPPLY_MODE_OPTIONS, row.supplyMode) }}</template>
+                <template #default>{{
+                  getOptionLabel(SUPPLY_MODE_OPTIONS, row.supplyMode)
+                }}</template>
               </el-table-column>
               <el-table-column label="供货数量" min-width="90">
                 <template #default="{ row: item }">{{ item.qty ?? '-' }}</template>
@@ -160,7 +194,10 @@
               </el-table-column>
               <el-table-column label="订单状态" min-width="100">
                 <template #default>
-                  <span class="status-pill" :class="`status-pill--${supplierStatusTone(row.status)}`">
+                  <span
+                    class="status-pill"
+                    :class="`status-pill--${supplierStatusTone(row.status)}`"
+                  >
                     {{ supplierStatusText(row.status) }}
                   </span>
                 </template>
@@ -175,7 +212,11 @@
                     >
                       详情
                     </el-button>
-                    <el-tooltip v-if="canSupplierRefund(row.status)" content="本期暂不考虑退款" placement="top">
+                    <el-tooltip
+                      v-if="canSupplierRefund(row.status)"
+                      content="本期暂不考虑退款"
+                      placement="top"
+                    >
                       <span class="inline-flex">
                         <el-button link type="primary" disabled>退款</el-button>
                       </span>
@@ -283,10 +324,12 @@ const loadFilterOptions = async () => {
   try {
     const data = await SupplierApi.getSupplierNameList({ view: 'simple' })
     supplierOptions.value = (Array.isArray(data) ? data : data?.list || [])
-      .map((item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) => ({
-        supplierCode: item.supplierCode || item.code,
-        supplierName: item.supplierName || item.name
-      }))
+      .map(
+        (item: { supplierCode?: string; code?: string; supplierName?: string; name?: string }) => ({
+          supplierCode: item.supplierCode || item.code,
+          supplierName: item.supplierName || item.name
+        })
+      )
       .filter((item: { supplierName?: string }) => item.supplierName)
   } catch {
     supplierOptions.value = []

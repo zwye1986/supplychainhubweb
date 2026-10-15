@@ -69,7 +69,7 @@ export interface OrderItemVO {
   salePrice: number
   serviceFee: number
   couponAmount: number
-  orderType: OrderBizType
+  orderType: OrderBizType | ''
   supplierName?: string
   distSubOrderNo?: string
   logisticsStatus?: LogisticsStatus
@@ -132,7 +132,7 @@ export interface OrderVO {
   relatedPlatformOrderNo?: string
   distributorOrderNo?: string
   parentOrderNo?: string
-  bizType: OrderBizType
+  bizType: OrderBizType | ''
   status: OrderStatus
   amount: number
   qty: number
@@ -220,12 +220,16 @@ export interface OrderPageParam {
 
 /** 供应商履约尝试（GET /supply-chain/supplier-orders） */
 export interface SupplierOrderView {
-  failureClosure?: import('./failure-closure').FailureClosure
+  failureClosure?: import('./failure-closure').FailureClosure | null
   bOrderNo: string
   attemptNo?: number
   active?: boolean
   orderNo?: string
   orderType?: SupplierAttemptOrderType | string
+  /** 页面业务类型；缺少 CARD 商品事实时为空，不使用领域 orderType 猜测 */
+  bizType?: OrderBizType | null
+  /** 所选 Offer 的当前合作商品配置，不是订单历史快照 */
+  supplyMode?: SupplyMode | null
   buyerCode?: string
   buyerName?: string
   buyerOrderNo?: string
@@ -274,7 +278,7 @@ export interface OrderSupplierSummaryView {
   amount?: number
   qty?: number
   createdAt?: string
-  failureClosure?: import('./failure-closure').FailureClosure
+  failureClosure?: import('./failure-closure').FailureClosure | null
 }
 
 /** 平台订单视图（GET /supply-chain/order-views），金额单位为分 */

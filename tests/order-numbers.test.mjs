@@ -22,7 +22,9 @@ function orderApi(view) {
       if (name === '@/config/axios')
         return {
           get: async ({ url }) =>
-            url === '/supply-chain/order-views' ? { list: [view], total: 1 } : view
+            ['/supply-chain/order-views', '/supply-chain/supplier-orders'].includes(url)
+              ? { list: [view], total: 1 }
+              : view
         }
       if (name === './mock' || name === './asset-valid-time') return {}
       return require(name)
@@ -85,6 +87,77 @@ test('供应商工作台仍以完整尝试的 bOrderNo 为身份，不用供应�
   assert.equal(order.relatedPlatformOrderNo, 'PLATFORM_A')
 })
 
+test('供应商列表与详情使用后端业务类型和当前 Offer 模式，不把 CARD 一律当卡密或到店', async () => {
+  for (const [bizType, supplyMode] of [
+    ['VIRTUAL_CARD', 'DROP_SHIP'],
+    ['VIRTUAL_RECHARGE', 'API_DIRECT']
+  ]) {
+    const api = orderApi({ bOrderNo: 'BO_1', orderType: 'CARD', bizType, supplyMode })
+    const rows = [(await api.getSupplierOrderPage({})).list[0], await api.getSupplierOrder('BO_1')]
+    for (const row of rows) {
+      assert.equal(row.bizType, bizType)
+      assert.equal(row.items[0].orderType, bizType)
+      assert.equal(row.supplyMode, supplyMode)
+    }
+  }
+  const unknown = await orderApi({ bOrderNo: 'BO_OLD', orderType: 'CARD' }).getSupplierOrder(
+    'BO_OLD'
+  )
+  assert.equal(unknown.bizType, '')
+  assert.equal(unknown.items[0].orderType, '')
+  assert.equal(unknown.supplyMode, undefined)
+})
+
+test('成功平台单隐藏全部处置摘要，但保留先失败后成功的尝试编号', async () => {
+  const supplierOrders = view.supplierOrders.map((row) => ({
+    ...row,
+    failureClosure: { caseNo: 'CASE_HISTORY' }
+  }))
+  const api = orderApi({ ...view, supplierOrders })
+  const success = await api.getOrder('PLATFORM_A')
+  assert.equal(success.failureClosures.length, 0)
+  assert.equal(success.supplierOrders.length, 2)
+  assert.doesNotMatch(await renderDetail(success), /原单核实与失败处置/)
+})
+
+test('成功供应商单隐藏旧后端摘要；人工、失败、取消及平台非成功仍保留', async () => {
+  const closure = { terminalReasonCode: 'ORIGINAL_REASON', fundDisposition: null }
+  for (const status of ['SUCCEEDED', 'FINISHED', 'MANUAL', 'FAILED', 'CANCELLED']) {
+    const row = await orderApi({
+      bOrderNo: 'BO_1',
+      fulfillmentStatus: status,
+      failureClosure: closure
+    }).getSupplierOrder('BO_1')
+    const success = ['SUCCEEDED', 'FINISHED'].includes(status)
+    assert.equal(row.failureClosures.length, success ? 0 : 1)
+    assert.equal((await renderDetail(row, 'supplier')).includes('原单核实与失败处置'), !success)
+  }
+  for (const status of ['MANUAL', 'FAILED', 'CLOSED', 'PROCESSING']) {
+    const row = await orderApi({
+      ...view,
+      status,
+      supplierOrders: [{ supplierOrderNo: 'BO_1', failureClosure: closure }]
+    }).getOrder('PLATFORM_A')
+    assert.equal(row.failureClosures[0].terminalReasonCode, 'ORIGINAL_REASON')
+    assert.equal(row.failureClosures[0].fundDisposition, null)
+  }
+})
+
+test('供应商详情显示订单业务类型与供货模式，并注明当前合作商品配置', async () => {
+  const row = await orderApi({
+    bOrderNo: 'BO_1',
+    bizType: 'VIRTUAL_RECHARGE',
+    orderType: 'CARD',
+    supplyMode: 'DROP_SHIP',
+    fulfillmentStatus: 'SUCCEEDED'
+  }).getSupplierOrder('BO_1')
+  const text = await renderDetail(row, 'supplier')
+  assert.match(text, /订单类型虚拟直充/)
+  assert.match(text, /供货模式一件代发/)
+  assert.match(text, /当前合作商品配置/)
+  assert.doesNotMatch(text, /原单核实与失败处置/)
+})
+
 test('订单映射分别保留冻结供应价、基础价、专属价与最终价，金额只换算一次', async () => {
   const order = await orderApi({
     ...view,
@@ -119,9 +192,9 @@ test('新增价格字段缺失保持未知；显式零价不丢失也不按最�
 })
 
 /** 执行真实详情 SFC 的公开 open()；仅隔离 HTTP 与 Element Plus 壳，断言用户可见结果。 */
-async function renderDetail(order) {
+async function renderDetail(order, source = 'platform') {
   const { descriptor } = parse(
-    fs.readFileSync('src/views/supplier/order/platform/detail/index.vue', 'utf8')
+    fs.readFileSync(`src/views/supplier/order/${source}/detail/index.vue`, 'utf8')
   )
   const script = compileScript(descriptor, { id: 'order-detail', inlineTemplate: true })
   const exports = {}
@@ -142,8 +215,11 @@ async function renderDetail(order) {
       watch: vue.watch,
       useMessage: () => ({ success() {} }),
       require: (name) => {
-        if (name === '@/api/order') return { OrderApi: { getOrder: async () => order } }
+        if (name === '@/api/order')
+          return { OrderApi: { getOrder: async () => order, getSupplierOrder: async () => order } }
         if (name.endsWith('/constants')) return constants
+        if (name.endsWith('/FailureClosurePanel.vue'))
+          return { __esModule: true, default: { render: () => vue.h('div', '原单核实与失败处置') } }
         if (name.endsWith('.vue')) return { __esModule: true, default: { render: () => null } }
         return require(name)
       }

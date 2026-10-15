@@ -27,6 +27,7 @@
         <el-descriptions-item label="下单时间">{{ order.createTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="供货模式">
           {{ getOptionLabel(SUPPLY_MODE_OPTIONS, order.supplyMode) }}
+          <span class="text-gray-500 text-12px">（当前合作商品配置）</span>
         </el-descriptions-item>
         <el-descriptions-item label="配送方式">{{
           order.deliveryMode || '-'

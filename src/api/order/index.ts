@@ -159,9 +159,14 @@ const mapOrderView = (view: OrderView): OrderVO => {
   return {
     orderNo: view.orderNo,
     terminalReasonCode: view.terminalReasonCode,
-    failureClosures: (view.supplierOrders || [])
-      .map((item) => item.failureClosure)
-      .filter((item): item is NonNullable<typeof item> => !!item),
+    // 成功总单不再展示历史失败尝试的处置；保留 supplierOrders 供历史查询。
+    // 设计：后端 docs/superpowers/specs/2026-09-21-supplier-order-admin-readonly-design.md §8.2。
+    failureClosures:
+      status === 'SUCCESS'
+        ? []
+        : (view.supplierOrders || [])
+            .map((item) => item.failureClosure)
+            .filter((item): item is NonNullable<typeof item> => !!item),
     relatedPlatformOrderNo: view.relatedPlatformOrderNo,
     supplierOrderNo: supplierOrders[0]?.supplierOrderNo,
     buyerOrderNo: view.distributorOrderNo,
@@ -232,16 +237,19 @@ const mapRouteRecord = (view: OrderRouteRecordView): OrderRouteRecordVO => ({
 const mapSupplierOrder = (view: SupplierOrderView): OrderVO => {
   const qty = Number(view.requestedQuantity || 0)
   const supplyPrice = centsToYuan(view.supplierSettlementUnitPrice) ?? 0
+  const bizType = view.bizType || ''
+  const succeeded = ['SUCCEEDED', 'FINISHED'].includes(view.fulfillmentStatus || '')
   return {
     orderNo: view.bOrderNo,
-    failureClosures: view.failureClosure ? [view.failureClosure] : [],
+    failureClosures: !succeeded && view.failureClosure ? [view.failureClosure] : [],
     supplierOrderNo: view.bOrderNo,
     relatedPlatformOrderNo: view.orderNo,
     createTime: formatDateTime(view.createdAt),
     shipTime: formatDateTime(view.completedAt),
     supplierName: view.supplierName,
     buyerName: view.buyerName,
-    bizType: 'INSTORE',
+    bizType,
+    supplyMode: view.supplyMode ?? undefined,
     status: (view.fulfillmentStatus || 'WAIT_PAY') as OrderVO['status'],
     amount: centsToYuan(view.expectedSupplierSettlementAmount) ?? 0,
     qty,
@@ -254,7 +262,7 @@ const mapSupplierOrder = (view: SupplierOrderView): OrderVO => {
         salePrice: supplyPrice,
         serviceFee: 0,
         couponAmount: 0,
-        orderType: (view.orderType || '') as OrderVO['bizType'],
+        orderType: bizType,
         supplierName: view.supplierName
       }
     ]
