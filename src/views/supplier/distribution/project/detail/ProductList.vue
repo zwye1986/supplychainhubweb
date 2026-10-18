@@ -90,6 +90,9 @@
           </span>
         </template>
       </el-table-column>
+      <el-table-column label="定价来源" min-width="150">
+        <template #default="{ row }">{{ row.priceSourceName || '-' }}</template>
+      </el-table-column>
       <el-table-column
         label="操作"
         width="180"

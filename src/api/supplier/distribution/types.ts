@@ -280,6 +280,8 @@ export interface ProjectListingListItem {
   finalPriceCents?: number
   /** 冻结版本结算层级：L1 / L2 / L3 */
   priceSource?: string
+  /** 当前分销价来源主体名称：项目专属价为项目名，否则为项目关联分销商名 */
+  priceSourceName?: string | null
   /** 当前版本 settlement_price_level 是否 L3 */
   projectPriceCovered?: boolean
   /** 当前项目综合定价版本；无当前版本时为空 */
