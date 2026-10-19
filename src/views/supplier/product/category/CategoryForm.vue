@@ -11,7 +11,7 @@
         <el-input v-model="formData.categoryName" maxlength="50" placeholder="请输入分类名称" />
       </el-form-item>
       <el-form-item label="分类编码" prop="categoryCode">
-        <el-input v-model="formData.categoryCode" maxlength="11" :placeholder="categoryCodeHint" :disabled="isEdit" />
+        <el-input v-model="formData.categoryCode" maxlength="11" :placeholder="categoryCodeHint" disabled />
         <div class="text-12px text-gray-400">{{ categoryCodeHint }}</div>
       </el-form-item>
       <el-form-item v-if="isEdit" label="子分类父段">

@@ -10,17 +10,19 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery">
+        <el-button @click="handleQuery" type="primary">
           <Icon icon="ep:search" class="mr-5px" /> 搜索
         </el-button>
         <el-button @click="resetQuery">
           <Icon icon="ep:refresh" class="mr-5px" /> 重置
         </el-button>
-        <el-button type="primary" plain @click="openForm('create')">
-          <Icon icon="ep:plus" class="mr-5px" /> 新增分类
-        </el-button>
       </el-form-item>
     </el-form>
+    <div class="mt-12px flex justify-start">
+      <el-button type="primary" plain @click="openForm('create')">
+        <Icon icon="ep:plus" class="mr-5px" /> 新增分类
+      </el-button>
+    </div>
   </ContentWrap>
   <ContentWrap>
     <el-table v-loading="loading" :data="list" row-key="categoryCode" default-expand-all>

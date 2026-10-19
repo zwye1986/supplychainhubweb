@@ -1,12 +1,5 @@
 <template>
-  <el-drawer
-    v-model="drawerVisible"
-    title="供应商详情"
-    size="80%"
-    append-to-body
-    destroy-on-close
-    @closed="handleClosed"
-  >
+  <el-drawer v-model="drawerVisible" title="供应商详情" size="80%" append-to-body destroy-on-close @closed="handleClosed">
     <div v-loading="loading">
       <div class="flex items-start justify-between">
         <div class="min-w-0">
@@ -14,11 +7,7 @@
             <span class="truncate text-20px font-700">
               {{ supplier.supplierName || supplier.name || '供应商详情' }}
             </span>
-            <dict-tag
-              v-if="supplier.status"
-              type="supply_chain_supplier_status"
-              :value="supplier.status"
-            />
+            <dict-tag v-if="supplier.status" type="supply_chain_supplier_status" :value="supplier.status" />
             <span v-else>-</span>
           </div>
           <div class="text-13px text-gray-500">
@@ -27,56 +16,16 @@
         </div>
         <div>
           <el-button type="primary" @click="openEdit">编辑</el-button>
-          <el-button
-            v-if="supplier.status === 'ACTIVE'"
-            type="warning"
-            plain
-            @click="handleStatusChange('SUSPENDED')"
-          >
-            暂停
-          </el-button>
-          <el-button
-            v-if="supplier.status === 'SUSPENDED'"
-            type="success"
-            plain
-            @click="handleStatusChange('ACTIVE')"
-          >
-            恢复
-          </el-button>
-          <el-button
-            v-if="supplier.status !== 'BLACKLIST'"
-            type="danger"
-            plain
-            @click="handleStatusChange('BLACKLIST')"
-          >
-            移入黑名单
-          </el-button>
-          <el-button
-            v-if="supplier.status === 'BLACKLIST'"
-            type="success"
-            plain
-            @click="handleStatusChange('ACTIVE')"
-          >
-            移出黑名单
-          </el-button>
         </div>
       </div>
 
       <el-descriptions class="mt-16px" :column="3" border>
         <el-descriptions-item label="可售品类">
-          <template v-if="supplier.sellableCategories?.length">
-            <el-tag
-              v-for="item in supplier.sellableCategories"
-              :key="item"
-              class="m-2px"
-              size="small"
-              type="info"
-            >
-              {{
-                getDictLabel('supply_chain_sellable_category', item) || '-'
-              }}
+          <div v-if="sellableCategories.length" class="flex flex-wrap gap-6px">
+            <el-tag v-for="item in sellableCategories" :key="item.code" :title="item.code" size="small" type="primary">
+              {{ item.name }}
             </el-tag>
-          </template>
+          </div>
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="主联系人">
@@ -89,7 +38,7 @@
           {{ supplier.productCount ?? 0 }}
         </el-descriptions-item>
         <el-descriptions-item label="供货配置">
-          {{ supplier.scopes?.length }}组
+          {{ supplier.scopes?.length ?? 0 }}组
         </el-descriptions-item>
         <el-descriptions-item label="接入时间">
           {{ formatNullableDate(supplier.onboardAt) }}
@@ -114,12 +63,7 @@
             </el-row>
 
             <el-divider content-position="left">联系信息</el-divider>
-            <el-table
-              :data="supplier.contacts || []"
-              border
-              class="mb-24px"
-              header-cell-class-name="!font-400"
-            >
+            <el-table :data="supplier.contacts || []" border class="mb-24px" header-cell-class-name="!font-400">
               <el-table-column label="姓名" min-width="140" align="center">
                 <template #default="{ row }">{{ displayText(row.name) }}</template>
               </el-table-column>
@@ -204,19 +148,7 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="营业执照">
-                  <template v-if="supplier.licenseFileKeys?.length">
-                    <el-link
-                      v-for="(url, index) in supplier.licenseFileKeys"
-                      :key="url"
-                      :href="url"
-                      type="primary"
-                      target="_blank"
-                      class="mr-12px"
-                    >
-                      附件{{ index + 1 }}
-                    </el-link>
-                  </template>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="supplier.licenseFileKeys" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -231,28 +163,12 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="身份证正面">
-                  <el-link
-                    v-if="supplier.idFrontFileKey"
-                    :href="supplier.idFrontFileKey"
-                    type="primary"
-                    target="_blank"
-                  >
-                    查看正面
-                  </el-link>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="supplier.idFrontFileKey ? [supplier.idFrontFileKey] : []" link-label="查看正面" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item label="身份证反面">
-                  <el-link
-                    v-if="supplier.idBackFileKey"
-                    :href="supplier.idBackFileKey"
-                    type="primary"
-                    target="_blank"
-                  >
-                    查看反面
-                  </el-link>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="supplier.idBackFileKey ? [supplier.idBackFileKey] : []" link-label="查看反面" />
                 </el-form-item>
               </el-col>
               <el-col :span="24">
@@ -285,19 +201,7 @@
             <el-row :gutter="20">
               <el-col :span="24">
                 <el-form-item label="资质文件">
-                  <template v-if="supplier.qualificationFileKeys?.length">
-                    <el-link
-                      v-for="(url, index) in supplier.qualificationFileKeys"
-                      :key="url"
-                      :href="url"
-                      type="primary"
-                      target="_blank"
-                      class="mr-12px"
-                    >
-                      附件{{ index + 1 }}
-                    </el-link>
-                  </template>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="supplier.qualificationFileKeys" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -309,11 +213,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="供货配置" name="supply" lazy>
-          <SupplyConfig
-            v-if="supplierCode"
-            :supplier-code="supplierCode"
-            @success="getDetail"
-          />
+          <SupplyConfig v-if="supplierCode" :supplier-code="supplierCode" @success="getDetail" />
         </el-tab-pane>
 
         <el-tab-pane label="合作商品" name="product" lazy>
@@ -325,134 +225,156 @@
 </template>
 
 <script lang="ts" setup>
-import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
-import { getDictLabel } from '@/utils/dict'
-import { formatNullableDate } from '@/utils/formatTime'
-import InvoiceInfo from './InvoiceInfo.vue'
-import SupplyConfig from './SupplyConfig.vue'
-import ProductList from './ProductList.vue'
+  import { SupplierApi, SupplierVO } from '@/api/supplier/manage'
+  import { getDictLabel } from '@/utils/dict'
+  import { formatNullableDate } from '@/utils/formatTime'
+  import InvoiceInfo from './InvoiceInfo.vue'
+  import SupplyConfig from './SupplyConfig.vue'
+  import ProductList from './ProductList.vue'
+  import AttachmentList from './AttachmentList.vue'
 
-defineOptions({ name: 'SupplierManageDetail' })
+  defineOptions({ name: 'SupplierManageDetail' })
 
-const props = defineProps<{
-  modelValue: boolean
-  supplierCode?: string
-}>()
+  const props = defineProps<{
+    modelValue: boolean
+    supplierCode?: string
+  }>()
 
-const emit = defineEmits(['update:modelValue', 'success', 'edit'])
-const message = useMessage()
+  const emit = defineEmits(['update:modelValue', 'success', 'edit'])
+  const message = useMessage()
 
-const drawerVisible = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
-})
+  const drawerVisible = computed({
+    get: () => props.modelValue,
+    set: (val) => emit('update:modelValue', val)
+  })
 
-const loading = ref(false)
-const activeTab = ref('basic')
-const supplier = ref<SupplierVO>({} as SupplierVO)
-const productListRef = ref<InstanceType<typeof ProductList>>()
+  const loading = ref(false)
+  const activeTab = ref('basic')
+  const supplier = ref<SupplierVO>({} as SupplierVO)
+  const productListRef = ref<InstanceType<typeof ProductList>>()
 
-const displayText = (value?: string | number | null) => {
-  if (value === undefined || value === null || value === '') return '-'
-  return String(value)
-}
-
-const shippingSlaText = computed(() => {
-  const code = supplier.value.shippingSlaCode
-  const label = getDictLabel('supply_chain_shipping_sla_code', code)
-  if (code === 'CUSTOM') {
-    const custom = supplier.value.shippingSlaCustom?.trim()
-    if (custom) return `${label} / ${custom}`
-    return label
+  const displayText = (value?: string | number | null) => {
+    if (value === undefined || value === null || value === '') return '-'
+    return String(value)
   }
-  return label || '-'
-})
 
-const accountBalanceText = computed(() => {
-  const cents = supplier.value.settlementBalanceCents
-  if (cents === undefined || cents === null || cents === '') return '-'
-  return (Number(cents) / 100).toFixed(2)
-})
-
-const deliveryAreaText = computed(() => {
-  const regionType = supplier.value.deliveryRegionType
-  const typeLabel = getDictLabel('supply_chain_delivery_region_type', regionType) || '-'
-
-  const address = (supplier.value.deliveryRegions || [])
-    .map((item) => item?.name?.trim())
-    .filter(Boolean)
-    .join(' / ')
-  return address ? `${typeLabel} / ${address}` : typeLabel
-})
-
-const getDetail = async () => {
-  if (!props.supplierCode) return
-  loading.value = true
-  try {
-    const data = await SupplierApi.getSupplier(props.supplierCode)
-    supplier.value = {
-      ...data,
-      integrationMethods: data.integrationModes || data.integrationMethods || [],
-      licenseFileKeys: data.licenseFileKeys || [],
-      qualificationFileKeys: data.qualificationFileKeys || data.otherCertUrls || [],
-      otherCertUrls: data.qualificationFileKeys || data.otherCertUrls || []
+  /** 详情以供货配置为准，按品类编码去重；旧响应未提供 scopes 时兼容汇总字段。 */
+  const sellableCategories = computed(() => {
+    const refs = supplier.value.scopes
+      ? supplier.value.scopes.map((scope) => scope.sellableCategory)
+      : supplier.value.sellableCategories || []
+    const categories = new Map<string, { code: string; name: string }>()
+    for (const item of refs) {
+      if (item == null) continue
+      const code = String(typeof item === 'object' ? item.id ?? item.name ?? '' : item).trim()
+      if (!code || categories.has(code)) continue
+      const apiName = typeof item === 'object' ? String(item.name ?? '').trim() : ''
+      const name =
+        getDictLabel('supply_chain_sellable_category', code) ||
+        getDictLabel('supply_chain_sellable_category', apiName) ||
+        apiName ||
+        code
+      categories.set(code, { code, name })
     }
-  } finally {
-    loading.value = false
-  }
-}
+    return [...categories.values()]
+  })
 
-/** 抽屉打开或切换供应商时加载详情 */
-watch(
-  () => [props.modelValue, props.supplierCode] as const,
-  ([visible]) => {
-    if (!visible || !props.supplierCode) return
+  const shippingSlaText = computed(() => {
+    const code = supplier.value.shippingSlaCode
+    const label = getDictLabel('supply_chain_shipping_sla_code', code)
+    if (code === 'CUSTOM') {
+      const custom = supplier.value.shippingSlaCustom?.trim()
+      if (custom) return `${label || '自定义'} / ${custom.endsWith('天') ? custom : `${custom}天`}`
+      return label
+    }
+    return label || '-'
+  })
+
+  const accountBalanceText = computed(() => {
+    const cents = supplier.value.settlementBalanceCents
+    if (cents === undefined || cents === null || cents === '') return '-'
+    return (Number(cents) / 100).toFixed(2)
+  })
+
+  const deliveryAreaText = computed(() => {
+    const regionType = supplier.value.deliveryRegionType
+    const typeLabel = getDictLabel('supply_chain_delivery_region_type', regionType) || '-'
+
+    const address = (supplier.value.deliveryRegions || [])
+      .map((item) => item?.name?.trim())
+      .filter(Boolean)
+      .join(' / ')
+    return address ? `${typeLabel} / ${address}` : typeLabel
+  })
+
+  const getDetail = async () => {
+    if (!props.supplierCode) return
+    loading.value = true
+    try {
+      const data = await SupplierApi.getSupplier(props.supplierCode)
+      supplier.value = {
+        ...data,
+        integrationMethods: data.integrationModes || data.integrationMethods || [],
+        licenseFileKeys: data.licenseFileKeys || [],
+        qualificationFileKeys: data.qualificationFileKeys || data.otherCertUrls || [],
+        otherCertUrls: data.qualificationFileKeys || data.otherCertUrls || []
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 抽屉打开或切换供应商时加载详情 */
+  watch(
+    () => [props.modelValue, props.supplierCode] as const,
+    ([visible]) => {
+      if (!visible || !props.supplierCode) return
+      activeTab.value = 'basic'
+      getDetail()
+    }
+  )
+
+  const openEdit = () => {
+    const code = props.supplierCode || supplier.value.supplierCode || supplier.value.code
+    if (!code) return
+    emit('edit', code)
+  }
+
+  const getStatusActionText = (targetStatus: string) => {
+    if (targetStatus === 'SUSPENDED') return '暂停供货'
+    if (targetStatus === 'BLACKLIST') return '移入黑名单'
+    if (supplier.value.status === 'BLACKLIST') return '移出黑名单'
+    return '恢复合作'
+  }
+
+  const handleStatusChange = async (status: string) => {
+    const supplierCode = props.supplierCode || supplier.value.supplierCode || supplier.value.code
+    if (!supplierCode) {
+      message.error('缺少供应商编号，无法变更状态')
+      return
+    }
+    const actionText = getStatusActionText(status)
+    const displayName = supplier.value.supplierName || supplier.value.name || ''
+    try {
+      await message.confirm(`确认将供应商「${displayName}」${actionText}吗？`, `${actionText}确认`)
+      await SupplierApi.updateSupplierStatus(supplierCode, status)
+      message.success(`${actionText}成功`)
+      await getDetail()
+      emit('success')
+    } catch {}
+  }
+
+  /** 抽屉完全关闭后重置内容 */
+  const handleClosed = () => {
+    supplier.value = {} as SupplierVO
     activeTab.value = 'basic'
-    getDetail()
   }
-)
 
-const openEdit = () => {
-  const code = props.supplierCode || supplier.value.supplierCode || supplier.value.code
-  if (!code) return
-  emit('edit', code)
-}
-
-const getStatusActionText = (targetStatus: string) => {
-  if (targetStatus === 'SUSPENDED') return '暂停供货'
-  if (targetStatus === 'BLACKLIST') return '移入黑名单'
-  if (supplier.value.status === 'BLACKLIST') return '移出黑名单'
-  return '恢复合作'
-}
-
-const handleStatusChange = async (status: string) => {
-  const supplierCode = props.supplierCode || supplier.value.supplierCode || supplier.value.code
-  if (!supplierCode) {
-    message.error('缺少供应商编号，无法变更状态')
-    return
+  const handleTabChange = async (name: string | number) => {
+    if (name !== 'product') return
+    await nextTick()
+    await productListRef.value?.reload?.()
   }
-  const actionText = getStatusActionText(status)
-  const displayName = supplier.value.supplierName || supplier.value.name || ''
-  try {
-    await message.confirm(`确认将供应商「${displayName}」${actionText}吗？`, `${actionText}确认`)
-    await SupplierApi.updateSupplierStatus(supplierCode, status)
-    message.success(`${actionText}成功`)
-    await getDetail()
-    emit('success')
-  } catch {}
-}
 
-/** 抽屉完全关闭后重置内容 */
-const handleClosed = () => {
-  supplier.value = {} as SupplierVO
-  activeTab.value = 'basic'
-}
-
-const handleTabChange = async (name: string | number) => {
-  if (name !== 'product') return
-  await nextTick()
-  await productListRef.value?.reload?.()
-}
-
-defineExpose({ reload: getDetail })
+  defineExpose({ reload: getDetail })
 </script>

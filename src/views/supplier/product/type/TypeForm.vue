@@ -1,11 +1,11 @@
 <template>
   <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
     <el-form ref="elFormRef" v-loading="formLoading" :model="formData" :rules="formRules" label-width="100px">
-      <el-form-item label="类型名称" prop="typeName">
-        <el-input v-model="formData.typeName" maxlength="50" placeholder="请输入类型名称" />
-      </el-form-item>
       <el-form-item label="类型编码" prop="typeCode">
         <el-input v-model="formData.typeCode" maxlength="30" placeholder="系统自动生成" disabled />
+      </el-form-item>
+      <el-form-item label="类型名称" prop="typeName">
+        <el-input v-model="formData.typeName" maxlength="50" placeholder="请输入类型名称" />
       </el-form-item>
       <el-form-item label="类型Icon" prop="iconUrl" class="type-icon-item">
         <UploadImg v-model="formData.iconUrl" height="80px" width="80px" :drag="false">
