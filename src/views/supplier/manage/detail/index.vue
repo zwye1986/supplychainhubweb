@@ -114,16 +114,23 @@
             </el-row>
 
             <el-divider content-position="left">联系信息</el-divider>
-            <el-form-item label="联系人">
-              <div class="w-full">
-                <template v-if="supplier.contacts?.length">
-                  <div v-for="(item, index) in supplier.contacts" :key="item.id || index">
-                    {{ [item.name, item.mobile, item.email].filter(Boolean).join(' / ') || '-' }}
-                  </div>
-                </template>
-                <span v-else>-</span>
-              </div>
-            </el-form-item>
+            <el-table
+              :data="supplier.contacts || []"
+              border
+              class="mb-24px"
+              header-cell-class-name="!font-400"
+            >
+              <el-table-column label="姓名" min-width="140" align="center">
+                <template #default="{ row }">{{ displayText(row.name) }}</template>
+              </el-table-column>
+              <el-table-column label="手机号" min-width="180" align="center">
+                <template #default="{ row }">{{ displayText(row.mobile) }}</template>
+              </el-table-column>
+              <el-table-column label="邮箱" min-width="220" align="center" show-overflow-tooltip>
+                <template #default="{ row }">{{ displayText(row.email) }}</template>
+              </el-table-column>
+              <template #empty><el-empty description="暂无联系人" /></template>
+            </el-table>
 
             <el-divider content-position="left">服务能力</el-divider>
             <el-row :gutter="20">

@@ -366,6 +366,10 @@
           />
         </el-tab-pane>
 
+        <el-tab-pane label="路由配置" name="routing" lazy>
+          <RoutingConfig v-if="buyerCode" :buyer-code="buyerCode" />
+        </el-tab-pane>
+
         <el-tab-pane label="分销层级" name="hierarchy" lazy>
           <HierarchyList
             v-if="buyerCode"
@@ -391,6 +395,7 @@ import { formatCentsYuan } from '@/utils/money'
 import InvoiceInfo from './InvoiceInfo.vue'
 import ProjectList from './ProjectList.vue'
 import ProductList from './ProductList.vue'
+import RoutingConfig from './RoutingConfig.vue'
 import HierarchyList from './HierarchyList.vue'
 
 defineOptions({ name: 'DistributorDetailDrawer' })

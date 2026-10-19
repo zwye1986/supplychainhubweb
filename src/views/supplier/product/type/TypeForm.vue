@@ -5,7 +5,7 @@
         <el-input v-model="formData.typeName" maxlength="50" placeholder="请输入类型名称" />
       </el-form-item>
       <el-form-item label="类型编码" prop="typeCode">
-        <el-input v-model="formData.typeCode" maxlength="30" placeholder="字母/数字/下划线，可空自动生成" :disabled="isEdit" />
+        <el-input v-model="formData.typeCode" maxlength="30" placeholder="系统自动生成" disabled />
       </el-form-item>
       <el-form-item label="类型Icon" prop="iconUrl" class="type-icon-item">
         <UploadImg v-model="formData.iconUrl" height="80px" width="80px" :drag="false">
