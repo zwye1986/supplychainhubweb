@@ -79,7 +79,12 @@ for (const status of [0, '0', 20, '20', 10, '10']) test(`SKU行状态${status}�
 for (const status of [0, '0', 10, '10', 20, '20']) test(`真实编辑加载/保存保留已有SKU独立状态${status}，新增SKU省略状态继承父商品`, async () => {
   const writes = []
   const detail = { spuCode: 'SPU_1', status: 10, skus: [{ skuCode: 'SKU_1', skuName: '规格', status, faceValue: 100, marketPrice: 200 }] }
-  const view = mountProductList({ get: async req => req.url.endsWith('/spus/SPU_1') ? detail : [], put: async req => { writes.push(req); return true } }, undefined, { entryFile: 'views/supplier/product/list/form/index.vue' })
+  const view = mountProductList({ get: async req => req.url.endsWith('/spus/SPU_1') ? detail : [], put: async req => { writes.push(req); return true } }, undefined, { entryFile: 'views/supplier/product/list/form/index.vue', modules: {
+    '@/utils/dict': {
+      getStrDictOptions: type => type === 'supply_chain_suggested_sale_price_base' ? [{ value: 'MARKET_PRICE', label: '市场价' }] : [],
+      getDictLabel: () => ''
+    }
+  } })
   try {
     await view.state.open('SPU_1'); await flushProductList()
     assert.equal(view.state.formData.skus[0].status, Number(status))

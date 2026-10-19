@@ -101,10 +101,16 @@
                   {{ dict.label }}
                 </el-radio>
               </el-radio-group>
-              <div v-if="row.suggestedSalePriceRule.mode === 'CUSTOM'" class="flex flex-wrap items-center gap-8px">
+              <div v-if="isUnchangedLegacyPriceRule(row)" class="text-12px text-gray-500">
+                当前使用历史基准：修改前销售建议价。保存其他信息时保留原建议价。
+                <el-button link type="primary" @click="resetSuggestedPriceRule(row)">重新设置建议价</el-button>
+              </div>
+              <div v-else-if="row.suggestedSalePriceRule.mode === 'CUSTOM'" class="flex flex-wrap items-center gap-8px">
+                <div v-if="!priceRuleBaseOptions.length" role="alert" class="w-full text-12px text-red-500">
+                  基准价格来源字典未配置，请联系管理员配置后重试。
+                </div>
                 <el-select v-model="row.suggestedSalePriceRule.base" clearable class="!w-140px">
-                  <el-option label="市场价" value="MARKET_PRICE" />
-                  <el-option label="销售建议价" value="SUGGESTED_SALE_PRICE" />
+                  <el-option v-for="dict in priceRuleBaseOptions" :key="dict.value" :label="dict.label" :value="dict.value" />
                 </el-select>
                 <span>*</span>
                 <el-input-number :controls="false" v-model="row.suggestedSalePriceRule.percentage" :min="0.01" :precision="2" class="!w-110px" />
@@ -202,7 +208,7 @@
   defineOptions({ name: 'ProductListForm' })
 
   const PRICE_RULE_MODE = {
-    MARKET: 'MARKET',
+    MARKET: 'EQUAL_MARKET_PRICE',
     CUSTOM: 'CUSTOM',
     FIXED: 'FIXED'
   }
@@ -210,6 +216,11 @@
     MARKET_PRICE: 'MARKET_PRICE',
     SUGGESTED_SALE_PRICE: 'SUGGESTED_SALE_PRICE'
   }
+  const PRICE_RULE_BASE_DICT = 'supply_chain_suggested_sale_price_base'
+  // 字典负责展示，当前领域只开放市场价作为新基数；过滤误配置的历史/未知值。
+  const priceRuleBaseOptions = computed(() =>
+    getStrDictOptions(PRICE_RULE_BASE_DICT).filter((dict) => dict.value === PRICE_RULE_BASE.MARKET_PRICE)
+  )
   interface SkuFormItem {
     skuCode?: string
     readonlyCode?: boolean
@@ -221,6 +232,7 @@
     detailPics: string[]
     description?: string
     suggestedSalePriceRule: SuggestedSalePriceRule
+    legacySuggestedSalePriceRule?: SuggestedSalePriceRule
     skuInventory?: number
   }
 
@@ -277,7 +289,7 @@
 
   const createPriceRule = (): SuggestedSalePriceRule => ({
     mode: PRICE_RULE_MODE.CUSTOM,
-    base: PRICE_RULE_BASE.MARKET_PRICE,
+    base: priceRuleBaseOptions.value[0]?.value,
     percentage: undefined,
     operator: undefined,
     operand: 0,
@@ -361,8 +373,32 @@
   }
   const pageTitle = computed(() => (isEdit.value ? '编辑商品' : '新增商品'))
 
+  /**
+   * 历史规则只读回显；省略原样规则避免后端把当前建议价再次代入历史公式。
+   * 重新设置和模式切换后只允许从当前字典重新选择市场价。
+   * 设计见后端 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#531-销售建议价基准来源字典与历史规则兼容2026-10-18。
+   */
+  const isUnchangedLegacyPriceRule = (sku: SkuFormItem) => {
+    const original = sku.legacySuggestedSalePriceRule
+    const rule = sku.suggestedSalePriceRule
+    return !!original && rule.mode === PRICE_RULE_MODE.CUSTOM &&
+      rule.base === PRICE_RULE_BASE.SUGGESTED_SALE_PRICE &&
+      rule.percentage === original.percentage && rule.operator === original.operator &&
+      rule.operand === original.operand
+  }
+
+  const resetSuggestedPriceRule = (sku: SkuFormItem) => {
+    sku.legacySuggestedSalePriceRule = undefined
+    sku.suggestedSalePriceRule = createPriceRule()
+  }
+
   const onAdjustModeChange = (sku: SkuFormItem) => {
     const rule = sku.suggestedSalePriceRule
+    if (rule.mode === PRICE_RULE_MODE.CUSTOM &&
+      !priceRuleBaseOptions.value.some((dict) => dict.value === rule.base)) {
+      sku.legacySuggestedSalePriceRule = undefined
+      rule.base = priceRuleBaseOptions.value[0]?.value
+    }
     if (rule.mode === PRICE_RULE_MODE.FIXED && rule.fixedPriceCents == null) {
       rule.fixedPriceCents = yuanToCents(sku.marketPrice || 0)
     }
@@ -380,7 +416,9 @@
     if (rule.mode === PRICE_RULE_MODE.FIXED) {
       return `固定售价 ${centsToYuan(rule.fixedPriceCents) ?? 0}元`
     }
-    const base = rule.base === PRICE_RULE_BASE.SUGGESTED_SALE_PRICE ? '销售建议价' : '市场价'
+    const base = isUnchangedLegacyPriceRule(sku)
+      ? '修改前销售建议价'
+      : getDictLabel(PRICE_RULE_BASE_DICT, rule.base) || '请选择基准价格'
     const opLabel =
       getDictLabel('supply_chain_suggested_sale_price_operator', rule.operator) ||
       rule.operator ||
@@ -431,6 +469,11 @@
       ...createPriceRule(),
       ...sku.suggestedSalePriceRule
     },
+    legacySuggestedSalePriceRule:
+      sku.suggestedSalePriceRule?.mode === PRICE_RULE_MODE.CUSTOM &&
+      sku.suggestedSalePriceRule.base === PRICE_RULE_BASE.SUGGESTED_SALE_PRICE
+        ? { ...sku.suggestedSalePriceRule }
+        : undefined,
     skuInventory: sku.skuInventory ?? sku.totalInventory ?? 0
   })
 
@@ -446,14 +489,16 @@
       marketPrice: yuanToCents(sku.marketPrice),
       faceValue: yuanToCents(sku.faceValue) ?? 0,
       skuInventory: sku.skuInventory ?? 0,
-      suggestedSalePriceRule: {
-        mode: rule.mode,
-        base: rule.base,
-        percentage: rule.percentage,
-        operator: rule.operator,
-        operand: rule.operand,
-        fixedPriceCents: rule.fixedPriceCents
-      }
+      ...(isUnchangedLegacyPriceRule(sku) ? {} : {
+        suggestedSalePriceRule: {
+          mode: rule.mode,
+          base: rule.base,
+          percentage: rule.percentage,
+          operator: rule.operator,
+          operand: rule.operand,
+          fixedPriceCents: rule.fixedPriceCents
+        }
+      })
     }
   }
 
@@ -487,6 +532,15 @@
 
   const submitForm = async () => {
     await formRef.value?.validate()
+    const invalidBaseIndex = formData.skus.findIndex((sku) =>
+      sku.suggestedSalePriceRule.mode === PRICE_RULE_MODE.CUSTOM &&
+      !isUnchangedLegacyPriceRule(sku) &&
+      !priceRuleBaseOptions.value.some((dict) => dict.value === sku.suggestedSalePriceRule.base)
+    )
+    if (invalidBaseIndex >= 0) {
+      message.warning(`第 ${invalidBaseIndex + 1} 个 SKU 请选择有效的基准价格来源`)
+      return
+    }
     formLoading.value = true
     try {
       const payload = {
