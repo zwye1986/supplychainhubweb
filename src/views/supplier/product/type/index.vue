@@ -37,9 +37,15 @@
           <div class="mb-12px min-h-40px text-13px text-gray-500">
             {{ item.description || item.remark || '暂无描述' }}
           </div>
-          <div class="mb-12px flex gap-16px text-13px">
-            <span>SPU <b>{{ item.spuCount || 0 }}</b></span>
-            <span>SKU <b>{{ item.skuCount || 0 }}</b></span>
+          <div class="mb-16px flex gap-24px">
+            <div class="flex flex-col gap-4px">
+              <span class="text-24px font-700 leading-28px">{{ item.spuCount ?? 0 }}</span>
+              <span class="text-14px leading-20px text-gray-400">SPU数</span>
+            </div>
+            <div class="flex flex-col gap-4px">
+              <span class="text-24px font-700 leading-28px">{{ item.skuCount ?? 0 }}</span>
+              <span class="text-14px leading-20px text-gray-400">SKU数</span>
+            </div>
           </div>
           <div class="flex flex-wrap gap-8px">
             <el-button link type="primary" @click="goProduct(item.typeCode)">查看商品</el-button>

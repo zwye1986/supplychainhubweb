@@ -148,8 +148,8 @@
       <el-table-column label="市场价（元）" min-width="110" align="right">
         <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
       </el-table-column>
-      <el-table-column label="销售建议价（元）" min-width="150" align="right">
-        <template #default="{ row }">{{ formatCentsYuan(row.suggestedSalePrice) }}</template>
+      <el-table-column label="销售建议价（元）" min-width="240" align="right">
+        <template #default="{ row }">{{ formatSuggestedSalePrice(row) }}</template>
       </el-table-column>
       <el-table-column label="供应价（元）" min-width="150" align="right">
         <template #default="{ row }">
@@ -225,6 +225,7 @@
   import { formatDate } from '@/utils/formatTime'
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/utils/money'
+  import { formatSuggestedSalePrice } from './utils/suggested-sale-price'
   import ProductPriceDialog from './components/PriceDialog.vue'
   import FulfillmentScoreDialog from './components/FulfillmentScoreDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
@@ -301,6 +302,7 @@
           skuCode: sku.skuCode,
           marketPrice: sku.marketPrice,
           suggestedSalePrice: sku.suggestedSalePrice ?? sku.suggestedSalePriceCents,
+          suggestedSalePriceRule: sku.suggestedSalePriceRule,
           supplyPrice: sku.supplyPrice,
           supplyPriceExclusive: sku.supplyPriceExclusive,
           taxRateDisplay: sku.taxRateDisplay,

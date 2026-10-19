@@ -1,11 +1,12 @@
 /** 销售建议价规则（SKU.suggestedSalePriceRule） */
 export interface SuggestedSalePriceRule {
   mode?: string
-  base?: string
-  percentage?: number
-  operator?: string
-  operand?: number
-  fixedPriceCents?: number
+  base?: string | null
+  percentage?: number | null
+  operator?: string | null
+  operand?: number | null
+  fixedPriceCents?: number | null
+  basePriceSnapshotCents?: number | null
 }
 
 /** 默认定价公式：DIRECT_MARKET_PRICE 直接等于市场价，CUSTOM 自定义 */
@@ -307,6 +308,8 @@ export interface SpuSaveReqVO {
 export interface SkuDetail extends Omit<SkuItemSaveReqVO, 'status'> {
   /** 管理状态：0草稿，10启用，20停用，90已归档 */
   status?: number | string
+  suggestedSalePrice?: number | null
+  suggestedSalePriceCents?: number | null
   supplyPrice?: number
   suppliers?: SupplierSimpleInfo[]
   totalInventory?: number
