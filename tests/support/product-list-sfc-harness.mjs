@@ -177,6 +177,8 @@ export function mountProductList(http, confirm = async () => {}, options = {}) {
     'Pagination',
     'ProductType',
     'ProductCategory',
+    'DistributorSelect',
+    'ProjectSelect',
     'ElTabs',
     'ElTabPane',
     'ElForm',
