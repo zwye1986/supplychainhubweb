@@ -147,8 +147,9 @@
       </el-table-column>
       <el-table-column label="状态" min-width="90" align="center">
         <template #default="{ row }">
-          <dict-tag v-if="row.status" type="supply_chain_offer_status" :value="row.status" />
-          <span v-else>-</span>
+          <el-tag :type="getOfferStatusType(row.status)" size="small">
+            {{ getOfferStatusLabel(row.status) }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="商品履约配置" min-width="130" align="center">
@@ -347,6 +348,8 @@ import ProductSelectDialog from './ProductSelectDialog.vue'
 import {
   getFulfillmentStatusLabel,
   getFulfillmentStatusType,
+  getOfferStatusLabel,
+  getOfferStatusType,
   getOnShelfActionLabel,
   validateExternalSkuCode
 } from './utils/fulfillment'

@@ -37,9 +37,29 @@ export const getFulfillmentStatusType = (status?: string): TagType =>
 
 /** 合作商品生命周期与后端OfferStatus契约一致，不能用履约配置状态替代。 */
 export const OfferStatusEnum = {
+  DRAFT: 'DRAFT',
   PUBLISHED: 'PUBLISHED',
-  SUSPENDED: 'SUSPENDED'
+  SUSPENDED: 'SUSPENDED',
+  RETIRED: 'RETIRED'
 } as const
+
+/**
+ * 固定生命周期文案不依赖系统字典，避免字典缺失时状态列空白。
+ * 状态仅表示合作商品上下架，不替代履约就绪度；未知状态保留原码用于排查，不推断为已下架。
+ * 设计见 docs/superpowers/specs/2026-10-11-supplier-offer-lifecycle-design.md#2-单一读模型与前端契约。
+ */
+const OFFER_STATUS_OPTIONS: { value: string; label: string; type: TagType }[] = [
+  { value: OfferStatusEnum.DRAFT, label: '草稿', type: 'info' },
+  { value: OfferStatusEnum.PUBLISHED, label: '已上架', type: 'success' },
+  { value: OfferStatusEnum.SUSPENDED, label: '已下架', type: 'info' },
+  { value: OfferStatusEnum.RETIRED, label: '已移除', type: 'info' }
+]
+
+export const getOfferStatusLabel = (status?: string | null): string =>
+  OFFER_STATUS_OPTIONS.find((item) => item.value === status)?.label || status || '-'
+
+export const getOfferStatusType = (status?: string | null): TagType =>
+  OFFER_STATUS_OPTIONS.find((item) => item.value === status)?.type || 'info'
 
 /** 状态缺失或未知不推断为下架，避免旧数据误显示发布操作。 */
 export const getOnShelfActionLabel = (status?: string): '上架' | '下架' | undefined => {

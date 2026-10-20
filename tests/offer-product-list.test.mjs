@@ -44,6 +44,39 @@ async function mountOffer(overrides = {}, requestError) {
 }
 const button = (view, label) => view.allButtons().find((item) => item.text.trim() === label)
 
+// harness 中没有 Offer 状态字典，执行真实模板以防再次出现有状态却无中文标签。
+for (const [status, label, type] of [
+  ['PUBLISHED', '已上架', 'success'],
+  ['SUSPENDED', '已下架', 'info'],
+  ['DRAFT', '草稿', 'info'],
+  ['RETIRED', '已移除', 'info'],
+  [undefined, '-', 'info'],
+  [null, '-', 'info'],
+  ['', '-', 'info'],
+  ['FUTURE_STATUS', 'FUTURE_STATUS', 'info']
+]) {
+  test(`无系统字典时状态列 ${String(status)} 显示 ${label}`, async () => {
+    const { view } = await mountOffer({ status, canPublish: true })
+    try {
+      const column = view.components('ElTableColumn').find((item) => item.props.label === '状态')
+      assert.equal(column?.text.trim(), label)
+      assert.ok(
+        view
+          .components('ElTag')
+          .some((item) => item.text.trim() === label && item.props.type === type)
+      )
+      assert.equal(view.components('DictTag').length, 0)
+      if (status !== 'PUBLISHED' && status !== 'SUSPENDED') {
+        for (const action of ['上架', '下架', '发布变更']) {
+          assert.equal(button(view, action), undefined)
+        }
+      }
+    } finally {
+      view.unmount()
+    }
+  })
+}
+
 test('合作商品名称显示平台SPU编码，SKU规格与编号在同一列且缺失值独立占位', async () => {
   const { view } = await mountOffer({
     platformSpuName: '卡券测试',

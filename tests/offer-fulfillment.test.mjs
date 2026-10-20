@@ -8,6 +8,8 @@ const {
   getFulfillmentStatusLabel,
   getFulfillmentStatusType,
   getOnShelfActionLabel,
+  getOfferStatusLabel,
+  getOfferStatusType,
   validateExternalSkuCode
 } = fulfillment
 
@@ -21,6 +23,22 @@ test('maps fulfillment status codes to labels and tag types', () => {
   assert.equal(getFulfillmentStatusType?.(FulfillmentStatusEnum?.NOT_CONFIGURED), 'info')
   assert.equal(getFulfillmentStatusType?.(FulfillmentStatusEnum?.STALE), 'warning')
 })
+
+for (const [status, label, type] of [
+  ['DRAFT', '草稿', 'info'],
+  ['PUBLISHED', '已上架', 'success'],
+  ['SUSPENDED', '已下架', 'info'],
+  ['RETIRED', '已移除', 'info'],
+  [undefined, '-', 'info'],
+  [null, '-', 'info'],
+  ['', '-', 'info'],
+  ['FUTURE_STATUS', 'FUTURE_STATUS', 'info']
+]) {
+  test(`合作商品状态 ${String(status)} 映射文案及颜色，不依赖字典`, () => {
+    assert.equal(getOfferStatusLabel?.(status), label)
+    assert.equal(getOfferStatusType?.(status), type)
+  })
+}
 
 // ── 上架动作按钮文案：Offer已上架→下架，已下架→上架──────────────────────────
 test('derives shelf actions from Offer lifecycle status', () => {
