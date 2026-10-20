@@ -39,6 +39,8 @@ export type {
   SpuDetail,
   SpuSaveReqVO,
   SuggestedSalePriceRule,
+  SuggestedSalePriceStatus,
+  SuggestedSalePriceView,
   SupplierSimpleInfo
 } from './types'
 
@@ -66,7 +68,8 @@ import type {
   ProductTypeSaveReqVO,
   ProductTypeVO,
   SpuDetail,
-  SpuSaveReqVO
+  SpuSaveReqVO,
+  SuggestedSalePriceRule
 } from './types'
 
 const normalizeCategoryTree = (nodes: ProductCategoryVO[] = []): ProductCategoryVO[] =>
@@ -190,6 +193,33 @@ export const ProductBrandApi = {
   }
 }
 
+const SUGGESTED_PRICE_RULE_COMPATIBILITY = {
+  CUSTOM: 'CUSTOM',
+  LEGACY_BASE: 'SUGGESTED_SALE_PRICE'
+} as const
+
+/**
+ * 保存仅携带人工规则字段，省略服务端快照；历史基准省略规则，避免重复代入调价。
+ * 设计见后端 docs/superpowers/specs/2026-10-19-suggested-sale-price-supply-base-design.md#7-前端与接口。
+ */
+const toSuggestedPriceSaveFields = (rule?: SuggestedSalePriceRule | null) => {
+  if (
+    !rule ||
+    (rule.mode === SUGGESTED_PRICE_RULE_COMPATIBILITY.CUSTOM &&
+      rule.base === SUGGESTED_PRICE_RULE_COMPATIBILITY.LEGACY_BASE)
+  ) return {}
+  return {
+    suggestedSalePriceRule: {
+      mode: rule.mode,
+      base: rule.base,
+      percentage: rule.percentage,
+      operator: rule.operator,
+      operand: rule.operand,
+      fixedPriceCents: rule.fixedPriceCents
+    }
+  }
+}
+
 /** 详情转复合保存请求，供编辑 / 定价回写 */
 export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
   spuCode: detail.spuCode,
@@ -207,7 +237,7 @@ export const toSpuSaveReq = (detail: SpuDetail): SpuSaveReqVO => ({
     skuName: sku.skuName,
     faceValue: sku.faceValue ?? 0,
     marketPrice: sku.marketPrice,
-    suggestedSalePriceRule: sku.suggestedSalePriceRule,
+    ...toSuggestedPriceSaveFields(sku.suggestedSalePriceRule),
     picUrl: sku.picUrl,
     detailPics: sku.detailPics,
     description: sku.description,

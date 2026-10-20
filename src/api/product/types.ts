@@ -9,6 +9,23 @@ export interface SuggestedSalePriceRule {
   basePriceSnapshotCents?: number | null
 }
 
+/** 建议价当前计算状态；与历史参考金额分离，非 READY 时当前金额为空。 */
+export type SuggestedSalePriceStatus = 'READY' | 'DEPENDENCY_MISSING' | 'CALCULATION_FAILED'
+
+/**
+ * 服务端权威建议价投影，金额单位为分；0 为有效金额，null 表示当前不可用。
+ * 设计见后端 docs/superpowers/specs/2026-10-19-suggested-sale-price-supply-base-design.md#7-前端与接口。
+ */
+export interface SuggestedSalePriceView {
+  suggestedSalePriceRule?: SuggestedSalePriceRule | null
+  suggestedSalePrice?: number | null
+  suggestedSalePriceCents?: number | null
+  suggestedSalePriceStatus?: SuggestedSalePriceStatus
+  suggestedSalePriceUnavailableReason?: string | null
+  lastValidSuggestedSalePrice?: number | null
+  lastValidSuggestedSalePriceCalculatedAt?: number | string | null
+}
+
 /** 默认定价公式：DIRECT_MARKET_PRICE 直接等于市场价，CUSTOM 自定义 */
 export type FormulaRuleMode = 'DIRECT_MARKET_PRICE' | 'CUSTOM'
 export type FormulaRuleBase = 'MARKET_PRICE' | 'SUGGESTED_SALE_PRICE' | 'SUPPLY_PRICE'
@@ -175,7 +192,7 @@ export interface PlatformPricingDetail {
   hideRule?: HideRuleVO
   taxMetadata?: TaxMetadataVO
   marketPriceCents?: number
-  suggestedSalePriceCents?: number
+  suggestedSalePriceCents?: number | null
   supplyPriceCents?: number
   distributionPriceCents?: number
   salesPriceCents?: number
@@ -201,13 +218,11 @@ export interface SupplierSimpleInfo {
 }
 
 /** 管理端列表 SKU 明细（GET /supply-chain/products/management-page） */
-export interface ProductManagementSkuItem {
+export interface ProductManagementSkuItem extends SuggestedSalePriceView {
   skuCode?: string
   skuName?: string
   marketPrice?: number
-  suggestedSalePrice?: number
-  suggestedSalePriceCents?: number
-  supplyPrice?: number
+  supplyPrice?: number | null
   supplyPriceExclusive?: number
   taxIncluded?: boolean
   taxRate?: number
@@ -218,7 +233,6 @@ export interface ProductManagementSkuItem {
   fulfillmentType?: string
   fulfillmentTypeDisplay?: string
   status?: number | string
-  suggestedSalePriceRule?: SuggestedSalePriceRule
 }
 
 /** 管理端列表 SPU 聚合项 */
@@ -305,12 +319,11 @@ export interface SpuSaveReqVO {
 }
 
 /** 详情 SKU */
-export interface SkuDetail extends Omit<SkuItemSaveReqVO, 'status'> {
+export interface SkuDetail
+  extends Omit<SkuItemSaveReqVO, 'status' | 'suggestedSalePriceRule'>, SuggestedSalePriceView {
   /** 管理状态：0草稿，10启用，20停用，90已归档 */
   status?: number | string
-  suggestedSalePrice?: number | null
-  suggestedSalePriceCents?: number | null
-  supplyPrice?: number
+  supplyPrice?: number | null
   suppliers?: SupplierSimpleInfo[]
   totalInventory?: number
 }

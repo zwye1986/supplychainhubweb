@@ -73,7 +73,12 @@
             <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
           </el-table-column>
           <el-table-column label="销售建议价（元）" min-width="240" align="center">
-            <template #default="{ row }">{{ formatSuggestedSalePrice(row) }}</template>
+            <template #default="{ row }">
+              <div>{{ formatSuggestedSalePrice(row) }}</div>
+              <div v-if="formatSuggestedSalePriceHistory(row)" class="text-12px text-gray-500">
+                {{ formatSuggestedSalePriceHistory(row) }}
+              </div>
+            </template>
           </el-table-column>
           <el-table-column label="供应价（元）" min-width="120" align="center">
             <template #default="{ row }">
@@ -121,7 +126,10 @@ import { ProductApi } from '@/api/product'
 import type { SpuDetail, SupplierSimpleInfo } from '@/api/product'
 import { getDictLabel } from '@/utils/dict'
 import { formatCentsYuan } from '@/utils/money'
-import { formatSuggestedSalePrice } from '../utils/suggested-sale-price'
+import {
+  formatSuggestedSalePrice,
+  formatSuggestedSalePriceHistory
+} from '../utils/suggested-sale-price'
 
 defineOptions({ name: 'ProductListDetail' })
 

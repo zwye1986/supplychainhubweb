@@ -149,7 +149,12 @@
         <template #default="{ row }">{{ formatCentsYuan(row.marketPrice) }}</template>
       </el-table-column>
       <el-table-column label="销售建议价（元）" min-width="240" align="right">
-        <template #default="{ row }">{{ formatSuggestedSalePrice(row) }}</template>
+        <template #default="{ row }">
+          <div>{{ formatSuggestedSalePrice(row) }}</div>
+          <div v-if="formatSuggestedSalePriceHistory(row)" class="text-12px text-gray-500">
+            {{ formatSuggestedSalePriceHistory(row) }}
+          </div>
+        </template>
       </el-table-column>
       <el-table-column label="供应价（元）" min-width="150" align="right">
         <template #default="{ row }">
@@ -225,7 +230,7 @@
   import { formatDate } from '@/utils/formatTime'
   import { SupplierApi } from '@/api/supplier/manage'
   import { formatCentsYuan, yuanToCents } from '@/utils/money'
-  import { formatSuggestedSalePrice } from './utils/suggested-sale-price'
+  import { formatSuggestedSalePrice, formatSuggestedSalePriceHistory } from './utils/suggested-sale-price'
   import ProductPriceDialog from './components/PriceDialog.vue'
   import FulfillmentScoreDialog from './components/FulfillmentScoreDialog.vue'
   import BatchStatusResultDialog from './components/BatchStatusResultDialog.vue'
@@ -301,7 +306,12 @@
           skuName: sku.skuName,
           skuCode: sku.skuCode,
           marketPrice: sku.marketPrice,
-          suggestedSalePrice: sku.suggestedSalePrice ?? sku.suggestedSalePriceCents,
+          suggestedSalePrice: sku.suggestedSalePrice,
+          suggestedSalePriceCents: sku.suggestedSalePriceCents,
+          suggestedSalePriceStatus: sku.suggestedSalePriceStatus,
+          suggestedSalePriceUnavailableReason: sku.suggestedSalePriceUnavailableReason,
+          lastValidSuggestedSalePrice: sku.lastValidSuggestedSalePrice,
+          lastValidSuggestedSalePriceCalculatedAt: sku.lastValidSuggestedSalePriceCalculatedAt,
           suggestedSalePriceRule: sku.suggestedSalePriceRule,
           supplyPrice: sku.supplyPrice,
           supplyPriceExclusive: sku.supplyPriceExclusive,

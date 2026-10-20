@@ -127,6 +127,30 @@
                   @update:model-value="(val) => onFixedPriceChange(row, val)" />
               </div>
               <div class="text-12px text-gray-500">{{ formatSuggestFormula(row) }}</div>
+              <template
+                v-if="row.suggestedSalePriceRule.base === PRICE_RULE_BASE.SUPPLY_PRICE && row.suggestedSalePriceRule.mode === PRICE_RULE_MODE.CUSTOM"
+              >
+                <div class="text-12px text-gray-500">
+                  供应价：{{ row.supplyPrice == null ? '暂无有效供应价' : `${formatCentsYuan(row.supplyPrice)}元` }}
+                </div>
+                <div v-if="row.supplyPrice == null" class="text-12px text-gray-500">
+                  可保存公式，暂无有效供应价时进入待计算；供给恢复后自动计算，刷新页面查看最新结果。
+                </div>
+              </template>
+              <template v-if="row.savedSuggestedPrice">
+                <div class="text-12px text-gray-500">
+                  当前已保存建议价：{{ formatSuggestedSalePrice(row.savedSuggestedPrice) }}
+                </div>
+                <div
+                  v-if="row.savedSuggestedPrice.suggestedSalePriceRule?.base === PRICE_RULE_BASE.SUPPLY_PRICE && row.savedSuggestedPrice.suggestedSalePriceRule?.basePriceSnapshotCents != null"
+                  class="text-12px text-gray-500"
+                >
+                  本轮计算供应价：{{ formatCentsYuan(row.savedSuggestedPrice.suggestedSalePriceRule.basePriceSnapshotCents) }}元
+                </div>
+                <div v-if="formatSuggestedSalePriceHistory(row.savedSuggestedPrice)" class="text-12px text-gray-500">
+                  {{ formatSuggestedSalePriceHistory(row.savedSuggestedPrice) }}
+                </div>
+              </template>
             </div>
           </template>
         </el-table-column>
@@ -200,10 +224,12 @@
     SkuItemSaveReqVO,
     SpuDetail,
     SpuSaveReqVO,
-    SuggestedSalePriceRule
+    SuggestedSalePriceRule,
+    SuggestedSalePriceView
   } from '@/api/product'
   import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-  import { centsToYuan, yuanToCents } from '@/utils/money'
+  import { centsToYuan, yuanToCents, formatCentsYuan } from '@/utils/money'
+  import { formatSuggestedSalePrice, formatSuggestedSalePriceHistory } from '../utils/suggested-sale-price'
 
   defineOptions({ name: 'ProductListForm' })
 
@@ -214,12 +240,16 @@
   }
   const PRICE_RULE_BASE = {
     MARKET_PRICE: 'MARKET_PRICE',
+    SUPPLY_PRICE: 'SUPPLY_PRICE',
     SUGGESTED_SALE_PRICE: 'SUGGESTED_SALE_PRICE'
   }
   const PRICE_RULE_BASE_DICT = 'supply_chain_suggested_sale_price_base'
-  // 字典负责展示，当前领域只开放市场价作为新基数；过滤误配置的历史/未知值。
+  // 字典负责标签；新规则仅允许市场价/供应价，过滤误配置的历史/未知值。
+  // 设计见后端 docs/superpowers/specs/2026-10-19-suggested-sale-price-supply-base-design.md#7-前端与接口。
   const priceRuleBaseOptions = computed(() =>
-    getStrDictOptions(PRICE_RULE_BASE_DICT).filter((dict) => dict.value === PRICE_RULE_BASE.MARKET_PRICE)
+    getStrDictOptions(PRICE_RULE_BASE_DICT).filter((dict) =>
+      dict.value === PRICE_RULE_BASE.MARKET_PRICE || dict.value === PRICE_RULE_BASE.SUPPLY_PRICE
+    )
   )
   interface SkuFormItem {
     skuCode?: string
@@ -233,6 +263,9 @@
     description?: string
     suggestedSalePriceRule: SuggestedSalePriceRule
     legacySuggestedSalePriceRule?: SuggestedSalePriceRule
+    supplyPrice?: number | null
+    /** 保留已保存响应，避免把编辑中的公式与旧计算结果拼为新的现价。 */
+    savedSuggestedPrice?: SuggestedSalePriceView
     skuInventory?: number
   }
 
@@ -287,9 +320,13 @@
   const toStatusDictValue = (status?: string | number | null) =>
     status == null || status === '' ? firstDictValue(PRODUCT_STATUS_DICT) : String(status)
 
+  const defaultPriceRuleBase = () => priceRuleBaseOptions.value.find(
+    (dict) => dict.value === PRICE_RULE_BASE.MARKET_PRICE
+  )?.value
+
   const createPriceRule = (): SuggestedSalePriceRule => ({
     mode: PRICE_RULE_MODE.CUSTOM,
-    base: priceRuleBaseOptions.value[0]?.value,
+    base: defaultPriceRuleBase(),
     percentage: undefined,
     operator: undefined,
     operand: 0,
@@ -375,7 +412,7 @@
 
   /**
    * 历史规则只读回显；省略原样规则避免后端把当前建议价再次代入历史公式。
-   * 重新设置和模式切换后只允许从当前字典重新选择市场价。
+   * 重新设置和模式切换后只允许从当前字典重新选择市场价或供应价。
    * 设计见后端 docs/superpowers/specs/2026-09-11-supply-chain-product-center-design.md#531-销售建议价基准来源字典与历史规则兼容2026-10-18。
    */
   const isUnchangedLegacyPriceRule = (sku: SkuFormItem) => {
@@ -397,7 +434,7 @@
     if (rule.mode === PRICE_RULE_MODE.CUSTOM &&
       !priceRuleBaseOptions.value.some((dict) => dict.value === rule.base)) {
       sku.legacySuggestedSalePriceRule = undefined
-      rule.base = priceRuleBaseOptions.value[0]?.value
+      rule.base = defaultPriceRuleBase()
     }
     if (rule.mode === PRICE_RULE_MODE.FIXED && rule.fixedPriceCents == null) {
       rule.fixedPriceCents = yuanToCents(sku.marketPrice || 0)
@@ -464,6 +501,16 @@
     detailPics: Array.isArray(sku.detailPics) ? sku.detailPics : [],
     description: sku.description,
     marketPrice: centsToYuan(sku.marketPrice) ?? 0,
+    supplyPrice: sku.supplyPrice,
+    savedSuggestedPrice: {
+      suggestedSalePrice: sku.suggestedSalePrice,
+      suggestedSalePriceCents: sku.suggestedSalePriceCents,
+      suggestedSalePriceStatus: sku.suggestedSalePriceStatus,
+      suggestedSalePriceUnavailableReason: sku.suggestedSalePriceUnavailableReason,
+      lastValidSuggestedSalePrice: sku.lastValidSuggestedSalePrice,
+      lastValidSuggestedSalePriceCalculatedAt: sku.lastValidSuggestedSalePriceCalculatedAt,
+      suggestedSalePriceRule: sku.suggestedSalePriceRule ? { ...sku.suggestedSalePriceRule } : undefined
+    },
     faceValue: centsToYuan(sku.faceValue) ?? 0,
     suggestedSalePriceRule: {
       ...createPriceRule(),
