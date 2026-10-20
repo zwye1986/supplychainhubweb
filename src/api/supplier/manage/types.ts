@@ -61,6 +61,8 @@ export interface SupplyScopeView {
 
 /** 保存供货配置行（接口 ScopeReqVO） */
 export interface ScopeReqVO {
+  /** 供货配置主键；已有行编辑必传，新行为空 */
+  id?: number
   /** 可售品类枚举名 */
   sellableCategory: string
   /** 动态商品类型编码 */

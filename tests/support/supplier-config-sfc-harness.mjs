@@ -11,14 +11,15 @@ const viewRoot = fileURLToPath(new URL('../../src/views/supplier/config/', impor
 Object.assign(globalThis, vue)
 
 /** 执行真实 SFC setup 和模板，UI 壳组件使用内存 renderer；见供给发布设计 §15.5。 */
-export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
+export function mountSupplierConfig(api, entry = 'index.vue', props = {}, options = {}) {
   const cache = new Map()
   const messages = []
   globalThis.useMessage = () => ({
     error: (value) => messages.push(value),
     warning: (value) => messages.push(value),
     success: (value) => messages.push(value),
-    confirm: async () => true
+    confirm: options.confirm || (async () => true),
+    alert: async (value) => messages.push(value)
   })
   const constants = evaluate(fs.readFileSync(path.join(viewRoot, 'utils/constants.ts'), 'utf8'))
   const actualFiles = new Set([
@@ -30,7 +31,8 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
     'ConnectorValidateDialog.vue',
     'ConnectorFormDialog.vue',
     'ConnectorDetailDrawer.vue',
-    'CredentialItemDialog.vue'
+    'CredentialItemDialog.vue',
+    'SupplyConfig.vue'
   ])
   function evaluate(code, resolve = require) {
     const exports = {}
@@ -69,7 +71,8 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
       if (name === 'vue') return vue
       if (name === '@/api/supplier/config') return { SupplierConfigApi: api }
       if (name === '@/api/supplier/manage')
-        return { SupplierApi: { getSupplierNameList: async () => [] } }
+        return { SupplierApi: { getSupplierNameList: async () => [], ...api } }
+      if (name === '@/utils/dict') return { getStrDictOptions: () => [] }
       if (name.endsWith('/utils/constants')) return constants
       if (name.endsWith('.vue'))
         return { __esModule: true, default: load(path.resolve(path.dirname(file), name)) }
@@ -116,6 +119,8 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}) {
   app.directive('loading', {})
   for (const name of [
     'ContentWrap',
+    'ProductType',
+    'ProductCategory',
     'Icon',
     'ElForm',
     'ElFormItem',

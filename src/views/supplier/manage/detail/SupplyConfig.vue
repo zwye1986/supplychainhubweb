@@ -3,7 +3,7 @@
     <el-alert
       type="info"
       :closable="false"
-      title="配置供应商可供货的商品范围与供货规则，新增商品时将根据此配置筛选可添加的商品。"
+      title="配置供应商可供货的商品范围与供货规则。修改已有配置的商品类型或商品分类，将移除原配置对应的全部合作商品，需重新选品添加。"
     />
     <el-table class="mt-12px" :data="list" border :show-overflow-tooltip="true">
       <el-table-column label="可售品类" min-width="150">
@@ -139,6 +139,9 @@ type SupplyScopeRow = Partial<
   Pick<SupplyScopeView, 'id'>
 
 const list = ref<SupplyScopeRow[]>([])
+// 仅保存成功并重新查询后更新基线，取消确认不会改变旧配置。
+// 设计：supply-hub/docs/superpowers/specs/2026-10-20-supply-scope-change-retirement-design.md §5。
+const originalRows = ref<SupplyScopeRow[]>([])
 
 const DEFAULT_MAX_QUANTITY = 9999999
 const DEFAULT_MIN_QUANTITY = 1
@@ -282,14 +285,17 @@ const loadData = async () => {
     const data = await SupplierApi.getSupplyScopes(props.supplierCode)
     const rows = Array.isArray(data) ? data : []
     list.value = rows.map((item) => normalizeRow(item))
+    originalRows.value = list.value.map((row) => ({ ...row }))
   } catch {
     list.value = []
+    originalRows.value = []
   } finally {
     loading.value = false
   }
 }
 
 const toScopeLine = (row: SupplyScopeRow): ScopeReqVO => ({
+  id: row.id,
   sellableCategory: row.sellableCategory || '',
   productType: row.productType || '',
   productClassification: row.productClassification || '',
@@ -303,6 +309,23 @@ const handleSave = async () => {
   if (!props.supplierCode) {
     message.error('缺少供应商编号，暂无法保存供货配置')
     return
+  }
+  const changed = list.value.some((row) => {
+    const original = originalRows.value.find((item) => row.id != null && item.id === row.id)
+    return (
+      original &&
+      (original.productType !== row.productType ||
+        original.productClassification !== row.productClassification)
+    )
+  })
+  if (changed) {
+    try {
+      await message.confirm(
+        '商品类型或商品分类已变更，保存将移除原配置对应的全部合作商品；即使其他配置仍匹配也不会保留，需重新选品添加。是否继续？'
+      )
+    } catch {
+      return
+    }
   }
   saving.value = true
   try {
