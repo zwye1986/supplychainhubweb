@@ -16,7 +16,7 @@
       </el-form-item>
       <el-form-item label="供货模式" prop="supplyModes">
         <el-select v-model="queryParams.supplyModes" placeholder="请选择供货模式" multiple clearable collapse-tags collapse-tags-tooltip>
-          <el-option v-for="dict in getStrDictOptions('scm_supply_mode')" :key="dict.value" :label="dict.label" :value="dict.value" />
+          <el-option v-for="dict in getStrDictOptions('supply_chain_supply_mode')" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="合作状态" prop="status">
@@ -83,10 +83,10 @@
       </el-table-column>
       <el-table-column label="供货模式" align="center" prop="supplyModes" min-width="180">
         <template #default="{ row }">
-          <el-tag v-for="tag in getDictRefLabels(row.supplyModes, 'scm_supply_mode')" :key="tag" class="m-2px" size="small" type="primary">
+          <el-tag v-for="tag in getDictRefLabels(row.supplyModes, 'supply_chain_supply_mode')" :key="tag" class="m-2px" size="small" type="primary">
             {{ tag }}
           </el-tag>
-          <span v-if="!getDictRefLabels(row.supplyModes, 'scm_supply_mode').length">-</span>
+          <span v-if="!getDictRefLabels(row.supplyModes, 'supply_chain_supply_mode').length">-</span>
         </template>
       </el-table-column>
       <el-table-column label="合作商品SKU数" align="center" prop="skuCount" min-width="160" />
@@ -218,7 +218,7 @@
     ]
   }
 
-  /** 供货模式等：字典解析，兼容 string[] / { id, name }[] */
+  /** 供货模式：name 可能是枚举编码，先解析字典，再回退接口名称或编码。 */
   const getDictRefLabels = (refs: NamedRefOrCode[] | null | undefined, dictType: string) => {
     if (!refs?.length) return []
     return [
@@ -232,10 +232,9 @@
             }
             const code = String(item.id ?? '').trim()
             const apiName = String(item.name ?? '').trim()
-            if (apiName && apiName !== code) return apiName
             return (
-              getDictLabel(dictType, code) ||
               getDictLabel(dictType, apiName) ||
+              getDictLabel(dictType, code) ||
               apiName ||
               code
             ).trim()

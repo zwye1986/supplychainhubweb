@@ -14,7 +14,7 @@
     />
 
     <el-row :gutter="16">
-      <el-col :span="12">
+      <el-col :span="11">
         <ContentWrap class="!mb-0">
           <div class="filter-pill-wrap mb-12px">
             <button
@@ -118,7 +118,7 @@
         </ContentWrap>
       </el-col>
 
-      <el-col :span="12">
+      <el-col :span="13">
         <ContentWrap class="right-panel !mb-0">
           <div class="right-panel__scroll">
             <div class="price-mode-tip mb-12px">

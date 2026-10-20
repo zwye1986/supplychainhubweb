@@ -80,7 +80,9 @@
               <el-select v-model="formData.shippingSlaCode" placeholder="请选择发货时效" clearable class="!w-full" @change="handleShippingSlaChange">
                 <el-option v-for="dict in getStrDictOptions('supply_chain_shipping_sla_code')" :key="dict.value" :label="dict.label" :value="dict.value" />
               </el-select>
-              <el-input v-if="formData.shippingSlaCode === 'CUSTOM'" v-model="formData.shippingSlaCustom" placeholder="请输入自定义时效" maxlength="50" class="!w-220px" />
+              <el-input v-if="formData.shippingSlaCode === 'CUSTOM'" v-model="formData.shippingSlaCustom" placeholder="请输入自定义时效" maxlength="50" class="!w-220px">
+                <template #append>天</template>
+              </el-input>
             </div>
           </el-form-item>
         </el-col>
