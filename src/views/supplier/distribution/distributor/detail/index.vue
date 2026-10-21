@@ -143,16 +143,23 @@
             </el-row>
 
             <el-divider content-position="left">联系信息</el-divider>
-            <el-form-item label="联系人">
-              <div class="w-full">
-                <template v-if="distributor.contacts?.length">
-                  <div v-for="(item, index) in distributor.contacts" :key="item.id || index">
-                    {{ [item.name, item.mobile, item.email].filter(Boolean).join(' / ') || '-' }}
-                  </div>
-                </template>
-                <span v-else>-</span>
-              </div>
-            </el-form-item>
+            <el-table
+              :data="distributor.contacts || []"
+              border
+              class="mb-24px"
+              header-cell-class-name="!font-400"
+            >
+              <el-table-column label="姓名" min-width="140" align="center">
+                <template #default="{ row }">{{ displayText(row.name) }}</template>
+              </el-table-column>
+              <el-table-column label="手机号" min-width="180" align="center">
+                <template #default="{ row }">{{ displayText(row.mobile) }}</template>
+              </el-table-column>
+              <el-table-column label="邮箱" min-width="220" align="center" show-overflow-tooltip>
+                <template #default="{ row }">{{ displayText(row.email) }}</template>
+              </el-table-column>
+              <template #empty><el-empty description="暂无联系人" /></template>
+            </el-table>
 
             <el-divider content-position="left">分销信息</el-divider>
             <el-row :gutter="20">
@@ -272,19 +279,7 @@
               </el-col>
               <el-col :span="24">
                 <el-form-item label="营业执照">
-                  <template v-if="licenseFileKeys.length">
-                    <el-link
-                      v-for="(url, index) in licenseFileKeys"
-                      :key="url"
-                      :href="url"
-                      type="primary"
-                      target="_blank"
-                      class="mr-12px"
-                    >
-                      附件{{ index + 1 }}
-                    </el-link>
-                  </template>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="licenseFileKeys" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
@@ -304,6 +299,16 @@
               <el-col :span="24">
                 <el-form-item label="联系地址">
                   {{ displayText(distributor.contactAddress) }}
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="身份证正面">
+                  <AttachmentList :urls="distributor.idFrontFileKey ? [distributor.idFrontFileKey] : []" link-label="查看正面" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="身份证反面">
+                  <AttachmentList :urls="distributor.idBackFileKey ? [distributor.idBackFileKey] : []" link-label="查看反面" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -331,19 +336,7 @@
             <el-row :gutter="20">
               <el-col :span="24">
                 <el-form-item label="资质文件">
-                  <template v-if="qualificationFileKeys.length">
-                    <el-link
-                      v-for="(url, index) in qualificationFileKeys"
-                      :key="url"
-                      :href="url"
-                      type="primary"
-                      target="_blank"
-                      class="mr-12px"
-                    >
-                      附件{{ index + 1 }}
-                    </el-link>
-                  </template>
-                  <span v-else>-</span>
+                  <AttachmentList :urls="qualificationFileKeys" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -397,6 +390,7 @@ import ProjectList from './ProjectList.vue'
 import ProductList from './ProductList.vue'
 import RoutingConfig from './RoutingConfig.vue'
 import HierarchyList from './HierarchyList.vue'
+import AttachmentList from '@/components/AttachmentList/index.vue'
 
 defineOptions({ name: 'DistributorDetailDrawer' })
 

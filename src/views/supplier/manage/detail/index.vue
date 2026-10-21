@@ -231,7 +231,7 @@
   import InvoiceInfo from './InvoiceInfo.vue'
   import SupplyConfig from './SupplyConfig.vue'
   import ProductList from './ProductList.vue'
-  import AttachmentList from './AttachmentList.vue'
+  import AttachmentList from '@/components/AttachmentList/index.vue'
 
   defineOptions({ name: 'SupplierManageDetail' })
 

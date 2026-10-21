@@ -198,7 +198,7 @@ export const DistributorApi = {
     return await request.post<string>({ url: '/supply-chain/buyers', data })
   },
 
-  /** 编辑分销商档案：PUT /supply-chain/buyers/{buyerCode}，勿传 openingBalanceCents */
+  /** 编辑分销商档案：PUT /supply-chain/buyers/{buyerCode}；页面按需求提交 openingBalanceCents，后端需支持编辑余额。 */
   updateDistributor: async (buyerCode: string, data: BuyerSaveReqVO) => {
     return await request.put<boolean>({ url: `/supply-chain/buyers/${buyerCode}`, data })
   },

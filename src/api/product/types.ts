@@ -324,6 +324,8 @@ export interface SkuDetail
   /** 管理状态：0草稿，10启用，20停用，90已归档 */
   status?: number | string
   supplyPrice?: number | null
+  taxRateDisplay?: string | null
+  taxAmount?: number | null
   suppliers?: SupplierSimpleInfo[]
   totalInventory?: number
 }

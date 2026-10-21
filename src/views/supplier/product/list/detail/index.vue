@@ -85,6 +85,12 @@
               {{ row.supplyPrice == null ? '暂无有效供货价' : formatCentsYuan(row.supplyPrice) }}
             </template>
           </el-table-column>
+          <el-table-column label="税率" min-width="110" align="center">
+            <template #default="{ row }">{{ row.taxRateDisplay || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="税额(元)" min-width="100" align="center">
+            <template #default="{ row }">{{ formatCentsYuan(row.taxAmount) }}</template>
+          </el-table-column>
           <el-table-column label="供应商" min-width="180" align="center" show-overflow-tooltip>
             <template #default="{ row }">{{ formatSuppliers(row.suppliers) }}</template>
           </el-table-column>

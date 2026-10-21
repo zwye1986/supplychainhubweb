@@ -19,6 +19,8 @@ const createDetail = () => ({
     marketPrice: 1990,
     suggestedSalePrice: 10,
     supplyPrice: 2014,
+    taxRateDisplay: '6%',
+    taxAmount: 114,
     suppliers: [
       { supplierCode: 'SUP_001', supplierName: '供应商甲' },
       { supplierCode: 'SUP_002', supplierName: '供应商乙' }
@@ -36,7 +38,7 @@ const mountDetail = (get = async () => createDetail(), props) =>
     entryFile: 'views/supplier/product/list/detail/index.vue', props
   })
 
-test('商品详情按设计稿显示分区、十列SKU及分转元金额', async () => {
+test('商品详情显示分区、含税率税额的SKU列及分转元金额', async () => {
   const requests = []
   const view = mountDetail(async (request) => {
     requests.push(request.url)
@@ -50,9 +52,11 @@ test('商品详情按设计稿显示分区、十列SKU及分转元金额', async
       assert.ok(view.text().includes(text), text)
     }
     assert.deepEqual(view.components('ElTableColumn').map((column) => column.props.label), [
-      'SKU主图', 'SKU详情图', '商品描述', 'SKU名称', 'SKU编码', '市场价（元）', '销售建议价（元）', '供应价（元）', '供应商', '总库存'
+      'SKU主图', 'SKU详情图', '商品描述', 'SKU名称', 'SKU编码', '市场价（元）', '销售建议价（元）', '供应价（元）', '税率', '税额(元)', '供应商', '总库存'
     ])
     const columns = view.components('ElTableColumn')
+    assert.equal(columns.find((column) => column.props.label === '税率').text.trim(), '6%')
+    assert.equal(columns.find((column) => column.props.label === '税额(元)').text.trim(), '1.14')
     assert.ok(columns.find((column) => column.props.label === '供应商').text.includes('供应商甲、供应商乙'))
     assert.equal(columns.find((column) => column.props.label === '总库存').text.trim(), '120')
     const images = view.components('ElImage')
@@ -66,6 +70,28 @@ test('商品详情按设计稿显示分区、十列SKU及分转元金额', async
     view.unmount()
   }
 })
+
+for (const [taxRateDisplay, taxAmount, rateText, amountText] of [
+  ['0%', 0, '0%', '0.00'],
+  ['不征税', 0, '不征税', '0.00'],
+  [undefined, undefined, '—', '-'],
+  [null, null, '—', '-']
+]) {
+  test(`SKU详情税率${taxRateDisplay}、税额${taxAmount}保持列表展示口径`, async () => {
+    const detail = createDetail()
+    Object.assign(detail.skus[0], { taxRateDisplay, taxAmount })
+    const view = mountDetail(async () => detail)
+    try {
+      await view.exposed.open('SPU_001')
+      await flushProductList()
+      const columns = view.components('ElTableColumn')
+      assert.equal(columns.find((column) => column.props.label === '税率').text.trim(), rateText)
+      assert.equal(columns.find((column) => column.props.label === '税额(元)').text.trim(), amountText)
+    } finally {
+      view.unmount()
+    }
+  })
+}
 
 test('供应商优先展示名称，缺少名称时展示编码，缺失数据时展示占位', () => {
   const view = mountDetail()

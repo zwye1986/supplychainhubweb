@@ -382,16 +382,18 @@
             <el-input v-model="formData.bankAccount" placeholder="请输入银行账户号码" maxlength="50" />
           </el-form-item>
         </el-col>
-        <el-col v-if="!isEdit" :span="12">
+        <el-col :span="12">
           <el-form-item label="当前账户余额" prop="openingBalanceYuan">
             <el-input-number
+              v-if="!isView"
               :controls="false"
               v-model="openingBalanceYuan"
               :min="0"
               :precision="2"
               class="!w-full"
-              placeholder="请输入期初余额，空视为 0"
+              :placeholder="isEdit ? '请输入当前账户余额，空视为 0' : '请输入期初余额，空视为 0'"
             />
+            <span v-else>{{ currentAccountBalanceText }}</span>
           </el-form-item>
         </el-col>
       </el-row>
@@ -434,7 +436,7 @@ import {
   toProductTypeCodes
 } from '@/api/supplier/distribution'
 import { getDictLabel, getStrDictOptions } from '@/utils/dict'
-import { yuanToCents } from '@/utils/money'
+import { centsToYuan, formatCentsYuan, yuanToCents } from '@/utils/money'
 
 const UNLIMITED_FILE_TYPES = ['']
 
@@ -470,6 +472,10 @@ const parentOptions = ref<{ buyerCode: string; buyerName: string; distributionLe
 const isView = computed(() => props.mode === 'view')
 const isEdit = computed(() => props.mode === 'edit' || (!!props.buyerCode && props.mode !== 'view'))
 const openingBalanceYuan = ref<number | undefined>(undefined)
+const currentAccountBalanceCents = ref<number | undefined>(undefined)
+const currentAccountBalanceText = computed(() => currentAccountBalanceCents.value == null
+  ? '-'
+  : `${formatCentsYuan(currentAccountBalanceCents.value)} 元`)
 
 const createEmptyContact = (): DistributorContactVO => ({
   name: '',
@@ -628,6 +634,7 @@ const removeContact = (index: number) => {
 const resetForm = async () => {
   formData.value = createDefaultForm()
   openingBalanceYuan.value = undefined
+  currentAccountBalanceCents.value = undefined
   parentOptions.value = []
   await nextTick()
   formRef.value?.clearValidate()
@@ -756,10 +763,15 @@ const mapDetailToForm = (data: BuyerDetail & Partial<DistributorVO>): Distributo
 
 const loadDetail = async (buyerCode: string) => {
   formLoading.value = true
+  currentAccountBalanceCents.value = undefined
+  openingBalanceYuan.value = undefined
   try {
-    const data = await DistributorApi.getDistributor(buyerCode)
+    const data = (await DistributorApi.getDistributor(buyerCode)) as BuyerDetail & Partial<DistributorVO>
     formData.value = mapDetailToForm(data)
-    openingBalanceYuan.value = undefined
+    currentAccountBalanceCents.value = data.accountBalanceCents ?? data.openingBalanceCents ?? (
+      data.accountBalance == null ? undefined : yuanToCents(Number(data.accountBalance))
+    )
+    openingBalanceYuan.value = centsToYuan(currentAccountBalanceCents.value)
   } finally {
     formLoading.value = false
   }
@@ -799,7 +811,7 @@ const buildSavePayload = (): BuyerSaveReqVO => {
     sellableCategories: formData.value.sellableCategories || [],
     productTypes: formData.value.productTypes || []
   }
-  if (!isEdit.value) {
+  if (!isView.value) {
     payload.openingBalanceCents = yuanToCents(openingBalanceYuan.value) ?? 0
   }
   return payload

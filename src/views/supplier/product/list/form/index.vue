@@ -204,10 +204,28 @@
     </template>
   </el-dialog>
 
-  <el-dialog v-model="detailPicsDialogVisible" :title="detailPicsDialogTitle" width="680px" append-to-body destroy-on-close>
-    <UploadImgs v-if="detailPicsEditingSku" v-model="detailPicsEditingSku.detailPics" :limit="5" height="100px" width="100px" :drag="false" />
+  <el-dialog
+    v-model="detailPicsDialogVisible"
+    :title="detailPicsDialogTitle"
+    width="680px"
+    append-to-body
+    destroy-on-close
+    :close-on-click-modal="!detailPicsUploading"
+    :close-on-press-escape="!detailPicsUploading"
+    :show-close="!detailPicsUploading"
+  >
+    <UploadImgs
+      v-if="detailPicsDialogVisible && detailPicsEditingSku"
+      v-model="detailPicsDraft"
+      :limit="5"
+      height="100px"
+      width="100px"
+      :drag="false"
+      @uploading="detailPicsUploading = $event"
+    />
+    <div v-if="detailPicsUploading" role="status" class="mt-12px text-13px text-blue-500">图片上传中，请等待全部上传成功后点击完成。</div>
     <template #footer>
-      <el-button type="primary" @click="detailPicsDialogVisible = false">完成</el-button>
+      <el-button type="primary" :disabled="detailPicsUploading" :loading="detailPicsUploading" @click="confirmDetailPics">完成</el-button>
     </template>
   </el-dialog>
 </template>
@@ -303,6 +321,8 @@
   const brandList = ref<ProductBrandVO[]>([])
   const detailPicsDialogVisible = ref(false)
   const detailPicsEditingSku = ref<SkuFormItem | null>(null)
+  const detailPicsDraft = ref<string[]>([])
+  const detailPicsUploading = ref(false)
   const detailPicsDialogTitle = computed(() =>
     detailPicsEditingSku.value?.skuName
       ? `SKU详情图 · ${detailPicsEditingSku.value.skuName}`
@@ -310,9 +330,17 @@
   )
 
   const openDetailPicsEditor = (row: SkuFormItem) => {
-    if (!Array.isArray(row.detailPics)) row.detailPics = []
+    if (detailPicsUploading.value) return
+    detailPicsDraft.value = Array.isArray(row.detailPics) ? [...row.detailPics] : []
+    detailPicsUploading.value = false
     detailPicsEditingSku.value = row
     detailPicsDialogVisible.value = true
+  }
+
+  const confirmDetailPics = () => {
+    if (!detailPicsDialogVisible.value || detailPicsUploading.value || !detailPicsEditingSku.value) return
+    detailPicsEditingSku.value.detailPics = [...detailPicsDraft.value]
+    detailPicsDialogVisible.value = false
   }
 
   const firstDictValue = (dictType: string) => getStrDictOptions(dictType)[0]?.value || ''

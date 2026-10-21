@@ -28,7 +28,7 @@
 <script lang="ts" setup>
 import { getFileNameFromUrl, isImage } from '@/utils/file'
 
-defineOptions({ name: 'SupplierAttachmentList' })
+defineOptions({ name: 'AttachmentList' })
 
 const props = defineProps<{
   urls?: string[]

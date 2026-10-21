@@ -24,7 +24,11 @@
       </div>
       <template #file="{ file }">
         <img :src="file.url" class="upload-image" />
-        <div class="upload-handle" @click.stop>
+        <div v-if="file.status === 'ready' || file.status === 'uploading'" class="upload-progress" role="status">
+          <span>图片上传中 {{ Math.round(file.percentage || 0) }}%</span>
+          <el-progress :percentage="Math.round(file.percentage || 0)" :show-text="false" class="w-full" />
+        </div>
+        <div v-else class="upload-handle" @click.stop>
           <div class="handle-icon" @click="imagePreview(file.url!)">
             <Icon icon="ep:zoom-in" />
             <span>查看</span>
@@ -94,8 +98,9 @@ const uploadStyle = computed(() => ({
 const { uploadUrl, httpRequest } = useUpload(props.directory)
 
 const fileList = ref<UploadUserFile[]>([])
-const uploadNumber = ref<number>(0)
-const uploadList = ref<UploadUserFile[]>([])
+const uploading = computed(() =>
+  fileList.value.some((file) => file.status === 'ready' || file.status === 'uploading')
+)
 /**
  * @description 文件上传之前判断
  * @param rawFile 上传的文件
@@ -119,35 +124,31 @@ const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
       type: 'warning'
     })
 
-  // 只有在验证通过后才增加计数器
-  if (isValidType && isValidSize) {
-    uploadNumber.value++
-  }
-
   return isValidType && isValidSize
 }
 
 // 图片上传成功
 interface UploadEmits {
   (e: 'update:modelValue', value: string[]): void
+  (e: 'uploading', value: boolean): void
 }
 
 const emit = defineEmits<UploadEmits>()
-const uploadSuccess: UploadProps['onSuccess'] = (res: any): void => {
-  message.success('上传成功')
-  const response = res as { data: string }
-  // 删除自身
-  const index = fileList.value.findIndex(
-    (item) => (item.response as { data?: string } | undefined)?.data === response.data
-  )
-  fileList.value.splice(index, 1)
-  uploadList.value.push({ name: response.data, url: response.data })
-  if (uploadList.value.length == uploadNumber.value) {
-    fileList.value.push(...uploadList.value)
-    uploadList.value = []
-    uploadNumber.value = 0
-    emitUpdateModelValue()
+watch(uploading, (value) => emit('uploading', value), { flush: 'sync' })
+
+const uploadSuccess: UploadProps['onSuccess'] = (res: any, uploadFile): void => {
+  if (typeof res?.data !== 'string' || !res.data.trim()) {
+    fileList.value = fileList.value.filter((file) => file.uid !== uploadFile.uid)
+    uploadError()
+    return
   }
+  // 按 uid 更新原文件，保留选择顺序；只在整批结束后回传正式地址。
+  const file = fileList.value.find((item) => item.uid === uploadFile.uid)
+  if (!file) return
+  file.url = res.data
+  file.status = 'success'
+  message.success('上传成功')
+  emitUpdateModelValue()
 }
 
 // 监听模型绑定值变动
@@ -168,18 +169,19 @@ watch(
 )
 // 发送图片链接列表更新
 const emitUpdateModelValue = () => {
-  let result: string[] = fileList.value.map((file) => file.url!)
+  if (uploading.value) return
+  const result = fileList.value
+    .filter((file) => (!file.status || file.status === 'success') && file.url && !file.url.startsWith('blob:'))
+    .map((file) => file.url!)
   emit('update:modelValue', result)
 }
 // 删除图片
 const handleRemove = (uploadFile: UploadFile) => {
+  if (uploadFile.status === 'ready' || uploadFile.status === 'uploading') return
   fileList.value = fileList.value.filter(
     (item) => item.url !== uploadFile.url || item.name !== uploadFile.name
   )
-  emit(
-    'update:modelValue',
-    fileList.value.map((file) => file.url!)
-  )
+  emitUpdateModelValue()
 }
 
 // 图片上传错误提示
@@ -189,8 +191,8 @@ const uploadError = () => {
     message: '图片上传失败，请您重新上传！',
     type: 'error'
   })
-  // 上传失败时减少计数器，避免后续上传被阻塞
-  uploadNumber.value = Math.max(0, uploadNumber.value - 1)
+  // Element Plus 已移除失败文件；无论成功/失败的返回顺序如何，都能回传已成功的图片。
+  emitUpdateModelValue()
 }
 
 // 文件数超出提示
@@ -305,6 +307,20 @@ const handleExceed = () => {
           font-size: 100%;
         }
       }
+    }
+
+    .upload-progress {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px;
+      font-size: 12px;
+      background: rgb(255 255 255 / 85%);
+      box-sizing: border-box;
     }
 
     .el-upload-list__item {

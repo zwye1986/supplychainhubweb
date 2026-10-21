@@ -43,7 +43,7 @@ export interface BuyerSaveReqVO {
   categoryL1Ids?: Array<string | number>
   /** 商品类型，接口 typeCode */
   productTypes?: string[]
-  /** 期初余额，单位 CNY 分，仅创建可写（空视为 0）；编辑再带会拒绝 */
+  /** 余额，单位 CNY 分，空视为 0；按页面需求新增/编辑均提交，编辑写入仍需后端支持。 */
   openingBalanceCents?: number
 }
 

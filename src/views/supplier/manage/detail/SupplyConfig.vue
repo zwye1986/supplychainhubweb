@@ -13,11 +13,12 @@
             placeholder="请选择可售品类"
             filterable
             clearable
+            :loading="sellableCategoriesLoading"
             class="!w-full"
             @change="() => handleSellableCategoryChange(row)"
           >
             <el-option
-              v-for="dict in getStrDictOptions('supply_chain_sellable_category')"
+              v-for="dict in sellableCategoryOptions"
               :key="dict.value"
               :label="dict.label"
               :value="dict.value"
@@ -116,6 +117,8 @@ import {
   SupplyScopeView
 } from '@/api/supplier/manage'
 import { getStrDictOptions } from '@/utils/dict'
+import { getDictDataPage } from '@/api/system/dict/dict.data'
+import type { DictDataVO } from '@/api/system/dict/dict.data'
 
 defineOptions({ name: 'SupplierSupplyConfig' })
 
@@ -130,6 +133,32 @@ const emit = defineEmits<{
 const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
+const sellableCategoriesLoading = ref(false)
+const sellableCategoryOptions = ref<DictDataVO[]>([])
+
+const loadSellableCategories = async () => {
+  sellableCategoriesLoading.value = true
+  try {
+    const query = { pageNo: 1, pageSize: 100, dictType: 'supply_chain_sellable_category', status: 0 }
+    const options: DictDataVO[] = []
+    while (true) {
+      const data = await getDictDataPage({ ...query })
+      const rows: DictDataVO[] = Array.isArray(data?.list) ? data.list : []
+      options.push(...rows.filter((item) => String(item.status) === '0'))
+      if (!rows.length || query.pageNo * query.pageSize >= Number(data?.total || 0)) break
+      query.pageNo++
+    }
+    // 分页接口返回顺序不等于下拉顺序；汇总全部页后按字典排序值升序排列。
+    sellableCategoryOptions.value = options.sort(
+      (a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0) || Number(a.id ?? 0) - Number(b.id ?? 0)
+    )
+  } catch {
+    sellableCategoryOptions.value = []
+    message.error('可售品类加载失败，请重新打开供货配置')
+  } finally {
+    sellableCategoriesLoading.value = false
+  }
+}
 
 /** 表格行：保存字段 + 查询带回的名称 */
 type SupplyScopeRow = Partial<
@@ -345,6 +374,8 @@ watch(
   () => loadData(),
   { immediate: true }
 )
+
+onMounted(loadSellableCategories)
 
 defineExpose({ list, loadData })
 </script>

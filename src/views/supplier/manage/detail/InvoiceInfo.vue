@@ -1,11 +1,5 @@
 <template>
   <ContentWrap v-loading="loading">
-    <el-alert
-      class="mb-16px"
-      type="info"
-      :closable="false"
-      :title="invoiceTip"
-    />
     <el-form
       ref="formRef"
       :model="formData"
@@ -20,25 +14,24 @@
           @change="handleTitleTypeChange"
         >
           <el-radio
-            v-for="dict in getStrDictOptions('supply_chain_invoice_title_type')"
+            v-for="dict in titleTypeOptions"
             :key="dict.value"
             :value="dict.value"
           >
             {{ dict.label }}
           </el-radio>
         </el-radio-group>
-        <span v-else>{{ getDictLabel('supply_chain_invoice_title_type', formData.titleType) || '-' }}</span>
+        <span v-else>{{ titleTypeOptions.find((item) => item.value === formData.titleType)?.label || '-' }}</span>
       </el-form-item>
       <el-form-item label="开票抬头" prop="invoiceTitle">
         <el-input v-if="isEditing" v-model="formData.invoiceTitle" placeholder="请输入开票抬头" />
         <span v-else>{{ displayText(formData.invoiceTitle) }}</span>
       </el-form-item>
-      <el-form-item label="统一社会信用代码" prop="socialCreditCode">
+      <el-form-item v-if="formData.titleType !== 'PERSONAL'" label="统一社会信用代码" prop="socialCreditCode">
         <el-input
           v-if="isEditing"
           v-model="formData.socialCreditCode"
           placeholder="请输入统一社会信用代码"
-          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.socialCreditCode) }}</span>
       </el-form-item>
@@ -51,7 +44,6 @@
           v-if="isEditing"
           v-model="formData.bankName"
           placeholder="请输入开户行"
-          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.bankName) }}</span>
       </el-form-item>
@@ -60,7 +52,6 @@
           v-if="isEditing"
           v-model="formData.bankAccount"
           placeholder="请输入开户账号"
-          :disabled="formData.titleType === 'PERSONAL'"
         />
         <span v-else>{{ displayText(formData.bankAccount) }}</span>
       </el-form-item>
@@ -86,7 +77,7 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from 'element-plus'
 import { InvoiceSaveReqVO, SupplierApi, SupplierInvoiceView } from '@/api/supplier/manage'
-import { getDictLabel, getStrDictOptions } from '@/utils/dict'
+import { getDictLabel } from '@/utils/dict'
 
 defineOptions({ name: 'SupplierInvoiceInfo' })
 
@@ -99,6 +90,12 @@ const loading = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
 const formRef = ref<FormInstance>()
+
+// 两种类型均为接口支持的固定业务值，字典仅负责覆盖展示名称，避免缺项导致个人不可选。
+const titleTypeOptions = computed(() => [
+  { value: 'ENTERPRISE', label: getDictLabel('supply_chain_invoice_title_type', 'ENTERPRISE') || '企业' },
+  { value: 'PERSONAL', label: getDictLabel('supply_chain_invoice_title_type', 'PERSONAL') || '个人' }
+])
 
 const createDefaultForm = (): SupplierInvoiceView => ({
   id: undefined,
@@ -117,6 +114,24 @@ const createDefaultForm = (): SupplierInvoiceView => ({
 
 const formData = reactive<SupplierInvoiceView>(createDefaultForm())
 const originFormData = ref<SupplierInvoiceView>()
+type InvoiceDraft = Pick<SupplierInvoiceView,
+  'invoiceTitle' | 'socialCreditCode' | 'phone' | 'bankName' | 'bankAccount' | 'invoiceAddress'>
+const titleTypeDrafts = ref<Record<string, InvoiceDraft>>({})
+const activeTitleType = ref('ENTERPRISE')
+
+const pickInvoiceDraft = (data: SupplierInvoiceView): InvoiceDraft => ({
+  invoiceTitle: data.invoiceTitle,
+  socialCreditCode: data.socialCreditCode,
+  phone: data.phone,
+  bankName: data.bankName,
+  bankAccount: data.bankAccount,
+  invoiceAddress: data.invoiceAddress
+})
+
+const resetTitleTypeDrafts = () => {
+  titleTypeDrafts.value = {}
+  activeTitleType.value = formData.titleType || 'ENTERPRISE'
+}
 
 const snapshotFormData = () => {
   originFormData.value = { ...formData }
@@ -132,6 +147,7 @@ const applyInvoice = (data?: SupplierInvoiceView | null) => {
   if (!formData.titleType) {
     formData.titleType = 'ENTERPRISE'
   }
+  resetTitleTypeDrafts()
 }
 
 const formRules = computed<FormRules>(() => {
@@ -143,10 +159,8 @@ const formRules = computed<FormRules>(() => {
     socialCreditCode: isEnterprise
       ? [{ required: true, message: '请输入统一社会信用代码', trigger: 'blur' }]
       : [],
-    bankName: isEnterprise ? [{ required: true, message: '请输入开户行', trigger: 'blur' }] : [],
-    bankAccount: isEnterprise
-      ? [{ required: true, message: '请输入开户账号', trigger: 'blur' }]
-      : []
+    bankName: [{ required: true, message: '请输入开户行', trigger: 'blur' }],
+    bankAccount: [{ required: true, message: '请输入开户账号', trigger: 'blur' }]
   }
 })
 
@@ -154,13 +168,6 @@ const displayText = (value?: string | number | null) => {
   if (value === undefined || value === null || value === '') return '-'
   return String(value)
 }
-
-const invoiceTip = computed(() => {
-  if (formData.persisted) {
-    return '开票信息已独立保存，不会回写供应商档案。'
-  }
-  return '暂无开票记录时，系统按供应商档案预填（不落库）；保存后独立存储，不会回写档案。'
-})
 
 const loadData = async () => {
   if (!props.supplierCode) return
@@ -179,22 +186,25 @@ const loadData = async () => {
 }
 
 const handleTitleTypeChange = () => {
-  formRef.value?.clearValidate(['socialCreditCode', 'bankName', 'bankAccount'])
-  if (formData.titleType === 'PERSONAL') {
-    formData.socialCreditCode = ''
-    formData.bankName = ''
-    formData.bankAccount = ''
+  const nextType = formData.titleType || 'ENTERPRISE'
+  if (nextType !== activeTitleType.value) {
+    titleTypeDrafts.value[activeTitleType.value] = pickInvoiceDraft(formData)
+    Object.assign(formData, titleTypeDrafts.value[nextType] || pickInvoiceDraft(createDefaultForm()))
+    activeTitleType.value = nextType
   }
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 const handleEdit = () => {
   snapshotFormData()
+  resetTitleTypeDrafts()
   isEditing.value = true
   nextTick(() => formRef.value?.clearValidate())
 }
 
 const handleCancel = () => {
   restoreFormData()
+  resetTitleTypeDrafts()
   isEditing.value = false
   nextTick(() => formRef.value?.clearValidate())
 }
@@ -206,8 +216,8 @@ const buildSavePayload = (): InvoiceSaveReqVO => {
     invoiceTitle: formData.invoiceTitle,
     socialCreditCode: isEnterprise ? formData.socialCreditCode : undefined,
     phone: formData.phone,
-    bankName: isEnterprise ? formData.bankName : undefined,
-    bankAccount: isEnterprise ? formData.bankAccount : undefined,
+    bankName: formData.bankName,
+    bankAccount: formData.bankAccount,
     invoiceAddress: formData.invoiceAddress
   }
 }
