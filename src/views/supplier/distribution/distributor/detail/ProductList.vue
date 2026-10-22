@@ -229,9 +229,9 @@ const categoryTags = computed(() => [
   }))
 ])
 
-const queryProductTypes = computed(() =>
-  activeTag.value ? [activeTag.value] : productTypeCodes.value
-)
+// 「全部商品」查询全部有效关联，避免档案范围收窄后隐藏已有商品；具体类型 Tab 仍按类型筛选。
+// 设计：supply-hub/docs/superpowers/specs/2026-09-02-supply-chain-admin-frontend-api-design.md#63-分销商品。
+const queryProductTypes = computed(() => (activeTag.value ? [activeTag.value] : undefined))
 
 const getProductTypeLabel = (row: BuyerProductListItem) => {
   const typeName =

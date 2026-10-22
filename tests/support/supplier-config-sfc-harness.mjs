@@ -73,6 +73,8 @@ export function mountSupplierConfig(api, entry = 'index.vue', props = {}, option
       if (name === '@/api/supplier/manage')
         return { SupplierApi: { getSupplierNameList: async () => [], ...api } }
       if (name === '@/utils/dict') return { getStrDictOptions: () => [] }
+      if (name === '@/api/system/dict/dict.data')
+        return { getDictDataPage: api.getDictDataPage || (async () => ({ list: [], total: 0 })) }
       if (name.endsWith('/utils/constants')) return constants
       if (name.endsWith('.vue'))
         return { __esModule: true, default: load(path.resolve(path.dirname(file), name)) }
